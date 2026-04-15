@@ -384,6 +384,21 @@ async function requireAuth() {
     window.location.href = '/index.html';
     return null;
   }
+
+  // Ensure profile row exists — the DB trigger can fail silently,
+  // so we upsert here as a safety net before any FK-dependent insert.
+  try {
+    const user = session.user;
+    await sb.from('profiles').upsert({
+      id: user.id,
+      email: user.email,
+      full_name: user.user_metadata?.full_name || null,
+      role: 'investor',
+    }, { onConflict: 'id', ignoreDuplicates: true });
+  } catch (_) {
+    // Profile already exists — safe to continue
+  }
+
   return session;
 }
 
@@ -438,3 +453,4 @@ function setLoading(buttonEl, loading) {
     buttonEl.disabled = false;
   }
 }
+
