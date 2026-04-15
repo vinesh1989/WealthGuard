@@ -38,6 +38,9 @@ CREATE TABLE profiles (
   trial_ends_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
   subscription_ends_at TIMESTAMPTZ,
   stripe_customer_id TEXT,
+  is_approved BOOLEAN DEFAULT FALSE,          -- admin must approve before access granted
+  access_status TEXT DEFAULT 'pending',       -- 'pending', 'approved', 'rejected', 'suspended'
+  invited_by UUID REFERENCES profiles(id),    -- admin who invited this user (null = self-signup)
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -73,6 +76,26 @@ CREATE TABLE coupons (
   created_by UUID REFERENCES profiles(id),
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- INVITATIONS (admin-sent invites)
+-- ============================================================
+
+CREATE TABLE invitations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  invited_by UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  full_name TEXT,
+  role user_role DEFAULT 'investor',
+  plan_id TEXT DEFAULT 'annual',          -- plan to assign on signup
+  plan_expires_at TIMESTAMPTZ,             -- subscription expiry
+  token TEXT UNIQUE DEFAULT encode(gen_random_bytes(32), 'hex'),
+  status TEXT DEFAULT 'pending',           -- 'pending', 'accepted', 'expired'
+  message TEXT,                            -- optional personal note
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
+  accepted_at TIMESTAMPTZ
 );
 
 -- ============================================================
@@ -325,6 +348,7 @@ ALTER TABLE investment_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE import_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invitations ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: user sees own + admin sees all
 -- Profiles RLS: SELECT/UPDATE/DELETE own row; INSERT allowed for new users
@@ -383,6 +407,14 @@ CREATE POLICY "subscriptions_own" ON subscriptions FOR ALL USING (user_id = auth
 -- Import logs: own only
 CREATE POLICY "import_logs_own" ON import_logs FOR ALL USING (user_id = auth.uid());
 
+-- Invitations: admin full access
+CREATE POLICY "invitations_admin" ON invitations FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+CREATE POLICY "invitations_self_read" ON invitations FOR SELECT USING (
+  email = (SELECT email FROM profiles WHERE id = auth.uid())
+);
+
 -- Investment history: owner + beneficiary
 CREATE POLICY "inv_history_owner" ON investment_history FOR ALL USING (
   EXISTS (SELECT 1 FROM investments WHERE id = investment_history.investment_id AND user_id = auth.uid())
@@ -395,18 +427,48 @@ CREATE POLICY "inv_history_owner" ON investment_history FOR ALL USING (
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_invite invitations%ROWTYPE;
+  v_role user_role := 'investor';
+  v_approved BOOLEAN := FALSE;
+  v_access_status TEXT := 'pending';
 BEGIN
-  INSERT INTO profiles (id, full_name, email, role)
-  VALUES (
-    NEW.id,
-    NULLIF(TRIM(COALESCE(NEW.raw_user_meta_data->>'full_name', '')), ''),
-    NEW.email,
-    COALESCE(
-      NULLIF(NEW.raw_user_meta_data->>'role', '')::user_role,
-      'investor'
+    -- Look for a matching unused invitation
+    SELECT * INTO v_invite
+    FROM invitations
+    WHERE email = NEW.email AND status = 'pending' AND expires_at > NOW()
+    LIMIT 1;
+
+    IF FOUND THEN
+      v_role := v_invite.role;
+      v_approved := TRUE;
+      v_access_status := 'approved';
+      -- Mark invitation as accepted
+      UPDATE invitations SET status = 'accepted', accepted_at = NOW() WHERE id = v_invite.id;
+    ELSE
+      -- Self-signup: override role from metadata safely
+      v_role := COALESCE(
+        NULLIF(NEW.raw_user_meta_data->>'role', '')::user_role,
+        'investor'
+      );
+    END IF;
+
+    -- Admins are always auto-approved
+    IF v_role = 'admin' THEN
+      v_approved := TRUE;
+      v_access_status := 'approved';
+    END IF;
+
+    INSERT INTO profiles (id, full_name, email, role, is_approved, access_status)
+    VALUES (
+      NEW.id,
+      NULLIF(TRIM(COALESCE(NEW.raw_user_meta_data->>'full_name', '')), ''),
+      NEW.email,
+      v_role,
+      v_approved,
+      v_access_status
     )
-  )
-  ON CONFLICT (id) DO NOTHING;  -- safe re-run
+    ON CONFLICT (id) DO NOTHING;
 
   INSERT INTO notification_preferences (user_id)
   VALUES (NEW.id)

@@ -233,31 +233,21 @@
         </div>
         <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem">Billed annually · Cancel anytime</div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Card Number</label>
-        <input type="text" class="form-input" placeholder="4242 4242 4242 4242" maxlength="19" oninput="formatCard(this)">
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
-        <div class="form-group">
-          <label class="form-label">Expiry</label>
-          <input type="text" class="form-input" placeholder="MM / YY" maxlength="7">
+      <div id="coupon-checkout-row" style="margin-bottom:1rem">
+        <label class="form-label">Coupon Code (optional)</label>
+        <div style="display:flex;gap:0.5rem">
+          <input type="text" class="form-input" id="checkout-coupon" placeholder="e.g. WELCOME20" style="text-transform:uppercase;font-family:var(--font-mono);letter-spacing:0.05em">
+          <button class="btn btn-outline btn-sm" onclick="validateCheckoutCoupon()">Apply</button>
         </div>
-        <div class="form-group">
-          <label class="form-label">CVC</label>
-          <input type="text" class="form-input" placeholder="123" maxlength="4">
-        </div>
+        <div id="checkout-coupon-msg" style="font-size:0.78rem;margin-top:0.35rem;display:none"></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Cardholder Name</label>
-        <input type="text" class="form-input" placeholder="As shown on card">
-      </div>
-      <div style="font-size:0.75rem;color:var(--text-muted);text-align:center;line-height:1.5">
-        🔒 Payments are securely processed. WealthGuard does not store card details.
+      <div style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.15);border-radius:var(--radius-md);padding:0.9rem 1rem;font-size:0.82rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0.5rem">
+        🔒 You'll be redirected to <strong style="color:#60a5fa">Stripe</strong> to complete payment securely. Card details are never stored by WealthGuard.
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeCheckout()">Cancel</button>
-      <button class="btn btn-primary" id="pay-btn" onclick="processPayment()">Pay Now</button>
+      <button class="btn btn-primary" id="pay-btn" onclick="processPayment()">Continue to Payment →</button>
     </div>
   </div>
 </div>
@@ -327,46 +317,80 @@ function updatePlanDisplay() {
   }
 }
 
+// ── Stripe checkout ──────────────────────────────────────────
+// Replace YOUR_PROJECT_REF with your Supabase project reference
+const SUPABASE_FUNCTIONS_URL = 'https://YOUR_PROJECT_REF.supabase.co/functions/v1';
+
+let appliedCoupon = null;
+
 function openCheckout(plan) {
   selectedPlan = plan;
+  appliedCoupon = null;
   const labels = { annual: { label: 'Annual Pro Plan', price: '$99' }, family: { label: 'Family Plan', price: '$149' } };
   const info = labels[plan] || labels.annual;
   document.getElementById('checkout-title').textContent = `Upgrade to ${info.label.replace(' Plan', '')}`;
   document.getElementById('checkout-plan-label').textContent = info.label;
   document.getElementById('checkout-price').textContent = info.price;
+  document.getElementById('checkout-coupon').value = '';
+  document.getElementById('checkout-coupon-msg').style.display = 'none';
   document.getElementById('checkout-modal').classList.add('open');
 }
 
-function closeCheckout() { document.getElementById('checkout-modal').classList.remove('open'); }
+function closeCheckout() {
+  document.getElementById('checkout-modal').classList.remove('open');
+  appliedCoupon = null;
+}
 
-function formatCard(input) {
-  let v = input.value.replace(/\D/g, '').substring(0, 16);
-  input.value = v.replace(/(.{4})/g, '$1 ').trim();
+async function validateCheckoutCoupon() {
+  const code = document.getElementById('checkout-coupon').value.trim().toUpperCase();
+  const msgEl = document.getElementById('checkout-coupon-msg');
+  if (!code) return;
+  const { data: coupon } = await sb.from('coupons').select('*').eq('code', code).eq('is_active', true).single();
+  msgEl.style.display = 'block';
+  if (!coupon) {
+    msgEl.textContent = '✗ Invalid or expired coupon';
+    msgEl.style.color = '#f87171';
+    appliedCoupon = null;
+  } else {
+    msgEl.textContent = `✓ ${coupon.discount_percent}% discount applied!`;
+    msgEl.style.color = '#34d399';
+    appliedCoupon = coupon;
+    // Update displayed price
+    const base = selectedPlan === 'family' ? 149 : 99;
+    const discounted = (base * (1 - coupon.discount_percent / 100)).toFixed(2);
+    document.getElementById('checkout-price').textContent = `$${discounted}`;
+  }
 }
 
 async function processPayment() {
-  setLoading('pay-btn', true, 'Processing…');
-  // Simulated payment — in production, integrate Stripe.js here
-  await new Promise(r => setTimeout(r, 2000));
+  setLoading('pay-btn', true, 'Redirecting to Stripe…');
   try {
-    const planPrices = { annual: 99, family: 149 };
-    const endDate = new Date();
-    endDate.setFullYear(endDate.getFullYear() + 1);
-    await sb.from('subscriptions').upsert({
-      user_id: currentUser.id,
-      plan_id: selectedPlan,
-      status: 'active',
-      starts_at: new Date().toISOString(),
-      ends_at: endDate.toISOString(),
-      amount_paid: planPrices[selectedPlan],
-    }, { onConflict: 'user_id' });
-    closeCheckout();
-    showToast('🎉 Subscription activated! Welcome to WealthGuard Pro.', 'success');
-    await loadSubscription();
-  } catch(e) {
-    showToast('Payment failed. Please try again.', 'error');
-  } finally {
-    setLoading('pay-btn', false, 'Pay Now');
+    const couponCode = appliedCoupon?.code || null;
+    const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/stripe-checkout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${(await sb.auth.getSession()).data.session?.access_token}`,
+      },
+      body: JSON.stringify({
+        plan_id: selectedPlan,
+        user_id: currentUser.id,
+        email: currentUser.email,
+        coupon_code: couponCode,
+        success_url: `${window.location.origin}/pages/subscription.html`,
+        cancel_url: `${window.location.origin}/pages/subscription.html`,
+      }),
+    });
+
+    const { url, error } = await res.json();
+    if (error) throw new Error(error);
+
+    // Redirect to Stripe hosted checkout
+    window.location.href = url;
+
+  } catch (e) {
+    showToast(e.message || 'Failed to start checkout. Please try again.', 'error');
+    setLoading('pay-btn', false, 'Continue to Payment →');
   }
 }
 
@@ -396,6 +420,32 @@ async function cancelSubscription() {
 
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+
+// Handle return from Stripe checkout
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get('session_id');
+  if (sessionId) {
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+    // Webhook handles DB update async — poll for up to 10s
+    showToast('Payment received! Activating your subscription…', 'success');
+    let attempts = 0;
+    const poll = setInterval(async () => {
+      attempts++;
+      const { data } = await sb.from('subscriptions')
+        .select('status').eq('user_id', (await sb.auth.getUser()).data.user?.id)
+        .eq('status', 'active').maybeSingle();
+      if (data || attempts >= 10) {
+        clearInterval(poll);
+        if (data) {
+          showToast('🎉 Subscription activated! Welcome to WealthGuard Pro.', 'success');
+          loadSubscription();
+        }
+      }
+    }, 1000);
+  }
+})();
 
 loadSubscription();
 </script>

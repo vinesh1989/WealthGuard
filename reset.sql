@@ -22,6 +22,7 @@ DROP VIEW IF EXISTS portfolio_summary CASCADE;
 
 -- Drop tables (order matters for foreign keys)
 DROP TABLE IF EXISTS audit_log CASCADE;
+DROP TABLE IF EXISTS invitations CASCADE;
 DROP TABLE IF EXISTS import_logs CASCADE;
 DROP TABLE IF EXISTS exchange_rates CASCADE;
 DROP TABLE IF EXISTS notification_preferences CASCADE;

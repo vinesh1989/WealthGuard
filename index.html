@@ -350,7 +350,15 @@
     // Check if already logged in
     (async () => {
       const session = await Auth.getSession();
-      if (session) window.location.href = 'pages/dashboard.html';
+      if (!session) return;
+      const profile = await Profile.get(session.user.id);
+      if (!profile?.is_approved && profile?.role !== 'admin') {
+        window.location.href = 'pages/pending.html';
+      } else if (profile?.role === 'admin') {
+        window.location.href = 'pages/admin.html';
+      } else {
+        window.location.href = 'pages/dashboard.html';
+      }
     })();
 
     function switchTab(tab) {
@@ -381,8 +389,27 @@
         return;
       }
 
-      // Check role for redirect
+      // Check approval / role before redirect
       const profile = await Profile.get(data.user.id);
+
+      if (profile?.access_status === 'rejected') {
+        await Auth.signOut();
+        errEl.textContent = 'Your access request was not approved. Contact the administrator.';
+        errEl.style.display = 'block';
+        setLoading(btn, false);
+        return;
+      }
+      if (profile?.access_status === 'suspended') {
+        await Auth.signOut();
+        errEl.textContent = 'Your account has been suspended. Contact the administrator.';
+        errEl.style.display = 'block';
+        setLoading(btn, false);
+        return;
+      }
+      if (!profile?.is_approved && profile?.role !== 'admin') {
+        window.location.href = 'pages/pending.html';
+        return;
+      }
       if (profile?.role === 'admin') {
         window.location.href = 'pages/admin.html';
       } else {

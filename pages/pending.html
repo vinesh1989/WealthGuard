@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Awaiting Approval — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg-base); padding: 1.5rem; }
+    .pending-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 3rem 2.5rem;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+    .pending-icon { font-size: 3.5rem; margin-bottom: 1.25rem; }
+    .pending-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); }
+    .pending-sub { font-size: 0.9rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 2rem; }
+    .pending-email { font-family: var(--font-mono); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.5rem 1rem; font-size: 0.9rem; color: var(--gold); display: inline-block; margin-bottom: 2rem; }
+    .steps { text-align: left; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem; }
+    .step { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.5rem 0; }
+    .step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--gold-muted); color: var(--gold); font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 0.1rem; }
+    .step-text { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; }
+    .step-text strong { color: var(--text-primary); }
+    .status-badge { display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.25); color: #fbbf24; border-radius: 20px; padding: 0.3rem 0.9rem; font-size: 0.78rem; font-weight: 600; margin-bottom: 1.5rem; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #fbbf24; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .rejected-card { border-color: rgba(248,113,113,0.3); }
+    .rejected-icon { color: #f87171; }
+  </style>
+</head>
+<body>
+<div class="pending-card" id="pending-card">
+  <div class="pending-icon">⏳</div>
+  <div class="pending-title">Awaiting Admin Approval</div>
+  <div class="status-badge"><div class="status-dot"></div> Pending Review</div>
+  <div class="pending-email" id="user-email">your@email.com</div>
+  <div class="pending-sub">
+    Your account has been created and your email is verified. An administrator needs to approve your access before you can use WealthGuard.
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-text"><strong>Account created</strong> — your details are saved</div>
+    </div>
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-text"><strong>Email verified</strong> — you're authenticated</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text"><strong>Admin approval</strong> — waiting for an admin to review and activate your account</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text"><strong>Access granted</strong> — you'll be able to sign in and use WealthGuard</div>
+    </div>
+  </div>
+  <button class="btn btn-outline" style="width:100%;margin-bottom:0.75rem" onclick="checkStatus()">🔄 Check Approval Status</button>
+  <button class="btn btn-ghost" style="width:100%;font-size:0.85rem" onclick="Auth.signOut()">Sign Out</button>
+</div>
+
+<!-- Rejected state (hidden by default) -->
+<div id="rejected-card" style="display:none" class="pending-card rejected-card">
+  <div class="pending-icon rejected-icon">✕</div>
+  <div class="pending-title">Access Not Approved</div>
+  <div class="pending-sub">Your account registration was not approved by the administrator. If you believe this is an error, please contact support.</div>
+  <button class="btn btn-ghost" style="width:100%" onclick="Auth.signOut()">Sign Out</button>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+async function init() {
+  const session = await Auth.getSession();
+  if (!session) { window.location.href = '../index.html'; return; }
+
+  document.getElementById('user-email').textContent = session.user.email;
+
+  const profile = await Profile.get(session.user.id);
+  if (!profile) return;
+
+  if (profile.access_status === 'approved' || profile.is_approved) {
+    // Already approved — send them to dashboard
+    window.location.href = 'dashboard.html';
+    return;
+  }
+
+  if (profile.access_status === 'rejected') {
+    document.getElementById('pending-card').style.display = 'none';
+    document.getElementById('rejected-card').style.display = 'block';
+  }
+}
+
+async function checkStatus() {
+  setLoading('check-btn', true);
+  const session = await Auth.getSession();
+  if (!session) return;
+  const profile = await Profile.get(session.user.id);
+  if (profile?.access_status === 'approved' || profile?.is_approved) {
+    showToast('✓ Access approved! Redirecting…', 'success');
+    setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+  } else if (profile?.access_status === 'rejected') {
+    document.getElementById('pending-card').style.display = 'none';
+    document.getElementById('rejected-card').style.display = 'block';
+  } else {
+    showToast('Still pending — check back later or contact the admin', 'info');
+  }
+  setLoading('check-btn', false);
+}
+
+// Add id to check button after DOM loads
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelector('button[onclick="checkStatus()"]').id = 'check-btn';
+});
+
+init();
+</script>
+</body>
+</html>

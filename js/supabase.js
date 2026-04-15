@@ -8,7 +8,6 @@
 const SUPABASE_URL = 'https://itxvrspchjcnhpaadmax.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_AsJxo599veBgPcioHWyjyA_YSDDPjFy';
 
-
 // Initialize Supabase client
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -378,6 +377,82 @@ const Admin = {
 };
 
 // ============================================================
+// INVITATIONS HELPERS
+// ============================================================
+
+const Invitations = {
+  async getAll() {
+    const { data, error } = await sb.from('invitations')
+      .select('*, invited_by_profile:invited_by(full_name, email)')
+      .order('created_at', { ascending: false });
+    return { data, error };
+  },
+
+  async send({ email, full_name, role, plan_id, plan_expires_at, message }) {
+    const session = await Auth.getSession();
+    const { data, error } = await sb.from('invitations').insert({
+      invited_by: session.user.id,
+      email, full_name, role, plan_id, plan_expires_at, message,
+      status: 'pending',
+      expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+    }).select().single();
+    return { data, error };
+  },
+
+  async revoke(id) {
+    const { error } = await sb.from('invitations').update({ status: 'expired' }).eq('id', id);
+    return { error };
+  }
+};
+
+// ============================================================
+// PENDING APPROVALS HELPERS
+// ============================================================
+
+const Approvals = {
+  async getPending() {
+    const { data, error } = await sb.from('profiles')
+      .select('*')
+      .eq('access_status', 'pending')
+      .order('created_at', { ascending: false });
+    return { data, error };
+  },
+
+  async approve(userId, planId, expiresAt) {
+    const endDate = expiresAt || (() => {
+      const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString();
+    })();
+    // Update profile
+    await sb.from('profiles').update({
+      is_approved: true,
+      access_status: 'approved',
+      subscription_status: 'active',
+      subscription_ends_at: endDate,
+    }).eq('id', userId);
+    // Create subscription record
+    await sb.from('subscriptions').upsert({
+      user_id: userId,
+      plan_id: planId || 'annual',
+      status: 'active',
+      starts_at: new Date().toISOString(),
+      ends_at: endDate,
+      amount_paid: 0,
+    }, { onConflict: 'user_id' });
+  },
+
+  async reject(userId) {
+    await sb.from('profiles').update({
+      is_approved: false,
+      access_status: 'rejected',
+    }).eq('id', userId);
+  },
+
+  async suspend(userId) {
+    await sb.from('profiles').update({ access_status: 'suspended' }).eq('id', userId);
+  }
+};
+
+// ============================================================
 // UTILITY: Check auth on every protected page
 // ============================================================
 
@@ -388,19 +463,33 @@ async function requireAuth() {
     return null;
   }
 
-  // Ensure profile row exists — the DB trigger can fail silently,
-  // so we insert here as a safety net before any FK-dependent insert.
-  // NOTE: we do NOT set role here — that would overwrite admin/beneficiary roles.
-  // ignoreDuplicates:true means this is a no-op if the profile already exists.
+  // Ensure profile row exists (trigger may have failed silently)
+  // Never set role here — that would overwrite admin/beneficiary roles
   try {
-    const user = session.user;
     await sb.from('profiles').upsert({
-      id: user.id,
-      email: user.email,
-      full_name: user.user_metadata?.full_name || null,
+      id: session.user.id,
+      email: session.user.email,
+      full_name: session.user.user_metadata?.full_name || null,
     }, { onConflict: 'id', ignoreDuplicates: true });
-  } catch (_) {
-    // Profile already exists — safe to continue
+  } catch (_) { /* profile already exists */ }
+
+  // Check approval status — admins are always approved
+  const profile = await Profile.get(session.user.id);
+  // Auto-approve admins whose is_approved flag hasn't been set yet
+  if (profile && profile.role === 'admin' && !profile.is_approved) {
+    await sb.from('profiles').update({ is_approved: true, access_status: 'approved' }).eq('id', session.user.id);
+  }
+  if (profile && profile.role !== 'admin' && !profile.is_approved) {
+    if (profile.access_status === 'rejected' || profile.access_status === 'suspended') {
+      await Auth.signOut();
+      window.location.href = '/index.html';
+      return null;
+    }
+    // Pending — send to holding page (relative path works from /pages/)
+    if (!window.location.pathname.includes('pending.html')) {
+      window.location.href = 'pending.html';
+    }
+    return null;
   }
 
   return session;
@@ -459,4 +548,3 @@ function setLoading(btnOrId, loading, label) {
     btn.disabled = false;
   }
 }
-

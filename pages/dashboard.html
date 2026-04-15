@@ -153,7 +153,15 @@
       .performers-grid { grid-template-columns: 1fr; }
       .quick-actions { grid-template-columns: repeat(2, 1fr); }
       .pie-chart-wrap { grid-template-columns: 1fr; }
+      #admin-stats-row { grid-template-columns: 1fr 1fr !important; }
     }
+    .approval-row { display:flex; align-items:center; gap:0.75rem; padding:0.7rem 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .approval-row:last-child { border-bottom:none; }
+    .approval-avatar { width:32px; height:32px; border-radius:50%; background:rgba(251,191,36,0.1); color:#fbbf24; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.85rem; flex-shrink:0; }
+    .approval-info { flex:1; min-width:0; }
+    .approval-name { font-size:0.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .approval-email { font-size:0.72rem; color:var(--text-muted); }
+    .approval-actions { display:flex; gap:0.4rem; flex-shrink:0; }
   </style>
 </head>
 <body>
@@ -183,6 +191,10 @@
       <span class="nav-section-label">Account</span>
       <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
       <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+
+      <!-- Admin section — shown only for admin role -->
+      <span class="nav-section-label" id="admin-nav-section" style="display:none">Admin</span>
+      <a href="admin.html" class="nav-item" id="admin-nav-link" style="display:none"><span class="nav-icon">🔧</span> Admin Panel</a>
     </nav>
     <div class="sidebar-bottom">
       <div class="sidebar-user" id="sidebar-user">
@@ -327,6 +339,32 @@
         </div>
       </div>
 
+      <!-- Admin Module — visible only for admin role -->
+      <div id="admin-module" style="display:none; margin-bottom:1.5rem;">
+        <div class="card" style="border-color:rgba(212,175,55,0.25);">
+          <div class="card-header">
+            <div class="card-title" style="color:var(--gold)">🔧 Admin Overview</div>
+            <a href="admin.html" class="btn btn-primary btn-sm">Open Admin Panel →</a>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.25rem" id="admin-stats-row">
+            <div class="stat-card"><div class="card-title">Total Users</div><div class="card-value display-num" id="adm-total">—</div></div>
+            <div class="stat-card"><div class="card-title">Pending Approval</div><div class="card-value display-num" style="color:#fbbf24" id="adm-pending">—</div></div>
+            <div class="stat-card"><div class="card-title">Active Subs</div><div class="card-value display-num" style="color:#34d399" id="adm-active">—</div></div>
+            <div class="stat-card"><div class="card-title">Invites Sent</div><div class="card-value display-num" style="color:#60a5fa" id="adm-invites">—</div></div>
+          </div>
+          <!-- Pending approvals list -->
+          <div id="adm-pending-list" style="display:none">
+            <div style="font-size:0.8rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.75rem;">
+              🟡 Pending Approvals
+            </div>
+            <div id="adm-pending-rows"></div>
+            <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border)">
+              <a href="admin.html" style="font-size:0.82rem;color:var(--gold)">View all in Admin Panel →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Recent Investments -->
       <div class="card">
         <div class="card-header">
@@ -385,6 +423,14 @@ async function init() {
   // Notifications
   const notifs = await Notifications.getUnread(session.user.id);
   if (notifs.length > 0) document.getElementById('notif-dot').style.display = 'block';
+
+  // Admin module — show for admins only
+  if (profile.role === 'admin') {
+    document.getElementById('admin-module').style.display = 'block';
+    document.getElementById('admin-nav-section').style.display = 'block';
+    document.getElementById('admin-nav-link').style.display = 'flex';
+    loadAdminStats();
+  }
 
   // Load data
   await loadDashboard(session.user.id, profile.base_currency || 'USD');
@@ -547,6 +593,65 @@ function renderAllocationChart(assetTypeMap) {
 function getAssetEmoji(type) {
   const map = { MF: '🏦', Stocks: '📈', Crypto: '₿', FD: '🏛', 'Real Estate': '🏠', Other: '📦' };
   return map[type] || '💼';
+}
+
+// Admin dashboard stats
+async function loadAdminStats() {
+  try {
+    const [
+      { data: allUsers },
+      { data: pendingUsers },
+      { data: activeSubs },
+      { data: invites }
+    ] = await Promise.all([
+      sb.from('profiles').select('id', { count: 'exact', head: true }),
+      sb.from('profiles').select('*').eq('access_status', 'pending').order('created_at', { ascending: false }),
+      sb.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+      sb.from('invitations').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    ]);
+
+    document.getElementById('adm-total').textContent = allUsers?.length ?? '—';
+    document.getElementById('adm-pending').textContent = pendingUsers?.length ?? 0;
+    document.getElementById('adm-active').textContent = activeSubs?.length ?? '—';
+    document.getElementById('adm-invites').textContent = invites?.length ?? 0;
+
+    if (pendingUsers && pendingUsers.length > 0) {
+      document.getElementById('adm-pending-list').style.display = 'block';
+      document.getElementById('adm-pending-rows').innerHTML = pendingUsers.slice(0, 5).map(u => {
+        const initial = (u.full_name || u.email || '?')[0].toUpperCase();
+        const joined = new Date(u.created_at).toLocaleDateString('en-GB');
+        return `<div class="approval-row">
+          <div class="approval-avatar">${initial}</div>
+          <div class="approval-info">
+            <div class="approval-name">${u.full_name || '—'}</div>
+            <div class="approval-email">${u.email} · Joined ${joined}</div>
+          </div>
+          <div class="approval-actions">
+            <button class="btn btn-sm" style="background:rgba(52,211,153,0.12);color:#34d399;border:1px solid rgba(52,211,153,0.25)"
+              onclick="quickApprove('${u.id}','${u.email}')">✓ Approve</button>
+            <button class="btn btn-sm btn-ghost" style="color:#f87171"
+              onclick="quickReject('${u.id}','${u.email}')">✕</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  } catch(e) {
+    console.warn('Admin stats error:', e);
+  }
+}
+
+async function quickApprove(userId, email) {
+  if (!confirm(`Approve access for ${email}?`)) return;
+  await Approvals.approve(userId);
+  showToast(`✓ ${email} approved`, 'success');
+  loadAdminStats();
+}
+
+async function quickReject(userId, email) {
+  if (!confirm(`Reject access for ${email}? They will see a rejection notice.`)) return;
+  await Approvals.reject(userId);
+  showToast(`${email} rejected`, 'success');
+  loadAdminStats();
 }
 
 // Sidebar
