@@ -261,8 +261,3 @@ For issues or feature requests, check:
 ---
 
 *WealthGuard — Secure wealth tracking for the global NRI.*
-
------
-UPDATE profiles 
-SET role = 'admin' 
-WHERE email = 'your-email@example.com';

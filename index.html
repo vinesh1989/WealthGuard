@@ -382,7 +382,7 @@
       }
 
       // Check role for redirect
-      const { data: profile } = await Profile.get(data.user.id);
+      const profile = await Profile.get(data.user.id);
       if (profile?.role === 'admin') {
         window.location.href = 'pages/admin.html';
       } else {
