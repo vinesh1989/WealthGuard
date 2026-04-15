@@ -37,7 +37,6 @@ DROP TABLE IF EXISTS subscriptions CASCADE;
 DROP TABLE IF EXISTS profiles CASCADE;
 
 -- Drop types
-DROP TYPE IF EXISTS import_source CASCADE;
 DROP TYPE IF EXISTS notification_type CASCADE;
 DROP TYPE IF EXISTS goal_type CASCADE;
 DROP TYPE IF EXISTS document_type CASCADE;

@@ -365,13 +365,13 @@ async function init() {
   if (!profile) return;
 
   // Update UI
-  document.getElementById('user-name').textContent = profile.full_name;
+  document.getElementById('user-name').textContent = profile.full_name || profile.email || 'User';
   document.getElementById('user-role').textContent = profile.role;
-  document.getElementById('user-initial').textContent = profile.full_name.charAt(0).toUpperCase();
+  document.getElementById('user-initial').textContent = (profile.full_name||'?').charAt(0).toUpperCase();
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  document.getElementById('greeting-date').textContent = `${greeting}, ${profile.full_name.split(' ')[0]}`;
+  document.getElementById('greeting-date').textContent = `${greeting}, ${(profile.full_name || profile.email || 'there').split(' ')[0]}`;
 
   // Trial banner
   if (profile.subscription_status === 'trial') {

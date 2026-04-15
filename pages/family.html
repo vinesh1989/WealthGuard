@@ -136,7 +136,7 @@
 </div>
 
 <!-- Invite Modal -->
-<div class="modal-overlay" id="invite-modal">
+<div class="modal-backdrop" id="invite-modal">
   <div class="modal">
     <div class="modal-header">
       <h2 class="modal-title">Invite Beneficiary</h2>
@@ -164,16 +164,19 @@
 </div>
 
 <div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
 <script>
 let members = [];
 let currentUser = null;
 
 async function loadFamily() {
-  currentUser = await requireAuth();
+  const _session = await requireAuth();
+  if (!_session) return;
+  currentUser = _session.user;
   const profile = await Profile.get(currentUser.id);
   document.getElementById('user-name').textContent = profile?.full_name || currentUser.email;
-  document.getElementById('user-initial').textContent = (profile?.full_name || currentUser.email)[0].toUpperCase();
+  document.getElementById('user-initial').textContent = (profile?.full_name || currentUser.email || 'U')[0].toUpperCase();
 
   const { data, error } = await supabase
     .from('family_shares')
@@ -224,11 +227,11 @@ function renderMembers() {
 function openInviteModal() {
   document.getElementById('invite-email').value = '';
   document.getElementById('invite-name').value = '';
-  document.getElementById('invite-modal').classList.add('show');
+  document.getElementById('invite-modal').classList.add('open');
 }
 
 function closeModal() {
-  document.getElementById('invite-modal').classList.remove('show');
+  document.getElementById('invite-modal').classList.remove('open');
 }
 
 async function sendInvite() {
@@ -238,14 +241,14 @@ async function sendInvite() {
   setLoading('invite-btn', true, 'Sending…');
   try {
     // Check if user exists
-    const { data: existingProfile } = await supabase.from('profiles').select('id, full_name, email').eq('email', email).single();
+    const { data: existingProfile } = await sb.from('profiles').select('id, full_name, email').eq('email', email).single();
 
     if (existingProfile) {
       // Check not already shared
       const already = members.find(m => m.beneficiary_id === existingProfile.id);
       if (already) { showToast('This person is already a beneficiary', 'error'); return; }
 
-      const { data, error } = await supabase.from('family_shares').insert({
+      const { data, error } = await sb.from('family_shares').insert({
         owner_id: currentUser.id,
         beneficiary_id: existingProfile.id,
         status: 'active'
@@ -270,15 +273,15 @@ async function sendInvite() {
 
 async function revokeMember(shareId, name) {
   if (!confirm(`Remove ${name} as a beneficiary? They will lose access immediately.`)) return;
-  const { error } = await supabase.from('family_shares').delete().eq('id', shareId);
+  const { error } = await sb.from('family_shares').delete().eq('id', shareId);
   if (error) { showToast('Failed to revoke access', 'error'); return; }
   members = members.filter(m => m.id !== shareId);
   renderMembers();
   showToast(`${name} removed`, 'success');
 }
 
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
-function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 
 loadFamily();
 </script>

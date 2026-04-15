@@ -155,7 +155,7 @@
 </div>
 
 <!-- Upload Modal -->
-<div class="modal-overlay" id="upload-modal">
+<div class="modal-backdrop" id="upload-modal">
   <div class="modal">
     <div class="modal-header">
       <h2 class="modal-title" id="modal-title">Upload Document</h2>
@@ -198,8 +198,10 @@
 </div>
 
 <div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
 <script>
+let currentUser = null;
 let docs = [];
 let activeFilter = 'all';
 let currentFile = null;
@@ -207,12 +209,14 @@ let editingId = null;
 let tags = [];
 
 async function loadDocs() {
-  const user = await requireAuth();
-  const profile = await Profile.get(user.id);
-  document.getElementById('user-name').textContent = profile?.full_name || user.email;
-  document.getElementById('user-initial').textContent = (profile?.full_name || user.email)[0].toUpperCase();
+  const session = await requireAuth();
+  if (!session) return;
+  currentUser = session.user;
+  const profile = await Profile.get(currentUser.id);
+  document.getElementById('user-name').textContent = profile?.full_name || currentUser.email;
+  document.getElementById('user-initial').textContent = (profile?.full_name || currentUser.email || 'U')[0].toUpperCase();
 
-  const { data, error } = await supabase.from('documents').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+  const { data, error } = await sb.from('documents').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
   docs = data || [];
   renderDocs();
 }
@@ -289,7 +293,7 @@ function openUploadModal() {
   document.getElementById('doc-type').value = 'other';
   document.getElementById('doc-notes').value = '';
   document.getElementById('modal-title').textContent = 'Upload Document';
-  document.getElementById('upload-modal').classList.add('show');
+  document.getElementById('upload-modal').classList.add('open');
 }
 
 function editDoc(id) {
@@ -304,11 +308,11 @@ function editDoc(id) {
   document.getElementById('doc-notes').value = d.notes || '';
   document.getElementById('modal-title').textContent = 'Edit Document';
   document.getElementById('file-preview').style.display = 'none';
-  document.getElementById('upload-modal').classList.add('show');
+  document.getElementById('upload-modal').classList.add('open');
 }
 
 function closeModal() {
-  document.getElementById('upload-modal').classList.remove('show');
+  document.getElementById('upload-modal').classList.remove('open');
   currentFile = null;
   editingId = null;
   tags = [];
@@ -340,7 +344,7 @@ function renderTags() {
 }
 
 async function saveDocument() {
-  const user = (await supabase.auth.getUser()).data.user;
+  const user = currentUser;
   const name = document.getElementById('doc-name').value.trim();
   const type = document.getElementById('doc-type').value;
   const notes = document.getElementById('doc-notes').value.trim();
@@ -351,21 +355,21 @@ async function saveDocument() {
     let fileUrl = null;
     if (currentFile) {
       const path = `${user.id}/${Date.now()}_${currentFile.name}`;
-      const { data: upload, error: uploadErr } = await supabase.storage.from('documents').upload(path, currentFile, { cacheControl: '3600', upsert: false });
+      const { data: upload, error: uploadErr } = await sb.storage.from('documents').upload(path, currentFile, { cacheControl: '3600', upsert: false });
       if (uploadErr) throw uploadErr;
-      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path);
+      const { data: urlData } = sb.storage.from('documents').getPublicUrl(path);
       fileUrl = urlData?.publicUrl;
     }
 
     if (editingId) {
       const update = { name, document_type: type, tags, notes };
       if (fileUrl) update.file_url = fileUrl;
-      await supabase.from('documents').update(update).eq('id', editingId);
+      await sb.from('documents').update(update).eq('id', editingId);
       const idx = docs.findIndex(x => x.id === editingId);
       if (idx > -1) docs[idx] = { ...docs[idx], ...update };
       showToast('Document updated', 'success');
     } else {
-      const { data } = await supabase.from('documents').insert({ user_id: user.id, name, document_type: type, tags, notes, file_url: fileUrl }).select().single();
+      const { data } = await sb.from('documents').insert({ user_id: user.id, name, document_type: type, tags, notes, file_url: fileUrl }).select().single();
       docs.unshift(data);
       showToast('Document uploaded', 'success');
     }
@@ -380,7 +384,7 @@ async function saveDocument() {
 
 async function deleteDoc(id) {
   if (!confirm('Delete this document permanently?')) return;
-  await supabase.from('documents').delete().eq('id', id);
+  await sb.from('documents').delete().eq('id', id);
   docs = docs.filter(d => d.id !== id);
   renderDocs();
   showToast('Document deleted', 'success');
@@ -392,8 +396,8 @@ function downloadDoc(url, name) {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
-function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 
 loadDocs();
 </script>

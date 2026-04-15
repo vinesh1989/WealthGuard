@@ -5,8 +5,8 @@
 
 // IMPORTANT: Replace these with your actual Supabase project credentials
 // Get them from: https://app.supabase.com → Project Settings → API
-const SUPABASE_URL = 'https://itxvrspchjcnhpaadmax.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_AsJxo599veBgPcioHWyjyA_YSDDPjFy';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 
 // Initialize Supabase client
 const { createClient } = supabase;
@@ -349,7 +349,7 @@ const Notifications = {
 const Admin = {
   async getAllUsers() {
     const { data, error } = await sb.from('profiles')
-      .select('*, subscriptions(plan, status, ends_at)')
+      .select('*, subscriptions(plan_id, status, ends_at)')
       .order('created_at', { ascending: false });
     return { data, error };
   },
@@ -361,7 +361,7 @@ const Admin = {
 
     await sb.from('subscriptions').insert({
       user_id: userId,
-      plan,
+      plan_id: plan,
       status: 'active',
       ends_at: endsAt,
       granted_by: session.user.id
@@ -442,15 +442,16 @@ function showToast(message, type = 'success') {
   }, 3500);
 }
 
-// Loading state
-function setLoading(buttonEl, loading) {
+// Loading state — setLoading(btn, true) or setLoading('btn-id', true, 'Label')
+function setLoading(btnOrId, loading, label) {
+  const btn = typeof btnOrId === 'string' ? document.getElementById(btnOrId) : btnOrId;
+  if (!btn) return;
   if (loading) {
-    buttonEl.dataset.original = buttonEl.innerHTML;
-    buttonEl.innerHTML = '<span class="spinner"></span>';
-    buttonEl.disabled = true;
+    btn.dataset.original = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span> ' + (label || '');
+    btn.disabled = true;
   } else {
-    buttonEl.innerHTML = buttonEl.dataset.original || buttonEl.innerHTML;
-    buttonEl.disabled = false;
+    btn.innerHTML = btn.dataset.original || label || btn.innerHTML;
+    btn.disabled = false;
   }
 }
-

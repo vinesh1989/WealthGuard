@@ -104,6 +104,7 @@
 </div>
 
 <div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
 <script>
 let notifications = [];
@@ -111,12 +112,14 @@ let activeFilter = 'all';
 let currentUser = null;
 
 async function loadNotifs() {
-  currentUser = await requireAuth();
+  const _session = await requireAuth();
+  if (!_session) return;
+  currentUser = _session.user;
   const profile = await Profile.get(currentUser.id);
   document.getElementById('user-name').textContent = profile?.full_name || currentUser.email;
-  document.getElementById('user-initial').textContent = (profile?.full_name || currentUser.email)[0].toUpperCase();
+  document.getElementById('user-initial').textContent = (profile?.full_name || currentUser.email || 'U')[0].toUpperCase();
 
-  const { data } = await supabase.from('notifications').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(100);
+  const { data } = await sb.from('notifications').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(100);
   notifications = data || [];
 
   // If no real notifications, seed with sample system ones for demo
@@ -174,28 +177,28 @@ function getTimeAgo(dateStr) {
 }
 
 async function markRead(id) {
-  await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+  await sb.from('notifications').update({ is_read: true }).eq('id', id);
   const n = notifications.find(x => x.id === id);
   if (n) n.is_read = true;
   render();
 }
 
 async function markAllRead() {
-  await supabase.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id);
+  await sb.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id);
   notifications.forEach(n => n.is_read = true);
   render();
   showToast('All notifications marked as read', 'success');
 }
 
 async function deleteNotif(id) {
-  await supabase.from('notifications').delete().eq('id', id);
+  await sb.from('notifications').delete().eq('id', id);
   notifications = notifications.filter(n => n.id !== id);
   render();
 }
 
 async function clearAll() {
   if (!confirm('Clear all notifications?')) return;
-  await supabase.from('notifications').delete().eq('user_id', currentUser.id);
+  await sb.from('notifications').delete().eq('user_id', currentUser.id);
   notifications = [];
   render();
   showToast('Notifications cleared', 'success');
@@ -208,8 +211,8 @@ function setFilter(f, el) {
   render();
 }
 
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
-function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 
 loadNotifs();
 </script>

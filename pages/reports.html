@@ -160,9 +160,9 @@ async function init() {
   const { data: profile } = await Profile.get(session.user.id);
   currentProfile = profile;
   if (profile) {
-    document.getElementById('user-name').textContent = profile.full_name;
-    document.getElementById('user-initial').textContent = profile.full_name.charAt(0).toUpperCase();
-    document.getElementById('r-owner').textContent = profile.full_name;
+    document.getElementById('user-name').textContent = profile.full_name || profile.email || 'User';
+    document.getElementById('user-initial').textContent = (profile.full_name||'?').charAt(0).toUpperCase();
+    document.getElementById('r-owner').textContent = profile.full_name || profile.email || 'User';
     document.getElementById('r-display-currency').value = profile.base_currency || 'USD';
   }
 

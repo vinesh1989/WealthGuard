@@ -219,7 +219,7 @@
 </div>
 
 <!-- Checkout Modal -->
-<div class="modal-overlay" id="checkout-modal">
+<div class="modal-backdrop" id="checkout-modal">
   <div class="modal">
     <div class="modal-header">
       <h2 class="modal-title" id="checkout-title">Upgrade to Pro</h2>
@@ -263,6 +263,7 @@
 </div>
 
 <div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
 <script>
 let currentUser = null;
@@ -270,12 +271,14 @@ let sub = null;
 let selectedPlan = null;
 
 async function loadSubscription() {
-  currentUser = await requireAuth();
+  const _session = await requireAuth();
+  if (!_session) return;
+  currentUser = _session.user;
   const profile = await Profile.get(currentUser.id);
   document.getElementById('user-name').textContent = profile?.full_name || currentUser.email;
-  document.getElementById('user-initial').textContent = (profile?.full_name || currentUser.email)[0].toUpperCase();
+  document.getElementById('user-initial').textContent = (profile?.full_name || currentUser.email || 'U')[0].toUpperCase();
 
-  const { data: subData } = await supabase.from('subscriptions').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(1).single();
+  const { data: subData } = await sb.from('subscriptions').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(1).single();
   sub = subData;
 
   updatePlanDisplay();
@@ -331,10 +334,10 @@ function openCheckout(plan) {
   document.getElementById('checkout-title').textContent = `Upgrade to ${info.label.replace(' Plan', '')}`;
   document.getElementById('checkout-plan-label').textContent = info.label;
   document.getElementById('checkout-price').textContent = info.price;
-  document.getElementById('checkout-modal').classList.add('show');
+  document.getElementById('checkout-modal').classList.add('open');
 }
 
-function closeCheckout() { document.getElementById('checkout-modal').classList.remove('show'); }
+function closeCheckout() { document.getElementById('checkout-modal').classList.remove('open'); }
 
 function formatCard(input) {
   let v = input.value.replace(/\D/g, '').substring(0, 16);
@@ -349,7 +352,7 @@ async function processPayment() {
     const planPrices = { annual: 99, family: 149 };
     const endDate = new Date();
     endDate.setFullYear(endDate.getFullYear() + 1);
-    await supabase.from('subscriptions').upsert({
+    await sb.from('subscriptions').upsert({
       user_id: currentUser.id,
       plan_id: selectedPlan,
       status: 'active',
@@ -371,7 +374,7 @@ async function applyCoupon() {
   const code = document.getElementById('coupon-input').value.trim().toUpperCase();
   if (!code) return;
   setLoading('coupon-btn', true, 'Checking…');
-  const { data: coupon } = await supabase.from('coupons').select('*').eq('code', code).single();
+  const { data: coupon } = await sb.from('coupons').select('*').eq('code', code).single();
   setLoading('coupon-btn', false, 'Apply');
   const msgEl = document.getElementById('coupon-msg');
   msgEl.style.display = 'block';
@@ -386,13 +389,13 @@ async function applyCoupon() {
 
 async function cancelSubscription() {
   if (!confirm('Cancel your subscription? You will retain access until the end of your billing period.')) return;
-  await supabase.from('subscriptions').update({ status: 'cancelled' }).eq('user_id', currentUser.id);
+  await sb.from('subscriptions').update({ status: 'cancelled' }).eq('user_id', currentUser.id);
   showToast('Subscription cancelled. You retain access until expiry.', 'success');
   loadSubscription();
 }
 
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
-function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 
 loadSubscription();
 </script>

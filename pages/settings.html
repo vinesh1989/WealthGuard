@@ -303,13 +303,16 @@
 </div>
 
 <div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
 <script>
 let currentUser = null;
 let profileData = null;
 
 async function loadSettings() {
-  currentUser = await requireAuth();
+  const _session = await requireAuth();
+  if (!_session) return;
+  currentUser = _session.user;
   profileData = await Profile.get(currentUser.id);
   if (!profileData) return;
 
@@ -325,7 +328,7 @@ async function loadSettings() {
   if (profileData.base_currency) document.getElementById('base-currency').value = profileData.base_currency;
 
   // Load notification preferences
-  const { data: notifPrefs } = await supabase.from('notification_preferences').select('*').eq('user_id', currentUser.id).single();
+  const { data: notifPrefs } = await sb.from('notification_preferences').select('*').eq('user_id', currentUser.id).single();
   if (notifPrefs) {
     document.getElementById('notif-weekly').checked = notifPrefs.weekly_summary !== false;
     document.getElementById('notif-goals').checked = notifPrefs.goal_alerts !== false;
@@ -354,7 +357,7 @@ async function saveProfile() {
 
   setLoading('save-profile-btn', true, 'Saving…');
   try {
-    await supabase.from('profiles').update({ full_name, phone }).eq('id', currentUser.id);
+    await sb.from('profiles').update({ full_name, phone }).eq('id', currentUser.id);
     document.getElementById('profile-name-display').textContent = full_name;
     document.getElementById('avatar-preview').textContent = full_name[0].toUpperCase();
     document.getElementById('user-name').textContent = full_name;
@@ -375,7 +378,7 @@ async function changePassword() {
 
   setLoading('change-pass-btn', true, 'Updating…');
   try {
-    const { error } = await supabase.auth.updateUser({ password: newPass });
+    const { error } = await sb.auth.updateUser({ password: newPass });
     if (error) throw error;
     document.getElementById('current-pass').value = '';
     document.getElementById('new-pass').value = '';
@@ -392,7 +395,7 @@ async function savePreferences() {
   const base_currency = document.getElementById('base-currency').value;
   setLoading('save-prefs-btn', true, 'Saving…');
   try {
-    await supabase.from('profiles').update({ base_currency }).eq('id', currentUser.id);
+    await sb.from('profiles').update({ base_currency }).eq('id', currentUser.id);
     showToast('Preferences saved', 'success');
   } catch(e) {
     showToast('Failed to save preferences', 'error');
@@ -412,7 +415,7 @@ async function saveNotifications() {
       family_alerts: document.getElementById('notif-family').checked,
       billing_alerts: document.getElementById('notif-billing').checked,
     };
-    await supabase.from('notification_preferences').upsert(prefs, { onConflict: 'user_id' });
+    await sb.from('notification_preferences').upsert(prefs, { onConflict: 'user_id' });
     showToast('Notification preferences saved', 'success');
   } catch(e) {
     showToast('Failed to save notifications', 'error');
@@ -423,16 +426,16 @@ async function saveNotifications() {
 
 async function signOutAll() {
   if (!confirm('Sign out of all devices?')) return;
-  await supabase.auth.signOut({ scope: 'global' });
+  await sb.auth.signOut({ scope: 'global' });
   window.location.href = '../index.html';
 }
 
 async function exportData() {
   const [assets, investments, docs, goals] = await Promise.all([
-    supabase.from('assets').select('*').eq('user_id', currentUser.id),
-    supabase.from('investments').select('*').eq('user_id', currentUser.id),
-    supabase.from('documents').select('*').eq('user_id', currentUser.id),
-    supabase.from('goals').select('*').eq('user_id', currentUser.id)
+    sb.from('assets').select('*').eq('user_id', currentUser.id),
+    sb.from('investments').select('*').eq('user_id', currentUser.id),
+    sb.from('documents').select('*').eq('user_id', currentUser.id),
+    sb.from('goals').select('*').eq('user_id', currentUser.id)
   ]);
   const exportObj = { exported_at: new Date().toISOString(), assets: assets.data, investments: investments.data, documents: docs.data, goals: goals.data };
   const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
@@ -443,7 +446,7 @@ async function exportData() {
 async function deleteAllInvestments() {
   if (!confirm('Delete ALL investment records permanently? This cannot be undone.')) return;
   if (!confirm('Are you absolutely sure? Type "delete" to confirm.')) return;
-  await supabase.from('investments').delete().eq('user_id', currentUser.id);
+  await sb.from('investments').delete().eq('user_id', currentUser.id);
   showToast('All investments deleted', 'success');
 }
 
@@ -455,8 +458,8 @@ async function deleteAccount() {
   setTimeout(() => Auth.signOut(), 2000);
 }
 
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
-function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 
 loadSettings();
 </script>

@@ -270,33 +270,36 @@
 
 <div id="toast" class="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
 <script>
 let packData = { assets: [], investments: [], documents: [], beneficiaries: [], owner: null };
 
 async function loadLegacyPack() {
-  const user = await requireAuth();
+  const session = await requireAuth();
+  if (!session) return;
+  const user = session.user;
   const profile = await Profile.get(user.id);
   packData.owner = profile;
 
   document.getElementById('user-name').textContent = profile?.full_name || user.email;
-  const initial = (profile?.full_name || user.email)[0].toUpperCase();
+  const initial = (profile?.full_name || user.email || 'U')[0].toUpperCase();
   document.getElementById('user-initial').textContent = initial;
 
   // Load assets
-  const { data: assets } = await supabase.from('assets').select('*').eq('user_id', user.id).order('created_at');
+  const { data: assets } = await sb.from('assets').select('*').eq('user_id', user.id).order('created_at');
   packData.assets = assets || [];
 
   // Load investments
-  const { data: invs } = await supabase.from('investments').select('*, assets(name, platform, currency)').eq('user_id', user.id).order('date', { ascending: false });
+  const { data: invs } = await sb.from('investments').select('*, assets(name, platform, currency)').eq('user_id', user.id).order('date', { ascending: false });
   packData.investments = invs || [];
 
   // Load documents
-  const { data: docs } = await supabase.from('documents').select('*').eq('user_id', user.id).order('created_at');
+  const { data: docs } = await sb.from('documents').select('*').eq('user_id', user.id).order('created_at');
   packData.documents = docs || [];
 
   // Load beneficiaries
-  const { data: family } = await supabase.from('family_shares').select('*, profiles!family_shares_beneficiary_id_fkey(full_name, email)').eq('owner_id', user.id);
+  const { data: family } = await sb.from('family_shares').select('*, profiles!family_shares_beneficiary_id_fkey(full_name, email)').eq('owner_id', user.id);
   packData.beneficiaries = family || [];
 
   // Update summary
@@ -526,8 +529,8 @@ async function emailPack() {
 }
 
 // Sidebar
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
-function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 
 loadLegacyPack();
 </script>

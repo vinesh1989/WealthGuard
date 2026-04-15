@@ -15,10 +15,9 @@ CREATE TYPE asset_type AS ENUM ('MF', 'Stocks', 'Crypto', 'FD', 'Real Estate', '
 CREATE TYPE currency_type AS ENUM ('AED', 'INR', 'USD', 'EUR', 'GBP');
 CREATE TYPE user_role AS ENUM ('investor', 'beneficiary', 'admin');
 CREATE TYPE subscription_status AS ENUM ('trial', 'active', 'expired', 'cancelled');
-CREATE TYPE document_type AS ENUM ('Will', 'Insurance', 'Bank Statement', 'Tax Document', 'Other');
+CREATE TYPE document_type AS ENUM ('will', 'insurance', 'bank_statement', 'tax_document', 'other');
 CREATE TYPE goal_type AS ENUM ('Retirement', 'Kids Education', 'Emergency Fund', 'Property', 'Travel', 'Other');
 CREATE TYPE notification_type AS ENUM ('weekly_summary', 'goal_alert', 'investment_update', 'system');
-CREATE TYPE import_source AS ENUM ('Zerodha', 'IBKR', 'CSV', 'Manual');
 
 -- ============================================================
 -- PROFILES (extends Supabase auth.users)
@@ -26,7 +25,7 @@ CREATE TYPE import_source AS ENUM ('Zerodha', 'IBKR', 'CSV', 'Manual');
 
 CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  full_name TEXT NOT NULL,
+  full_name TEXT,
   email TEXT NOT NULL UNIQUE,
   phone TEXT,
   role user_role DEFAULT 'investor',
@@ -50,7 +49,7 @@ CREATE TABLE profiles (
 CREATE TABLE subscriptions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  plan TEXT NOT NULL DEFAULT 'yearly', -- 'trial', 'yearly', 'admin_grant'
+  plan_id TEXT NOT NULL DEFAULT 'annual', -- 'trial', 'annual', 'family', 'lifetime'
   status subscription_status DEFAULT 'active',
   amount_paid DECIMAL(10,2),
   currency currency_type DEFAULT 'USD',
@@ -70,7 +69,7 @@ CREATE TABLE coupons (
   max_uses INTEGER DEFAULT 100,
   uses_count INTEGER DEFAULT 0,
   valid_from TIMESTAMPTZ DEFAULT NOW(),
-  valid_until TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
   created_by UUID REFERENCES profiles(id),
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -83,9 +82,10 @@ CREATE TABLE coupons (
 CREATE TABLE assets (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  name TEXT,
   asset_type asset_type NOT NULL,
   account_number TEXT,
-  platform_name TEXT NOT NULL, -- Zerodha, IBKR, etc.
+  platform TEXT,
   currency currency_type NOT NULL DEFAULT 'USD',
   country TEXT NOT NULL DEFAULT 'United Arab Emirates',
   notes TEXT,
@@ -102,19 +102,19 @@ CREATE TABLE investments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  investment_name TEXT NOT NULL,
-  category TEXT, -- e.g., 'Large Cap', 'Equity', 'Bond'
+  name TEXT NOT NULL,
+  category TEXT,
   amount_invested DECIMAL(15,4) NOT NULL DEFAULT 0,
   current_value DECIMAL(15,4) NOT NULL DEFAULT 0,
   currency currency_type NOT NULL,
-  purchase_date DATE,
+  date DATE,
   quantity DECIMAL(15,6),
   unit_price DECIMAL(15,4),
   ticker_symbol TEXT,
   isin TEXT,
   notes TEXT,
-  import_source import_source DEFAULT 'Manual',
-  import_id TEXT, -- external reference
+  import_source TEXT DEFAULT 'Manual',
+  import_id TEXT,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -157,14 +157,16 @@ CREATE TABLE goals (
 CREATE TABLE documents (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  document_type document_type NOT NULL DEFAULT 'Other',
+  document_type document_type NOT NULL DEFAULT 'other',
   name TEXT NOT NULL,
+  notes TEXT,                              -- frontend uses 'notes'
   description TEXT,
-  file_path TEXT NOT NULL, -- Supabase Storage path
+  file_path TEXT,                          -- Supabase Storage path (optional until uploaded)
+  file_url TEXT,                           -- public URL after upload
   file_size INTEGER,
   mime_type TEXT,
   tags TEXT[] DEFAULT '{}',
-  is_legacy_doc BOOLEAN DEFAULT FALSE, -- included in probate pack
+  is_legacy_doc BOOLEAN DEFAULT FALSE,
   is_encrypted BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -178,8 +180,9 @@ CREATE TABLE family_shares (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   owner_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   beneficiary_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  invite_email TEXT NOT NULL,
+  invite_email TEXT,                       -- optional (known user shares won't have it)
   invite_token TEXT UNIQUE DEFAULT encode(gen_random_bytes(32), 'hex'),
+  status TEXT DEFAULT 'active',            -- 'active', 'pending', 'revoked'
   is_accepted BOOLEAN DEFAULT FALSE,
   can_download_reports BOOLEAN DEFAULT TRUE,
   invited_at TIMESTAMPTZ DEFAULT NOW(),
@@ -194,7 +197,7 @@ CREATE TABLE family_shares (
 CREATE TABLE notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  type notification_type NOT NULL,
+  type TEXT NOT NULL DEFAULT 'system',
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   is_read BOOLEAN DEFAULT FALSE,
@@ -205,10 +208,12 @@ CREATE TABLE notifications (
 CREATE TABLE notification_preferences (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE UNIQUE,
-  weekly_email_summary BOOLEAN DEFAULT TRUE,
+  weekly_summary BOOLEAN DEFAULT TRUE,
   goal_alerts BOOLEAN DEFAULT TRUE,
-  investment_updates BOOLEAN DEFAULT TRUE,
-  email_day_of_week INTEGER DEFAULT 1, -- Monday
+  investment_alerts BOOLEAN DEFAULT FALSE,
+  family_alerts BOOLEAN DEFAULT TRUE,
+  billing_alerts BOOLEAN DEFAULT TRUE,
+  email_day_of_week INTEGER DEFAULT 1,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -219,7 +224,7 @@ CREATE TABLE notification_preferences (
 CREATE TABLE import_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  source import_source NOT NULL,
+  source TEXT NOT NULL DEFAULT 'CSV',
   filename TEXT,
   records_imported INTEGER DEFAULT 0,
   records_failed INTEGER DEFAULT 0,
@@ -288,10 +293,10 @@ CREATE OR REPLACE VIEW investment_performance AS
 SELECT
   i.id,
   i.user_id,
-  i.investment_name,
+  i.name AS investment_name,
   i.currency,
   a.asset_type,
-  a.platform_name,
+  a.platform,
   i.amount_invested,
   i.current_value,
   (i.current_value - i.amount_invested) AS gain_loss,
@@ -322,7 +327,11 @@ ALTER TABLE import_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: user sees own + admin sees all
-CREATE POLICY "profiles_own" ON profiles FOR ALL USING (auth.uid() = id);
+-- Profiles RLS: SELECT/UPDATE/DELETE own row; INSERT allowed for new users
+CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+CREATE POLICY "profiles_delete" ON profiles FOR DELETE USING (auth.uid() = id);
 CREATE POLICY "profiles_beneficiary_read" ON profiles FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM family_shares
@@ -390,11 +399,23 @@ BEGIN
   INSERT INTO profiles (id, full_name, email, role)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
+    NULLIF(TRIM(COALESCE(NEW.raw_user_meta_data->>'full_name', '')), ''),
     NEW.email,
-    COALESCE((NEW.raw_user_meta_data->>'role')::user_role, 'investor')
-  );
-  INSERT INTO notification_preferences (user_id) VALUES (NEW.id);
+    COALESCE(
+      NULLIF(NEW.raw_user_meta_data->>'role', '')::user_role,
+      'investor'
+    )
+  )
+  ON CONFLICT (id) DO NOTHING;  -- safe re-run
+
+  INSERT INTO notification_preferences (user_id)
+  VALUES (NEW.id)
+  ON CONFLICT (user_id) DO NOTHING;
+
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Never block signup due to profile creation errors
+  RAISE WARNING 'handle_new_user failed for %: %', NEW.id, SQLERRM;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
