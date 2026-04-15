@@ -7,15 +7,75 @@
   <link rel="stylesheet" href="../css/main.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    .report-config { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; }
-    .report-preview { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; }
-    .report-header { border-bottom: 2px solid var(--gold); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+    .report-config {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;
+    }
+    .report-preview {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.5rem;
+    }
+    .report-header {
+      border-bottom: 2px solid var(--gold);
+      padding-bottom: 1rem; margin-bottom: 1.5rem;
+    }
     .report-logo { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; color: var(--gold); }
     .report-subtitle { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; }
-    .report-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-    .report-summary-item { background: var(--bg-surface); border-radius: var(--radius-sm); padding: 0.9rem; }
+
+    /* Summary row */
+    .report-summary-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1rem; margin-bottom: 1.5rem;
+    }
+    .report-summary-item {
+      background: var(--bg-surface); border-radius: var(--radius-md);
+      padding: 0.9rem; border: 1px solid var(--border);
+    }
     .report-summary-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    .report-summary-value { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin-top: 0.2rem; }
+    .report-summary-value { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin-top: 0.25rem; }
+
+    /* Currency distribution */
+    .dist-section { margin-bottom: 1.5rem; }
+    .dist-section-title {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--text-muted);
+      margin-bottom: 0.75rem; padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .dist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
+    .dist-card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 0.9rem;
+    }
+    .dist-currency { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; color: var(--gold); letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+    .dist-row { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 0.2rem; }
+    .dist-label { color: var(--text-muted); }
+    .dist-val { font-family: var(--font-mono); color: var(--text-secondary); }
+    .dist-converted { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 0.78rem; }
+    .dist-converted-label { color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .dist-converted-val { font-family: var(--font-mono); font-weight: 600; color: var(--text-primary); font-size: 0.9rem; }
+    .dist-rate-badge {
+      display: inline-block; background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.2);
+      color: var(--gold); border-radius: 20px; padding: 0.1rem 0.5rem;
+      font-size: 0.68rem; font-family: var(--font-mono); margin-top: 0.3rem;
+    }
+
+    /* Table — extra columns for converted values */
+    .report-table th, .report-table td { font-size: 0.8rem; padding: 0.65rem 0.5rem; }
+    .converted-col { background: rgba(212,175,55,0.04); }
+    .col-sep { border-left: 2px solid rgba(212,175,55,0.15) !important; }
+
+    .rate-note {
+      background: rgba(96,165,250,0.06); border: 1px solid rgba(96,165,250,0.15);
+      border-radius: var(--radius-md); padding: 0.75rem 1rem;
+      font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+
+    @media (max-width: 700px) {
+      .report-summary-grid { grid-template-columns: 1fr 1fr; }
+      .dist-grid { grid-template-columns: 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -23,24 +83,28 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
     <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
       <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
       <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
       <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
       <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <span class="nav-section-label">Planning</span>
       <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
       <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
       <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <span class="nav-section-label">Reports</span>
       <a href="reports.html" class="nav-item active"><span class="nav-icon">📊</span> Reports</a>
       <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <span class="nav-section-label">Account</span>
       <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
       <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
     </nav>
     <div class="sidebar-bottom">
       <div class="sidebar-user">
         <div class="user-avatar" id="user-initial">R</div>
-        <div><div class="user-name" id="user-name">Loading...</div><div class="user-role">investor</div></div>
+        <div><div class="user-name" id="user-name">Loading...</div><div class="user-role" id="user-role">investor</div></div>
       </div>
-      <button class="nav-item btn-ghost" style="width:100%; margin-top:4px;" onclick="Auth.signOut()">↩ Sign Out</button>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()">↩ Sign Out</button>
     </div>
   </aside>
   <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -49,61 +113,80 @@
     <div class="topbar">
       <div class="topbar-left">
         <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
-        <div><div class="page-title">Reports</div><div class="page-subtitle">Generate & export portfolio reports</div></div>
+        <div><div class="page-title">Reports</div><div class="page-subtitle">Portfolio report with currency conversion</div></div>
+      </div>
+      <div class="topbar-actions">
+        <button class="notif-btn" onclick="window.location.href='notifications.html'">🔔</button>
       </div>
     </div>
 
     <div class="page-content page-enter">
+
       <!-- Config -->
       <div class="report-config">
-        <h3 style="font-family: var(--font-display); margin-bottom: 1.25rem;">Report Configuration</h3>
-        <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
-          <div class="form-group">
+        <h3 style="font-family:var(--font-display);margin-bottom:1.25rem;">Report Configuration</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;margin-bottom:1.25rem">
+          <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Asset Type</label>
             <select id="r-type" class="form-control" onchange="generateReport()">
               <option value="">All Types</option>
               <option>MF</option><option>Stocks</option><option>Crypto</option>
-              <option>FD</option><option>Real Estate</option>
+              <option>FD</option><option>Real Estate</option><option>Other</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label">Currency</label>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Filter by Currency</label>
             <select id="r-currency" class="form-control" onchange="generateReport()">
               <option value="">All Currencies</option>
               <option>USD</option><option>AED</option><option>INR</option>
+              <option>EUR</option><option>GBP</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label">Report Currency (Display)</label>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Display Currency <span style="color:var(--gold);font-size:0.7rem">(converts all values)</span></label>
             <select id="r-display-currency" class="form-control" onchange="generateReport()">
-              <option value="USD">USD</option>
-              <option value="AED">AED</option>
-              <option value="INR">INR</option>
+              <option value="USD">USD — US Dollar</option>
+              <option value="AED">AED — UAE Dirham</option>
+              <option value="INR">INR — Indian Rupee</option>
+              <option value="EUR">EUR — Euro</option>
+              <option value="GBP">GBP — British Pound</option>
             </select>
           </div>
         </div>
-        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="exportPDF()" id="pdf-btn">⬇ Export PDF</button>
-          <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
-          <button class="btn btn-secondary" onclick="emailReport()">✉ Email Report</button>
+          <button class="btn btn-outline" onclick="exportCSV()">⬇ Export CSV</button>
+          <button class="btn btn-ghost" onclick="emailReport()">✉ Email Report</button>
         </div>
       </div>
 
       <!-- Preview -->
       <div class="report-preview" id="report-preview">
+
+        <!-- Report header -->
         <div class="report-header">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem">
             <div>
               <div class="report-logo">🛡 WealthGuard</div>
               <div class="report-subtitle">Portfolio Report · <span id="r-date"></span></div>
             </div>
-            <div style="text-align: right;">
-              <div style="font-size: 0.78rem; color: var(--text-muted);">Prepared for</div>
-              <div style="font-weight: 600;" id="r-owner">—</div>
+            <div style="text-align:right">
+              <div style="font-size:0.75rem;color:var(--text-muted)">Prepared for</div>
+              <div style="font-weight:600;font-size:0.95rem" id="r-owner">—</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.15rem">
+                Display currency: <strong id="r-display-label" style="color:var(--gold)">USD</strong>
+              </div>
             </div>
           </div>
         </div>
 
+        <!-- Rate note -->
+        <div class="rate-note" id="rate-note">
+          ℹ Conversion rates are loaded from the exchange rates table.
+          <a href="admin.html" style="color:#60a5fa;margin-left:auto;white-space:nowrap">Update rates in Admin →</a>
+        </div>
+
+        <!-- Summary totals (converted) -->
         <div class="report-summary-grid">
           <div class="report-summary-item">
             <div class="report-summary-label">Total Invested</div>
@@ -114,36 +197,61 @@
             <div class="report-summary-value" id="r-total-cur">—</div>
           </div>
           <div class="report-summary-item">
-            <div class="report-summary-label">Total Return</div>
+            <div class="report-summary-label">Total Gain / Loss</div>
+            <div class="report-summary-value" id="r-total-gl">—</div>
+          </div>
+          <div class="report-summary-item">
+            <div class="report-summary-label">Overall Return</div>
             <div class="report-summary-value" id="r-total-ret">—</div>
           </div>
         </div>
 
-        <div class="table-wrapper">
-          <table>
+        <!-- Currency Distribution -->
+        <div class="dist-section">
+          <div class="dist-section-title">Currency Distribution</div>
+          <div class="dist-grid" id="currency-dist">
+            <div class="loading-state">Loading…</div>
+          </div>
+        </div>
+
+        <!-- Holdings Table -->
+        <div class="dist-section-title">Investment Holdings</div>
+        <div style="overflow-x:auto">
+          <table class="report-table" style="width:100%;border-collapse:collapse">
             <thead>
-              <tr>
-                <th>#</th>
-                <th>Investment</th>
-                <th>Type</th>
-                <th>Platform</th>
-                <th>Currency</th>
-                <th>Invested</th>
-                <th>Current Value</th>
-                <th>Gain/Loss</th>
-                <th>Return %</th>
+              <tr style="border-bottom:1px solid var(--border)">
+                <th style="text-align:left;padding:0.65rem 0.5rem;color:var(--text-muted);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase">#</th>
+                <th style="text-align:left;padding:0.65rem 0.5rem;color:var(--text-muted);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase">Investment</th>
+                <th style="text-align:left;padding:0.65rem 0.5rem;color:var(--text-muted);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase">Type</th>
+                <th style="text-align:left;padding:0.65rem 0.5rem;color:var(--text-muted);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase">Platform</th>
+                <th style="text-align:left;padding:0.65rem 0.5rem;color:var(--text-muted);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase">Cur</th>
+                <th style="text-align:right;padding:0.65rem 0.5rem;color:var(--text-muted);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase">Invested (orig)</th>
+                <th style="text-align:right;padding:0.65rem 0.5rem;color:var(--text-muted);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase">Current (orig)</th>
+                <th style="text-align:right;padding:0.65rem 0.5rem;color:var(--text-muted);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase;border-left:2px solid rgba(212,175,55,0.2);background:rgba(212,175,55,0.03)" id="th-invested-conv">Invested</th>
+                <th style="text-align:right;padding:0.65rem 0.5rem;color:var(--text-muted);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase;background:rgba(212,175,55,0.03)" id="th-current-conv">Current</th>
+                <th style="text-align:right;padding:0.65rem 0.5rem;color:var(--text-muted);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase;background:rgba(212,175,55,0.03)">Gain/Loss</th>
+                <th style="text-align:right;padding:0.65rem 0.5rem;color:var(--text-muted);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase">Return %</th>
               </tr>
             </thead>
             <tbody id="report-table-body">
-              <tr><td colspan="9" style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading…</td></tr>
+              <tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-muted)">Loading…</td></tr>
             </tbody>
           </table>
         </div>
+
+        <!-- Applied rates footer -->
+        <div id="rates-footer" style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.5rem">Applied Exchange Rates</div>
+          <div id="rates-list" style="display:flex;gap:0.5rem;flex-wrap:wrap"></div>
+        </div>
+
       </div>
     </div>
   </div>
 </div>
 
+<div id="toast" class="toast"></div>
+<script src="../js/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
 <script>
@@ -157,185 +265,350 @@ async function init() {
   if (!session) return;
   currentUser = session.user.id;
 
-  const profile = await Profile.get(session.user.id);
-  currentProfile = profile;
-  if (profile) {
-    document.getElementById('user-name').textContent = profile.full_name || profile.email || 'User';
-    document.getElementById('user-initial').textContent = (profile.full_name||'?').charAt(0).toUpperCase();
-    document.getElementById('r-owner').textContent = profile.full_name || profile.email || 'User';
-    document.getElementById('r-display-currency').value = profile.base_currency || 'USD';
+  currentProfile = await Profile.get(session.user.id);
+  if (currentProfile) {
+    document.getElementById('user-name').textContent = currentProfile.full_name || currentProfile.email || 'User';
+    document.getElementById('user-initial').textContent = (currentProfile.full_name || '?')[0].toUpperCase();
+    document.getElementById('r-owner').textContent = currentProfile.full_name || currentProfile.email;
+    const dc = currentProfile.base_currency || 'USD';
+    document.getElementById('r-display-currency').value = dc;
   }
 
-  document.getElementById('r-date').textContent = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  rates = await ExchangeRates.getAll();
+  document.getElementById('r-date').textContent = new Date().toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric'
+  });
+
+  // Always reload rates fresh (never use cache so admin edits are reflected)
+  const { data: rateData } = await sb.from('exchange_rates').select('*');
+  rates = rateData || [];
 
   const { data } = await Investments.getAll(session.user.id);
   allInvestments = data || [];
   generateReport();
 }
 
-function generateReport() {
-  const fType = document.getElementById('r-type').value;
-  const fCur = document.getElementById('r-currency').value;
-  const displayCur = document.getElementById('r-display-currency').value;
+// ── Core conversion ───────────────────────────────────────────
+function convert(amount, from, to) {
+  return ExchangeRates.convert(parseFloat(amount) || 0, from, to, rates);
+}
 
-  let filtered = allInvestments.filter(inv => {
+function getRate(from, to) {
+  if (from === to) return 1;
+  const direct = rates.find(r => r.from_currency === from && r.to_currency === to);
+  if (direct) return direct.rate;
+  const toUSD  = rates.find(r => r.from_currency === from && r.to_currency === 'USD');
+  const fromUSD = rates.find(r => r.from_currency === 'USD' && r.to_currency === to);
+  if (toUSD && fromUSD) return toUSD.rate * fromUSD.rate;
+  return null;
+}
+
+// ── Generate report ───────────────────────────────────────────
+function generateReport() {
+  const fType   = document.getElementById('r-type').value;
+  const fCur    = document.getElementById('r-currency').value;
+  const dispCur = document.getElementById('r-display-currency').value;
+
+  document.getElementById('r-display-label').textContent = dispCur;
+  document.getElementById('th-invested-conv').textContent = `Invested (${dispCur})`;
+  document.getElementById('th-current-conv').textContent  = `Current (${dispCur})`;
+
+  // Filter
+  const filtered = allInvestments.filter(inv => {
     if (fType && inv.assets?.asset_type !== fType) return false;
-    if (fCur && inv.currency !== fCur) return false;
+    if (fCur  && inv.currency !== fCur) return false;
     return true;
   });
 
-  let totalInv = 0, totalCur = 0;
+  // ── Totals (converted) ────────────────────────────────────
+  let totInv = 0, totCur = 0;
   filtered.forEach(inv => {
-    totalInv += ExchangeRates.convert(parseFloat(inv.amount_invested), inv.currency, displayCur, rates);
-    totalCur += ExchangeRates.convert(parseFloat(inv.current_value), inv.currency, displayCur, rates);
+    totInv += convert(inv.amount_invested, inv.currency, dispCur);
+    totCur += convert(inv.current_value,   inv.currency, dispCur);
+  });
+  const totGL  = totCur - totInv;
+  const totPct = totInv > 0 ? (totGL / totInv * 100) : 0;
+
+  document.getElementById('r-total-inv').textContent = formatCurrency(totInv, dispCur);
+  document.getElementById('r-total-cur').textContent = formatCurrency(totCur, dispCur);
+  const glEl  = document.getElementById('r-total-gl');
+  const retEl = document.getElementById('r-total-ret');
+  glEl.textContent  = (totGL >= 0 ? '+' : '') + formatCurrency(totGL, dispCur);
+  glEl.style.color  = totGL >= 0 ? 'var(--green)' : 'var(--red)';
+  retEl.textContent = formatPercent(totPct);
+  retEl.style.color = totPct >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // ── Currency distribution ─────────────────────────────────
+  renderDistribution(filtered, dispCur);
+
+  // ── Holdings table ────────────────────────────────────────
+  renderTable(filtered, dispCur);
+
+  // ── Applied rates footer ──────────────────────────────────
+  renderRatesFooter(filtered, dispCur);
+}
+
+function renderDistribution(investments, dispCur) {
+  // Group by original currency
+  const byC = {};
+  investments.forEach(inv => {
+    const c = inv.currency;
+    if (!byC[c]) byC[c] = { invested: 0, current: 0, count: 0 };
+    byC[c].invested += parseFloat(inv.amount_invested) || 0;
+    byC[c].current  += parseFloat(inv.current_value)   || 0;
+    byC[c].count++;
   });
 
-  const totalGL = totalCur - totalInv;
-  const totalPct = totalInv > 0 ? (totalGL / totalInv * 100) : 0;
-
-  document.getElementById('r-total-inv').textContent = formatCurrency(totalInv, displayCur);
-  document.getElementById('r-total-cur').textContent = formatCurrency(totalCur, displayCur);
-  const retEl = document.getElementById('r-total-ret');
-  retEl.textContent = `${formatPercent(totalPct)}`;
-  retEl.style.color = totalPct >= 0 ? 'var(--green)' : 'var(--red)';
-
-  const tbody = document.getElementById('report-table-body');
-  if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 1.5rem; color: var(--text-muted);">No investments match the filters</td></tr>`;
+  const el = document.getElementById('currency-dist');
+  if (!Object.keys(byC).length) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">No investments match the current filters.</div>';
     return;
   }
 
-  tbody.innerHTML = filtered.map((inv, i) => {
-    const gl = parseFloat(inv.current_value) - parseFloat(inv.amount_invested);
-    const glPct = inv.amount_invested > 0 ? (gl / inv.amount_invested * 100) : 0;
-    return `
-      <tr>
-        <td style="color: var(--text-muted);">${i + 1}</td>
-        <td class="td-name">${inv.name}</td>
-        <td><span class="badge badge-muted">${inv.assets?.asset_type || '—'}</span></td>
-        <td>${inv.assets?.platform || '—'}</td>
-        <td>${inv.currency}</td>
-        <td class="td-mono">${formatCurrency(inv.amount_invested, inv.currency)}</td>
-        <td class="td-mono" style="font-weight: 600; color: var(--text-primary);">${formatCurrency(inv.current_value, inv.currency)}</td>
-        <td class="td-mono ${gl >= 0 ? 'gain' : 'loss'}">${gl >= 0 ? '+' : ''}${formatCurrency(gl, inv.currency)}</td>
-        <td class="${glPct >= 0 ? 'gain' : 'loss'}" style="font-weight: 600;">${formatPercent(glPct)}</td>
-      </tr>`;
+  el.innerHTML = Object.entries(byC).map(([cur, vals]) => {
+    const gl       = vals.current - vals.invested;
+    const glPct    = vals.invested > 0 ? (gl / vals.invested * 100) : 0;
+    const convInv  = convert(vals.invested, cur, dispCur);
+    const convCur  = convert(vals.current,  cur, dispCur);
+    const rate     = getRate(cur, dispCur);
+    const isSame   = cur === dispCur;
+
+    return `<div class="dist-card">
+      <div class="dist-currency">${cur} <span style="font-weight:400;color:var(--text-muted)">(${vals.count} holding${vals.count !== 1 ? 's' : ''})</span></div>
+      <div class="dist-row"><span class="dist-label">Invested</span><span class="dist-val">${formatCurrency(vals.invested, cur)}</span></div>
+      <div class="dist-row"><span class="dist-label">Current</span><span class="dist-val">${formatCurrency(vals.current, cur)}</span></div>
+      <div class="dist-row">
+        <span class="dist-label">Gain/Loss</span>
+        <span class="dist-val" style="color:${gl >= 0 ? 'var(--green)' : 'var(--red)'}">${gl >= 0 ? '+' : ''}${formatCurrency(gl, cur)}</span>
+      </div>
+      <div class="dist-row">
+        <span class="dist-label">Return</span>
+        <span class="dist-val" style="color:${glPct >= 0 ? 'var(--green)' : 'var(--red)'}">${formatPercent(glPct)}</span>
+      </div>
+      ${!isSame ? `
+      <div class="dist-converted">
+        <div class="dist-converted-label">Converted to ${dispCur}</div>
+        <div class="dist-converted-val">${formatCurrency(convCur, dispCur)}</div>
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.1rem">Invested: ${formatCurrency(convInv, dispCur)}</div>
+        ${rate ? `<div class="dist-rate-badge">1 ${cur} = ${rate.toFixed(4)} ${dispCur}</div>` : '<div class="dist-rate-badge" style="color:#f87171">Rate not found</div>'}
+      </div>` : ''}
+    </div>`;
   }).join('');
 }
 
+function renderTable(investments, dispCur) {
+  const tbody = document.getElementById('report-table-body');
+  if (!investments.length) {
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:1.5rem;color:var(--text-muted)">No investments match the selected filters.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = investments.map((inv, i) => {
+    const origInv  = parseFloat(inv.amount_invested) || 0;
+    const origCur  = parseFloat(inv.current_value)   || 0;
+    const convInv  = convert(origInv,  inv.currency, dispCur);
+    const convCur  = convert(origCur,  inv.currency, dispCur);
+    const convGL   = convCur - convInv;
+    const glPct    = origInv > 0 ? ((origCur - origInv) / origInv * 100) : 0;
+    const isSame   = inv.currency === dispCur;
+    const convStyle = 'background:rgba(212,175,55,0.04)';
+
+    return `<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+      <td style="color:var(--text-muted);padding:0.65rem 0.5rem;font-size:0.78rem">${i + 1}</td>
+      <td style="padding:0.65rem 0.5rem">
+        <div style="font-weight:600;font-size:0.85rem">${inv.name}</div>
+        ${inv.ticker_symbol ? `<div style="font-size:0.7rem;color:var(--text-muted);font-family:var(--font-mono)">${inv.ticker_symbol}</div>` : ''}
+      </td>
+      <td style="padding:0.65rem 0.5rem"><span class="badge badge-muted">${inv.assets?.asset_type || '—'}</span></td>
+      <td style="padding:0.65rem 0.5rem;font-size:0.82rem;color:var(--text-secondary)">${inv.assets?.platform || '—'}</td>
+      <td style="padding:0.65rem 0.5rem"><span class="badge badge-gold">${inv.currency}</span></td>
+      <td style="text-align:right;padding:0.65rem 0.5rem;font-family:var(--font-mono);font-size:0.8rem;color:var(--text-muted)">${formatCurrency(origInv, inv.currency)}</td>
+      <td style="text-align:right;padding:0.65rem 0.5rem;font-family:var(--font-mono);font-size:0.8rem;color:var(--text-muted)">${formatCurrency(origCur, inv.currency)}</td>
+      <td style="text-align:right;padding:0.65rem 0.5rem;font-family:var(--font-mono);font-size:0.82rem;border-left:2px solid rgba(212,175,55,0.15);${convStyle}">
+        ${isSame ? '<span style="color:var(--text-muted);font-size:0.7rem">—</span>' : formatCurrency(convInv, dispCur)}
+      </td>
+      <td style="text-align:right;padding:0.65rem 0.5rem;font-family:var(--font-mono);font-size:0.82rem;font-weight:600;${convStyle}">
+        ${formatCurrency(isSame ? origCur : convCur, dispCur)}
+      </td>
+      <td style="text-align:right;padding:0.65rem 0.5rem;font-family:var(--font-mono);font-size:0.82rem;${convStyle};color:${convGL >= 0 ? 'var(--green)' : 'var(--red)'}">
+        ${convGL >= 0 ? '+' : ''}${formatCurrency(convGL, dispCur)}
+      </td>
+      <td style="text-align:right;padding:0.65rem 0.5rem;font-weight:600;font-size:0.82rem;color:${glPct >= 0 ? 'var(--green)' : 'var(--red)'}">${formatPercent(glPct)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRatesFooter(investments, dispCur) {
+  const usedCurrencies = [...new Set(investments.map(i => i.currency).filter(c => c !== dispCur))];
+  const el = document.getElementById('rates-list');
+  if (!usedCurrencies.length) {
+    el.innerHTML = `<span style="font-size:0.78rem;color:var(--text-muted)">All investments are already in ${dispCur} — no conversion applied.</span>`;
+    return;
+  }
+  el.innerHTML = usedCurrencies.map(cur => {
+    const rate = getRate(cur, dispCur);
+    return `<span style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.25rem 0.65rem;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary)">
+      ${cur} → ${dispCur}: ${rate ? rate.toFixed(6) : '<span style="color:#f87171">Rate missing — update in Admin</span>'}
+    </span>`;
+  }).join('');
+}
+
+// ── Export PDF ────────────────────────────────────────────────
 async function exportPDF() {
   const btn = document.getElementById('pdf-btn');
   setLoading(btn, true);
-
   try {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const displayCur = document.getElementById('r-display-currency').value;
-    const date = new Date().toLocaleDateString('en-GB');
+    const dispCur = document.getElementById('r-display-currency').value;
+    const date    = new Date().toLocaleDateString('en-GB');
+    const W = doc.internal.pageSize.getWidth();
+
+    // Dark background
+    doc.setFillColor(10, 13, 18); doc.rect(0, 0, W, 210, 'F');
 
     // Header
-    doc.setFillColor(13, 18, 26);
-    doc.rect(0, 0, 297, 297, 'F');
-    doc.setTextColor(212, 175, 55);
-    doc.setFontSize(22);
-    doc.text('WealthGuard', 14, 20);
-    doc.setTextColor(136, 146, 164);
-    doc.setFontSize(10);
-    doc.text(`Portfolio Report · ${date} · ${currentProfile?.full_name}`, 14, 27);
+    doc.setTextColor(212, 175, 55); doc.setFontSize(20); doc.text('WealthGuard', 14, 18);
+    doc.setTextColor(120, 130, 150); doc.setFontSize(9);
+    doc.text(`Portfolio Report · ${date} · Display currency: ${dispCur}`, 14, 25);
+    doc.text(`Prepared for: ${currentProfile?.full_name || currentProfile?.email || ''}`, W - 14, 25, { align: 'right' });
 
-    // Summary
-    doc.setTextColor(240, 242, 245);
-    doc.setFontSize(11);
-    doc.text('SUMMARY', 14, 38);
-    doc.setFontSize(10);
-    doc.text(`Total Invested: ${document.getElementById('r-total-inv').textContent}`, 14, 46);
-    doc.text(`Current Value: ${document.getElementById('r-total-cur').textContent}`, 90, 46);
-    doc.text(`Return: ${document.getElementById('r-total-ret').textContent}`, 170, 46);
+    // Summary bar
+    doc.setFillColor(22, 28, 42); doc.roundedRect(14, 30, W - 28, 14, 2, 2, 'F');
+    doc.setTextColor(200, 210, 225); doc.setFontSize(8);
+    doc.text(`Invested: ${document.getElementById('r-total-inv').textContent}`, 20, 38);
+    doc.text(`Current: ${document.getElementById('r-total-cur').textContent}`,  90, 38);
+    doc.text(`Gain/Loss: ${document.getElementById('r-total-gl').textContent}`, 170, 38);
+    doc.text(`Return: ${document.getElementById('r-total-ret').textContent}`,   240, 38);
 
-    // Table
+    // Currency distribution
     const fType = document.getElementById('r-type').value;
-    const fCur = document.getElementById('r-currency').value;
-    let rows = allInvestments.filter(inv => {
+    const fCur  = document.getElementById('r-currency').value;
+    const rows  = allInvestments.filter(inv => {
       if (fType && inv.assets?.asset_type !== fType) return false;
-      if (fCur && inv.currency !== fCur) return false;
+      if (fCur  && inv.currency !== fCur) return false;
       return true;
     });
 
-    doc.setFontSize(9);
-    doc.setTextColor(136, 146, 164);
-    let y = 58;
-    doc.text('Investment Name', 14, y);
-    doc.text('Type', 80, y);
-    doc.text('Platform', 110, y);
-    doc.text('Currency', 150, y);
-    doc.text('Invested', 170, y);
-    doc.text('Current Value', 210, y);
-    doc.text('Return %', 260, y);
-    doc.setDrawColor(40, 50, 70);
-    doc.line(14, y + 3, 283, y + 3);
-    y += 9;
-
+    const byC = {};
     rows.forEach(inv => {
-      if (y > 180) { doc.addPage(); y = 20; }
-      const glPct = inv.amount_invested > 0 ? ((inv.current_value - inv.amount_invested) / inv.amount_invested * 100) : 0;
-      doc.setTextColor(240, 242, 245);
-      doc.text(inv.name.substring(0, 28), 14, y);
-      doc.setTextColor(136, 146, 164);
-      doc.text(inv.assets?.asset_type || '—', 80, y);
-      doc.text((inv.assets?.platform || '—').substring(0, 16), 110, y);
-      doc.text(inv.currency, 150, y);
-      doc.text(formatCurrency(inv.amount_invested, inv.currency), 170, y);
-      doc.text(formatCurrency(inv.current_value, inv.currency), 210, y);
-      glPct >= 0 ? doc.setTextColor(52, 211, 153) : doc.setTextColor(248, 113, 113);
-      doc.text(formatPercent(glPct), 260, y);
-      y += 8;
+      if (!byC[inv.currency]) byC[inv.currency] = { invested: 0, current: 0 };
+      byC[inv.currency].invested += parseFloat(inv.amount_invested) || 0;
+      byC[inv.currency].current  += parseFloat(inv.current_value)   || 0;
     });
 
-    doc.save(`WealthGuard_Report_${date.replace(/\//g, '-')}.pdf`);
-    showToast('PDF exported successfully!', 'success');
-  } catch (err) {
-    showToast('PDF export failed: ' + err.message, 'error');
-  }
+    let dx = 14, dy = 52;
+    doc.setFontSize(7); doc.setTextColor(212, 175, 55);
+    doc.text('CURRENCY DISTRIBUTION', 14, dy); dy += 5;
+    Object.entries(byC).forEach(([cur, vals]) => {
+      const convCur = convert(vals.current, cur, dispCur);
+      doc.setFillColor(22, 28, 42); doc.roundedRect(dx, dy, 55, 14, 1, 1, 'F');
+      doc.setTextColor(212, 175, 55); doc.setFontSize(8); doc.text(cur, dx + 3, dy + 5);
+      doc.setTextColor(180, 190, 210); doc.setFontSize(7);
+      doc.text(`${formatCurrency(vals.current, cur)}`, dx + 3, dy + 10);
+      if (cur !== dispCur) { doc.setTextColor(120, 130, 150); doc.text(`= ${formatCurrency(convCur, dispCur)}`, dx + 3, dy + 14); }
+      dx += 58; if (dx > W - 58) { dx = 14; dy += 18; }
+    });
 
+    // Table
+    dy = Math.max(dy + 20, 82);
+    const headers = ['#','Investment','Type','Platform','Cur','Invested (orig)','Current (orig)',`Inv (${dispCur})`,`Cur (${dispCur})`,'Gain/Loss','Return%'];
+    const colX    = [14, 22, 70, 95, 128, 142, 166, 192, 218, 244, 270];
+    doc.setFontSize(7); doc.setTextColor(100, 115, 135);
+    headers.forEach((h, i) => doc.text(h, colX[i], dy));
+    doc.setDrawColor(40, 55, 80); doc.line(14, dy + 2, W - 14, dy + 2); dy += 7;
+
+    rows.forEach((inv, idx) => {
+      if (dy > 190) { doc.addPage(); doc.setFillColor(10,13,18); doc.rect(0,0,W,210,'F'); dy = 15; }
+      const origInv = parseFloat(inv.amount_invested) || 0;
+      const origCur = parseFloat(inv.current_value)   || 0;
+      const convInv = convert(origInv, inv.currency, dispCur);
+      const convCur = convert(origCur, inv.currency, dispCur);
+      const convGL  = convCur - convInv;
+      const glPct   = origInv > 0 ? ((origCur - origInv) / origInv * 100) : 0;
+
+      doc.setTextColor(220, 228, 240); doc.setFontSize(7);
+      doc.text(String(idx + 1),                            colX[0],  dy);
+      doc.text(inv.name.substring(0, 20),                  colX[1],  dy);
+      doc.setTextColor(130, 145, 165);
+      doc.text(inv.assets?.asset_type || '—',              colX[2],  dy);
+      doc.text((inv.assets?.platform  || '—').substring(0,12), colX[3], dy);
+      doc.text(inv.currency,                               colX[4],  dy);
+      doc.text(formatCurrency(origInv, inv.currency),      colX[5],  dy);
+      doc.text(formatCurrency(origCur, inv.currency),      colX[6],  dy);
+      doc.setTextColor(200, 175, 80);
+      doc.text(inv.currency === dispCur ? '—' : formatCurrency(convInv, dispCur), colX[7], dy);
+      doc.text(formatCurrency(convCur,  dispCur),          colX[8],  dy);
+      convGL >= 0 ? doc.setTextColor(52,211,153) : doc.setTextColor(248,113,113);
+      doc.text((convGL >= 0 ? '+' : '') + formatCurrency(convGL, dispCur), colX[9], dy);
+      glPct  >= 0 ? doc.setTextColor(52,211,153) : doc.setTextColor(248,113,113);
+      doc.text(formatPercent(glPct), colX[10], dy);
+      dy += 7;
+    });
+
+    doc.save(`WealthGuard_Report_${date.replace(/\//g, '-')}_${dispCur}.pdf`);
+    showToast('PDF exported!', 'success');
+  } catch(e) {
+    showToast('PDF export failed: ' + e.message, 'error');
+  }
   setLoading(btn, false);
 }
 
+// ── Export CSV ────────────────────────────────────────────────
 function exportCSV() {
-  const fType = document.getElementById('r-type').value;
-  const fCur = document.getElementById('r-currency').value;
-  let rows = allInvestments.filter(inv => {
+  const dispCur = document.getElementById('r-display-currency').value;
+  const fType   = document.getElementById('r-type').value;
+  const fCur    = document.getElementById('r-currency').value;
+  const rows    = allInvestments.filter(inv => {
     if (fType && inv.assets?.asset_type !== fType) return false;
-    if (fCur && inv.currency !== fCur) return false;
+    if (fCur  && inv.currency !== fCur) return false;
     return true;
   });
 
-  const headers = ['Investment Name', 'Asset Type', 'Platform', 'Currency', 'Amount Invested', 'Current Value', 'Gain/Loss', 'Return %', 'Purchase Date'];
+  const headers = [
+    'Investment','Type','Platform','Original Currency',
+    'Invested (orig)','Current (orig)','Gain/Loss (orig)',
+    `Invested (${dispCur})`,`Current (${dispCur})`,`Gain/Loss (${dispCur})`,
+    'Return %','Date'
+  ];
+
   const csvLines = [
     headers.join(','),
     ...rows.map(inv => {
-      const gl = inv.current_value - inv.amount_invested;
-      const glPct = inv.amount_invested > 0 ? (gl / inv.amount_invested * 100).toFixed(2) : 0;
-      return [inv.name, inv.assets?.asset_type, inv.assets?.platform, inv.currency,
-        inv.amount_invested, inv.current_value, gl.toFixed(2), glPct, inv.date || ''].join(',');
+      const origInv = parseFloat(inv.amount_invested) || 0;
+      const origCur = parseFloat(inv.current_value)   || 0;
+      const origGL  = origCur - origInv;
+      const convInv = convert(origInv, inv.currency, dispCur);
+      const convCur = convert(origCur, inv.currency, dispCur);
+      const convGL  = convCur - convInv;
+      const glPct   = origInv > 0 ? ((origCur - origInv) / origInv * 100).toFixed(2) : '0.00';
+      return [
+        `"${inv.name}"`,
+        inv.assets?.asset_type || '',
+        `"${inv.assets?.platform || ''}"`,
+        inv.currency,
+        origInv.toFixed(2), origCur.toFixed(2), origGL.toFixed(2),
+        convInv.toFixed(2), convCur.toFixed(2), convGL.toFixed(2),
+        glPct,
+        inv.date || ''
+      ].join(',');
     })
   ];
 
   const blob = new Blob([csvLines.join('\n')], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
   a.href = url;
-  a.download = `WealthGuard_Report_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = `WealthGuard_Report_${new Date().toISOString().slice(0,10)}_${dispCur}.csv`;
   a.click();
   showToast('CSV exported!', 'success');
 }
 
 function emailReport() {
-  showToast('Weekly email reports are configured in Settings → Notifications', 'info');
+  showToast('Email reports are configured in Settings → Notifications', 'info');
 }
 
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
-function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+function closeSidebar()   { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 
 init();
 </script>

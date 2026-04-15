@@ -3,11 +3,9 @@
 // js/supabase.js
 // ============================================================
 
-// IMPORTANT: Replace these with your actual Supabase project credentials
-// Get them from: https://app.supabase.com → Project Settings → API
-const SUPABASE_URL = 'https://itxvrspchjcnhpaadmax.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_AsJxo599veBgPcioHWyjyA_YSDDPjFy';
-
+// Credentials are loaded from js/config.js — edit ONLY that file.
+const SUPABASE_URL      = WEALTHGUARD_CONFIG.SUPABASE_URL;
+const SUPABASE_ANON_KEY = WEALTHGUARD_CONFIG.SUPABASE_ANON_KEY;
 
 // Initialize Supabase client
 const { createClient } = supabase;
@@ -305,11 +303,15 @@ const FamilySharing = {
 // ============================================================
 
 const ExchangeRates = {
-  async getAll() {
-    if (_exchangeRates) return _exchangeRates;
+  async getAll(forceRefresh = false) {
+    if (_exchangeRates && !forceRefresh) return _exchangeRates;
     const { data } = await sb.from('exchange_rates').select('*');
     _exchangeRates = data || [];
     return _exchangeRates;
+  },
+
+  invalidateCache() {
+    _exchangeRates = null;
   },
 
   convert(amount, from, to, rates) {

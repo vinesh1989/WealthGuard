@@ -98,6 +98,7 @@
         <div class="admin-tab" onclick="showTab('invitations',this)">✉ Invitations</div>
         <div class="admin-tab" onclick="showTab('subscriptions',this)">💳 Subscriptions</div>
         <div class="admin-tab" onclick="showTab('coupons',this)">🏷 Coupons</div>
+        <div class="admin-tab" onclick="showTab('rates',this)">💱 Exchange Rates</div>
       </div>
 
       <!-- APPROVALS TAB -->
@@ -189,6 +190,48 @@
           <div id="coupons-list"><div class="loading-state" style="padding:1.5rem">Loading…</div></div>
         </div>
       </div>
+      <!-- EXCHANGE RATES TAB -->
+      <div id="atab-rates" style="display:none">
+        <div class="admin-section">
+          <div class="admin-section-header">
+            <div class="admin-section-title">Exchange Rates</div>
+            <div style="font-size:0.78rem;color:var(--text-muted)">Used for currency conversion in Reports &amp; Dashboard</div>
+          </div>
+          <div style="padding:1.25rem">
+            <div style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.15);border-radius:var(--radius-md);padding:0.85rem 1rem;font-size:0.82rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.6">
+              💡 All rates are relative to USD as the pivot currency. Enter how many units of the target currency equal 1 unit of the source currency. Changes are reflected immediately in all reports.
+            </div>
+            <div id="rates-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0.75rem">
+              <div class="loading-state">Loading rates…</div>
+            </div>
+            <div style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+              <div style="font-weight:600;font-size:0.875rem;margin-bottom:0.75rem">Add / Update Rate</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:0.75rem;align-items:end">
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">From Currency</label>
+                  <select class="form-input form-select" id="rate-from">
+                    <option value="USD">USD</option><option value="AED">AED</option>
+                    <option value="INR">INR</option><option value="EUR">EUR</option><option value="GBP">GBP</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">To Currency</label>
+                  <select class="form-input form-select" id="rate-to">
+                    <option value="AED">AED</option><option value="USD">USD</option>
+                    <option value="INR">INR</option><option value="EUR">EUR</option><option value="GBP">GBP</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Rate (1 FROM = ? TO)</label>
+                  <input type="number" class="form-input" id="rate-value" placeholder="e.g. 3.6725" step="0.000001" min="0">
+                </div>
+                <button class="btn btn-primary" id="save-rate-btn" onclick="saveRate()">Save Rate</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -268,7 +311,8 @@
 </div>
 
 <div id="toast" class="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
 <script>
 let allUsers = [], allPending = [], allSubs = [], allCoupons = [], allInvites = [];
@@ -285,7 +329,7 @@ async function loadAdmin() {
   }
   document.getElementById('user-name').textContent = profile.full_name || 'Admin';
   document.getElementById('user-initial').textContent = (profile.full_name || 'A')[0].toUpperCase();
-  await Promise.all([loadApprovals(), loadUsers(), loadInvitations(), loadSubscriptions(), loadCoupons()]);
+  await Promise.all([loadApprovals(), loadUsers(), loadInvitations(), loadSubscriptions(), loadCoupons(), loadRates()]);
   updateStats();
 }
 
@@ -616,8 +660,84 @@ async function createCoupon() {
 async function toggleCoupon(id, current) { await sb.from('coupons').update({ is_active:!current }).eq('id', id); loadCoupons(); }
 async function deleteCoupon(id) { if (!confirm('Delete coupon?')) return; await sb.from('coupons').delete().eq('id', id); loadCoupons(); }
 
+// ─── Exchange Rates ──────────────────────────────────────────
+async function loadRates() {
+  const { data } = await sb.from('exchange_rates').select('*').order('from_currency').order('to_currency');
+  renderRates(data || []);
+}
+
+function renderRates(rates) {
+  const grid = document.getElementById('rates-grid');
+  if (!rates.length) {
+    grid.innerHTML = '<div class="empty-state" style="padding:1.5rem">No rates found. Add them using the form below.</div>';
+    return;
+  }
+  grid.innerHTML = rates.map(r => {
+    const fetched = r.fetched_at ? new Date(r.fetched_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+    return `<div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:1rem;display:flex;align-items:center;gap:1rem">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem">
+          <span style="font-family:var(--font-mono);font-weight:700;color:var(--gold)">${r.from_currency}</span>
+          <span style="color:var(--text-muted)">→</span>
+          <span style="font-family:var(--font-mono);font-weight:700;color:#60a5fa">${r.to_currency}</span>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:1.1rem;font-weight:600;color:var(--text-primary)">${parseFloat(r.rate).toFixed(6)}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem">Updated: ${fetched}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.4rem">
+        <button class="btn btn-ghost btn-sm" onclick="editRate('${r.id}','${r.from_currency}','${r.to_currency}',${r.rate})">✏ Edit</button>
+        <button class="btn btn-ghost btn-sm" style="color:#f87171" onclick="deleteRate('${r.id}','${r.from_currency}','${r.to_currency}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function editRate(id, from, to, rate) {
+  document.getElementById('rate-from').value = from;
+  document.getElementById('rate-to').value = to;
+  document.getElementById('rate-value').value = rate;
+  document.getElementById('rate-value').focus();
+  document.getElementById('save-rate-btn').dataset.editId = id;
+}
+
+async function saveRate() {
+  const from  = document.getElementById('rate-from').value;
+  const to    = document.getElementById('rate-to').value;
+  const rate  = parseFloat(document.getElementById('rate-value').value);
+  const editId = document.getElementById('save-rate-btn').dataset.editId;
+
+  if (!from || !to || !rate || rate <= 0) { showToast('Enter valid from, to and rate', 'error'); return; }
+  if (from === to) { showToast('From and To currencies must be different', 'error'); return; }
+
+  setLoading('save-rate-btn', true, 'Saving…');
+  try {
+    await sb.from('exchange_rates').upsert({
+      from_currency: from,
+      to_currency: to,
+      rate,
+      fetched_at: new Date().toISOString(),
+    }, { onConflict: 'from_currency,to_currency' });
+
+    showToast(`Rate ${from} → ${to} = ${rate} saved`, 'success');
+    document.getElementById('rate-value').value = '';
+    delete document.getElementById('save-rate-btn').dataset.editId;
+    loadRates();
+  } catch(e) {
+    showToast(e.message || 'Failed to save rate', 'error');
+  } finally {
+    setLoading('save-rate-btn', false, 'Save Rate');
+  }
+}
+
+async function deleteRate(id, from, to) {
+  if (!confirm(`Delete rate ${from} → ${to}?`)) return;
+  await sb.from('exchange_rates').delete().eq('id', id);
+  showToast('Rate deleted', 'success');
+  loadRates();
+}
+
 function showTab(tab, el) {
-  ['approvals','users','invitations','subscriptions','coupons'].forEach(t => {
+  ['approvals','users','invitations','subscriptions','coupons','rates'].forEach(t => {
     document.getElementById('atab-'+t).style.display = 'none';
   });
   document.getElementById('atab-'+tab).style.display = 'block';
