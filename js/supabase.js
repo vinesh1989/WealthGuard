@@ -8,6 +8,7 @@
 const SUPABASE_URL = 'https://itxvrspchjcnhpaadmax.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_AsJxo599veBgPcioHWyjyA_YSDDPjFy';
 
+
 // Initialize Supabase client
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -82,7 +83,9 @@ const Auth = {
 const Profile = {
   async get(userId) {
     const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
-    return { data, error };
+    // Returns the profile row directly (not wrapped in {data,error})
+    // so callers can do: const profile = await Profile.get(id); profile.role
+    return data || null;
   },
 
   async update(userId, updates) {
@@ -356,7 +359,7 @@ const Admin = {
 
   async grantAccess(userId, plan, endsAt) {
     const session = await Auth.getSession();
-    const { data: me } = await Profile.get(session.user.id);
+    const me = await Profile.get(session.user.id);
     if (me?.role !== 'admin') return { error: { message: 'Not authorized' } };
 
     await sb.from('subscriptions').insert({
@@ -386,14 +389,15 @@ async function requireAuth() {
   }
 
   // Ensure profile row exists — the DB trigger can fail silently,
-  // so we upsert here as a safety net before any FK-dependent insert.
+  // so we insert here as a safety net before any FK-dependent insert.
+  // NOTE: we do NOT set role here — that would overwrite admin/beneficiary roles.
+  // ignoreDuplicates:true means this is a no-op if the profile already exists.
   try {
     const user = session.user;
     await sb.from('profiles').upsert({
       id: user.id,
       email: user.email,
       full_name: user.user_metadata?.full_name || null,
-      role: 'investor',
     }, { onConflict: 'id', ignoreDuplicates: true });
   } catch (_) {
     // Profile already exists — safe to continue
@@ -405,7 +409,7 @@ async function requireAuth() {
 async function requireAdmin() {
   const session = await requireAuth();
   if (!session) return null;
-  const { data: profile } = await Profile.get(session.user.id);
+  const profile = await Profile.get(session.user.id);
   if (profile?.role !== 'admin') {
     window.location.href = '/pages/dashboard.html';
     return null;
@@ -455,3 +459,4 @@ function setLoading(btnOrId, loading, label) {
     btn.disabled = false;
   }
 }
+
