@@ -666,28 +666,64 @@ async function loadRates() {
   renderRates(data || []);
 }
 
+// Sample amounts for live value display
+const SAMPLE_AMOUNTS = { USD: 1000, AED: 3672, INR: 83500, EUR: 921, GBP: 791 };
+const CURRENCY_SYMBOLS = { USD: '$', AED: 'AED ', INR: '₹', EUR: '€', GBP: '£' };
+const CURRENCY_FLAGS = { USD: '🇺🇸', AED: '🇦🇪', INR: '🇮🇳', EUR: '🇪🇺', GBP: '🇬🇧' };
+
+function fmtAmount(amount, cur) {
+  const sym = CURRENCY_SYMBOLS[cur] || cur + ' ';
+  return sym + Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function renderRates(rates) {
   const grid = document.getElementById('rates-grid');
   if (!rates.length) {
     grid.innerHTML = '<div class="empty-state" style="padding:1.5rem">No rates found. Add them using the form below.</div>';
     return;
   }
-  grid.innerHTML = rates.map(r => {
-    const fetched = r.fetched_at ? new Date(r.fetched_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
-    return `<div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:1rem;display:flex;align-items:center;gap:1rem">
-      <div style="flex:1">
-        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem">
-          <span style="font-family:var(--font-mono);font-weight:700;color:var(--gold)">${r.from_currency}</span>
-          <span style="color:var(--text-muted)">→</span>
-          <span style="font-family:var(--font-mono);font-weight:700;color:#60a5fa">${r.to_currency}</span>
+
+  // Group by from_currency for a cleaner layout
+  const byCur = {};
+  rates.forEach(r => {
+    if (!byCur[r.from_currency]) byCur[r.from_currency] = [];
+    byCur[r.from_currency].push(r);
+  });
+
+  grid.innerHTML = Object.entries(byCur).map(([fromCur, curRates]) => {
+    const flag = CURRENCY_FLAGS[fromCur] || '';
+    const sampleAmt = SAMPLE_AMOUNTS[fromCur] || 1000;
+
+    const rateRows = curRates.map(r => {
+      const converted = sampleAmt * parseFloat(r.rate);
+      const fetched = r.fetched_at
+        ? new Date(r.fetched_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+        : '—';
+      return `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+        <div style="flex:1">
+          <div style="display:flex;align-items:baseline;gap:0.4rem">
+            <span style="font-family:var(--font-mono);color:var(--gold);font-weight:700;font-size:0.95rem">${parseFloat(r.rate).toFixed(6)}</span>
+            <span style="font-size:0.72rem;color:var(--text-muted)">${fromCur}/${r.to_currency}</span>
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:0.15rem">
+            ${fmtAmount(sampleAmt, fromCur)} = <strong style="color:var(--text-primary)">${fmtAmount(converted, r.to_currency)}</strong>
+          </div>
+          <div style="font-size:0.68rem;color:var(--text-muted)">Updated ${fetched}</div>
         </div>
-        <div style="font-family:var(--font-mono);font-size:1.1rem;font-weight:600;color:var(--text-primary)">${parseFloat(r.rate).toFixed(6)}</div>
-        <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem">Updated: ${fetched}</div>
+        <div style="display:flex;gap:0.3rem">
+          <button class="btn btn-ghost btn-sm" style="padding:0.25rem 0.5rem;font-size:0.72rem" onclick="editRate('${r.id}','${r.from_currency}','${r.to_currency}',${r.rate})">✏</button>
+          <button class="btn btn-ghost btn-sm" style="padding:0.25rem 0.5rem;font-size:0.72rem;color:#f87171" onclick="deleteRate('${r.id}','${r.from_currency}','${r.to_currency}')">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden">
+      <div style="padding:0.75rem 1rem;background:rgba(212,175,55,0.06);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.5rem">
+        <span style="font-size:1.1rem">${flag}</span>
+        <span style="font-family:var(--font-mono);font-weight:700;color:var(--gold)">${fromCur}</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);margin-left:0.25rem">1 ${fromCur} = ...</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:0.4rem">
-        <button class="btn btn-ghost btn-sm" onclick="editRate('${r.id}','${r.from_currency}','${r.to_currency}',${r.rate})">✏ Edit</button>
-        <button class="btn btn-ghost btn-sm" style="color:#f87171" onclick="deleteRate('${r.id}','${r.from_currency}','${r.to_currency}')">🗑</button>
-      </div>
+      <div style="padding:0 1rem">${rateRows}</div>
     </div>`;
   }).join('');
 }

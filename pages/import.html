@@ -113,6 +113,11 @@
             <div class="import-option-name">Excel (.xlsx)</div>
             <div class="import-option-desc">Import from Excel spreadsheet</div>
           </div>
+          <div class="import-option" onclick="selectSource('mfcentral')" style="border-color:rgba(212,175,55,0.3);background:rgba(212,175,55,0.04)">
+            <div class="import-option-icon">🇮🇳</div>
+            <div class="import-option-name" style="color:var(--gold)">MFCentral CAS</div>
+            <div class="import-option-desc">Import CAS Excel from mfcentral.org.in</div>
+          </div>
         </div>
       </div>
 
@@ -153,6 +158,66 @@
             </div>
             <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="clearFile()">✕ Remove</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Step MFC: MFCentral direct import (no mapping needed) -->
+      <div class="import-step" id="step-mfc">
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem">
+          <button class="btn btn-ghost" onclick="goToStep(1)">← Back</button>
+          <div>
+            <h3 style="font-family:var(--font-display)">MFCentral CAS Import</h3>
+            <p style="font-size:0.8rem;color:var(--text-muted)">Parsed and ready to import</p>
+          </div>
+        </div>
+
+        <!-- Info bar -->
+        <div style="background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.2);border-radius:var(--radius-md);padding:1rem 1.25rem;margin-bottom:1.25rem;font-size:0.85rem;color:var(--text-secondary);line-height:1.7">
+          <strong style="color:var(--gold)">🇮🇳 MFCentral CAS Report detected</strong><br>
+          Investments are in <strong>INR</strong>. The file contains both current portfolio holdings and recent transactions.
+          Select which sheet to import and which asset account to link them to.
+        </div>
+
+        <!-- Sheet selector -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem">
+          <div class="import-option active" id="mfc-tab-portfolio" onclick="switchMFCTab('portfolio')" style="cursor:pointer;padding:1rem">
+            <div style="font-weight:700;margin-bottom:0.25rem">📊 Portfolio Holdings</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)" id="mfc-portfolio-count">0 schemes</div>
+          </div>
+          <div class="import-option" id="mfc-tab-transactions" onclick="switchMFCTab('transactions')" style="cursor:pointer;padding:1rem">
+            <div style="font-weight:700;margin-bottom:0.25rem">📋 Transactions</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)" id="mfc-txn-count">0 transactions</div>
+          </div>
+        </div>
+
+        <!-- Asset selector -->
+        <div class="form-group">
+          <label class="form-label">Link to Asset Account <span style="color:var(--red)">*</span></label>
+          <select id="mfc-asset" class="form-control">
+            <option value="">Create new MF asset automatically</option>
+          </select>
+          <div class="form-hint">Investments will be linked to this account. A new one called "MFCentral (INR)" will be created if left blank.</div>
+        </div>
+
+        <!-- Preview table -->
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:1.25rem">
+          <div style="padding:0.85rem 1.1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:600;font-size:0.875rem" id="mfc-preview-title">Portfolio Holdings</span>
+            <span style="font-size:0.78rem;color:var(--gold)" id="mfc-preview-count">—</span>
+          </div>
+          <div style="overflow-x:auto;max-height:340px;overflow-y:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:0.8rem" id="mfc-preview-table">
+              <thead id="mfc-preview-head"></thead>
+              <tbody id="mfc-preview-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="goToStep(1)">Cancel</button>
+          <button class="btn btn-primary" id="mfc-import-btn" onclick="importMFCentral()">
+            ⬆ Import <span id="mfc-import-count">0</span> Records
+          </button>
         </div>
       </div>
 
@@ -199,6 +264,7 @@
   </div>
 </div>
 
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script src="../js/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
@@ -209,11 +275,16 @@ let csvHeaders = [];
 let currentUserId = null;
 
 const SOURCE_HINTS = {
-  zerodha: '🇮🇳 <strong>Zerodha:</strong> Kite → Console → Reports → Tradebook → Download CSV',
-  ibkr: '🌐 <strong>IBKR:</strong> Account Management → Reports → Activity → Download CSV',
-  csv: '📄 <strong>Custom CSV:</strong> Any CSV with columns for Name, Amount, Current Value, Currency, Date',
-  excel: '📊 <strong>Excel:</strong> Export your spreadsheet as CSV first, or upload .xlsx directly'
+  zerodha:   '🇮🇳 <strong>Zerodha:</strong> Kite → Console → Reports → Tradebook → Download CSV',
+  ibkr:      '🌐 <strong>IBKR:</strong> Account Management → Reports → Activity → Download CSV',
+  csv:       '📄 <strong>Custom CSV:</strong> Any CSV with columns for Name, Amount, Current Value, Currency, Date',
+  excel:     '📊 <strong>Excel:</strong> Export your spreadsheet as CSV first, or upload .xlsx directly',
+  mfcentral: '🇮🇳 <strong>MFCentral CAS:</strong> Login at <a href="https://www.mfcentral.com" target="_blank" style="color:var(--gold)">mfcentral.com</a> → My Portfolio → Consolidated Account Statement → Download as Excel'
 };
+
+// MFCentral parsed data
+let mfcData = { portfolio: [], transactions: [] };
+let mfcActiveTab = 'portfolio';
 
 const ZERODHA_MAP = { 'symbol': 'name', 'trade date': 'date', 'quantity': 'quantity', 'price': 'unit_price', 'trade type': null };
 const IBKR_MAP = { 'symbol': 'name', 'date/time': 'date', 'quantity': 'quantity', 't. price': 'unit_price', 'proceeds': 'amount_invested' };
@@ -240,6 +311,13 @@ async function init() {
 
 function selectSource(source) {
   currentSource = source;
+  if (source === 'mfcentral') {
+    document.getElementById('step2-title').textContent = 'Upload MFCentral CAS Excel';
+    document.getElementById('source-hint').innerHTML = SOURCE_HINTS[source];
+    document.getElementById('file-input').accept = '.xlsx,.xls';
+    goToStep(2);
+    return;
+  }
   document.getElementById('step2-title').textContent = `Upload ${source.charAt(0).toUpperCase() + source.slice(1)} ${source === 'excel' ? '.xlsx' : 'CSV'}`;
   document.getElementById('source-hint').innerHTML = SOURCE_HINTS[source];
   document.getElementById('file-input').accept = source === 'excel' ? '.xlsx,.xls' : '.csv,.xlsx';
@@ -256,9 +334,283 @@ function handleFile(file) {
   document.getElementById('file-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
   document.getElementById('file-info').style.display = 'block';
 
+  const isXlsx = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+
+  if (currentSource === 'mfcentral') {
+    const reader = new FileReader();
+    reader.onload = (e) => parseMFCentralXlsx(e.target.result);
+    reader.readAsArrayBuffer(file);
+    return;
+  }
+  if (isXlsx) {
+    const reader = new FileReader();
+    reader.onload = (e) => parseXlsxToCSV(e.target.result);
+    reader.readAsArrayBuffer(file);
+    return;
+  }
   const reader = new FileReader();
   reader.onload = (e) => parseCSV(e.target.result);
   reader.readAsText(file);
+}
+
+function parseXlsxToCSV(buffer) {
+  try {
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    parseCSV(csv);
+  } catch(e) {
+    showToast('Failed to read Excel file: ' + e.message, 'error');
+  }
+}
+
+// ── MFCentral CAS parser ──────────────────────────────────────
+function parseMFCentralXlsx(buffer) {
+  try {
+    const wb = XLSX.read(buffer, { type: 'array', cellDates: false });
+
+    // ── Portfolio Details sheet ──────────────────────────
+    const wsP = wb.Sheets['Portfolio Details'];
+    if (!wsP) throw new Error('"Portfolio Details" sheet not found. Is this a valid MFCentral CAS file?');
+    const rowsP = XLSX.utils.sheet_to_json(wsP, { header: 1, defval: '' });
+
+    // Find header row (has "Scheme Name" in col 0)
+    let hdrRowP = -1;
+    for (let i = 0; i < rowsP.length; i++) {
+      if (String(rowsP[i][0]).trim() === 'Scheme Name') { hdrRowP = i; break; }
+    }
+    if (hdrRowP < 0) throw new Error('Could not find "Scheme Name" header in Portfolio Details');
+
+    // Extract owner info from top rows
+    const ownerName  = rowsP[0]?.[1] || '';
+    const ownerEmail = rowsP[2]?.[1] || '';
+    const ownerPAN   = rowsP[3]?.[1] || '';
+
+    // Parse portfolio holdings (data rows after header)
+    mfcData.portfolio = [];
+    for (let i = hdrRowP + 1; i < rowsP.length; i++) {
+      const r = rowsP[i];
+      const name = String(r[0] || '').trim();
+      if (!name || name === '' || isNaN(parseFloat(r[4]))) continue;
+      const invested = parseFloat(r[4]) || 0;
+      if (invested === 0 && parseFloat(r[5]) === 0) continue; // skip zero holdings
+
+      mfcData.portfolio.push({
+        name:           name,
+        amc:            String(r[1] || '').trim(),
+        category:       String(r[2] || '').trim(),
+        folio_no:       String(r[3] || '').trim(),
+        amount_invested: invested,
+        current_value:  parseFloat(r[5]) || invested,
+        returns:        parseFloat(r[6]) || 0,
+        quantity:       parseFloat(r[7]) || 0,
+        currency:       'INR',
+        import_source:  'MFCentral',
+      });
+    }
+
+    // ── Transaction Details sheet ──────────────────────────
+    const wsT = wb.Sheets['Transaction Details'];
+    mfcData.transactions = [];
+    if (wsT) {
+      const rowsT = XLSX.utils.sheet_to_json(wsT, { header: 1, defval: '' });
+      let hdrRowT = -1;
+      for (let i = 0; i < rowsT.length; i++) {
+        if (String(rowsT[i][0]).trim() === 'Scheme Name') { hdrRowT = i; break; }
+      }
+
+      if (hdrRowT >= 0) {
+        for (let i = hdrRowT + 1; i < rowsT.length; i++) {
+          const r = rowsT[i];
+          const name   = String(r[0] || '').trim();
+          const desc   = String(r[1] || '').trim();
+          const amount = parseFloat(r[5]) || 0;
+          if (!name || amount === 0) continue; // skip non-financial entries
+
+          // Parse date: "07-APR-2026" → "2026-04-07"
+          let dateStr = '';
+          try {
+            const d = new Date(String(r[2]).trim().replace(/-/g, ' '));
+            if (!isNaN(d)) dateStr = d.toISOString().slice(0, 10);
+          } catch (_) {}
+
+          const isRedemption = desc.toLowerCase().includes('redemption');
+          mfcData.transactions.push({
+            name:           name,
+            description:    desc,
+            date:           dateStr,
+            unit_price:     parseFloat(r[3]) || 0,
+            quantity:       parseFloat(r[4]) || 0,
+            amount_invested: isRedemption ? 0 : Math.abs(amount),
+            current_value:  Math.abs(amount),
+            currency:       'INR',
+            import_source:  'MFCentral',
+            category:       'MF',
+            is_redemption:  isRedemption,
+          });
+        }
+      }
+    }
+
+    // Populate mfc asset dropdown
+    const sel = document.getElementById('mfc-asset');
+    sel.innerHTML = '<option value="">Create new "MFCentral INR" asset automatically</option>';
+    const { data: assets } = await (async () => Assets.getAll(currentUserId))().catch(() => ({ data: [] }));
+    // sync approach - already loaded in init
+    document.querySelectorAll('#import-asset option').forEach(opt => {
+      if (opt.value) sel.innerHTML += `<option value="${opt.value}">${opt.text}</option>`;
+    });
+
+    document.getElementById('mfc-portfolio-count').textContent = `${mfcData.portfolio.length} schemes`;
+    document.getElementById('mfc-txn-count').textContent = `${mfcData.transactions.length} transactions`;
+
+    switchMFCTab('portfolio');
+
+    // Go to MFC step
+    document.querySelectorAll('.import-step').forEach(s => s.classList.remove('active'));
+    document.getElementById('step-mfc').classList.add('active');
+
+  } catch(e) {
+    showToast('MFCentral parse error: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
+function switchMFCTab(tab) {
+  mfcActiveTab = tab;
+  const isPf = tab === 'portfolio';
+
+  document.getElementById('mfc-tab-portfolio').classList.toggle('selected', isPf);
+  document.getElementById('mfc-tab-transactions').classList.toggle('selected', !isPf);
+
+  const rows = isPf ? mfcData.portfolio : mfcData.transactions;
+  const count = rows.length;
+
+  document.getElementById('mfc-preview-title').textContent  = isPf ? 'Portfolio Holdings' : 'Transactions';
+  document.getElementById('mfc-preview-count').textContent  = `${count} record${count !== 1 ? 's' : ''}`;
+  document.getElementById('mfc-import-count').textContent   = count;
+
+  const thead = document.getElementById('mfc-preview-head');
+  const tbody = document.getElementById('mfc-preview-body');
+
+  const thStyle = 'text-align:left;padding:0.5rem 0.75rem;font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg-surface);white-space:nowrap';
+  const tdStyle = 'padding:0.5rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.78rem;white-space:nowrap';
+
+  if (isPf) {
+    thead.innerHTML = `<tr>
+      <th style="${thStyle}">Scheme Name</th>
+      <th style="${thStyle}">AMC</th>
+      <th style="${thStyle}">Category</th>
+      <th style="${thStyle}">Folio No.</th>
+      <th style="${thStyle};text-align:right">Invested (INR)</th>
+      <th style="${thStyle};text-align:right">Current (INR)</th>
+      <th style="${thStyle};text-align:right">Returns</th>
+      <th style="${thStyle};text-align:right">Units</th>
+    </tr>`;
+    tbody.innerHTML = rows.map(r => `<tr>
+      <td style="${tdStyle};max-width:280px;overflow:hidden;text-overflow:ellipsis" title="${r.name}">${r.name.length > 45 ? r.name.slice(0,45)+'…' : r.name}</td>
+      <td style="${tdStyle};color:var(--text-muted)">${r.amc}</td>
+      <td style="${tdStyle}"><span class="badge badge-muted">${r.category}</span></td>
+      <td style="${tdStyle};font-family:var(--font-mono);font-size:0.72rem">${r.folio_no}</td>
+      <td style="${tdStyle};text-align:right;font-family:var(--font-mono)">₹${Number(r.amount_invested).toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+      <td style="${tdStyle};text-align:right;font-family:var(--font-mono);font-weight:600">₹${Number(r.current_value).toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+      <td style="${tdStyle};text-align:right;font-family:var(--font-mono);color:${r.returns >= 0 ? 'var(--green)':'var(--red)'}">${r.returns >= 0?'+':''}₹${Number(r.returns).toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+      <td style="${tdStyle};text-align:right;font-family:var(--font-mono)">${r.quantity}</td>
+    </tr>`).join('');
+  } else {
+    thead.innerHTML = `<tr>
+      <th style="${thStyle}">Scheme Name</th>
+      <th style="${thStyle}">Description</th>
+      <th style="${thStyle}">Date</th>
+      <th style="${thStyle};text-align:right">NAV</th>
+      <th style="${thStyle};text-align:right">Units</th>
+      <th style="${thStyle};text-align:right">Amount (INR)</th>
+    </tr>`;
+    tbody.innerHTML = rows.map(r => `<tr>
+      <td style="${tdStyle};max-width:250px;overflow:hidden;text-overflow:ellipsis" title="${r.name}">${r.name.length > 40 ? r.name.slice(0,40)+'…' : r.name}</td>
+      <td style="${tdStyle};color:${r.is_redemption?'var(--red)':'var(--green)'}">${r.description}</td>
+      <td style="${tdStyle};font-family:var(--font-mono)">${r.date}</td>
+      <td style="${tdStyle};text-align:right;font-family:var(--font-mono)">₹${Number(r.unit_price).toFixed(4)}</td>
+      <td style="${tdStyle};text-align:right;font-family:var(--font-mono)">${r.quantity}</td>
+      <td style="${tdStyle};text-align:right;font-family:var(--font-mono);font-weight:600;color:${r.is_redemption?'var(--red)':'var(--text-primary)'}">₹${Number(r.current_value).toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+    </tr>`).join('');
+  }
+}
+
+async function importMFCentral() {
+  const btn = document.getElementById('mfc-import-btn');
+  setLoading(btn, true, 'Importing…');
+
+  try {
+    const rows = mfcActiveTab === 'portfolio' ? mfcData.portfolio : mfcData.transactions;
+    if (!rows.length) { showToast('No records to import', 'error'); return; }
+
+    let assetId = document.getElementById('mfc-asset').value;
+
+    // Auto-create MFCentral asset if not selected
+    if (!assetId) {
+      const { data: newAsset, error: ae } = await Assets.create({
+        user_id:    currentUserId,
+        name:       'MFCentral — Mutual Funds',
+        asset_type: 'MF',
+        platform:   'MFCentral',
+        currency:   'INR',
+        country:    'India',
+        notes:      'Auto-created during MFCentral CAS import',
+      });
+      if (ae) throw new Error('Could not create asset: ' + ae.message);
+      assetId = newAsset.id;
+    }
+
+    // Build investment records
+    const investments = rows.map(r => ({
+      user_id:         currentUserId,
+      asset_id:        assetId,
+      name:            r.name,
+      category:        r.category || r.amc || 'MF',
+      amount_invested: r.amount_invested,
+      current_value:   r.current_value,
+      currency:        'INR',
+      quantity:        r.quantity || 0,
+      unit_price:      r.unit_price || 0,
+      date:            r.date || null,
+      notes:           r.folio_no ? `Folio: ${r.folio_no}` : (r.description || null),
+      import_source:   'MFCentral',
+      is_active:       !r.is_redemption,
+    }));
+
+    const { data, error } = await Investments.bulkInsert(investments);
+    if (error) throw error;
+
+    // Log import
+    await sb.from('import_logs').insert({
+      user_id:          currentUserId,
+      source:           'MFCentral',
+      filename:         `MFCentral_CAS_${mfcActiveTab}`,
+      records_imported: data.length,
+      status:           'completed',
+      completed_at:     new Date().toISOString(),
+    });
+
+    showToast(`✓ Imported ${data.length} ${mfcActiveTab === 'portfolio' ? 'holdings' : 'transactions'} from MFCentral`, 'success');
+    await loadImportHistory();
+
+    // Refresh asset dropdown
+    const { data: assets } = await Assets.getAll(currentUserId);
+    const sel = document.getElementById('import-asset');
+    sel.innerHTML = '<option value="">Create new asset automatically</option>';
+    (assets || []).forEach(a => {
+      sel.innerHTML += `<option value="${a.id}">${a.platform} (${a.asset_type})</option>`;
+    });
+
+    goToStep(1);
+
+  } catch(e) {
+    showToast('Import failed: ' + e.message, 'error');
+    console.error(e);
+  } finally {
+    setLoading(btn, false, 'Import Records');
+  }
 }
 
 function parseCSV(text) {
