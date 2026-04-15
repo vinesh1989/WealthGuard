@@ -136,13 +136,13 @@ const Assets = {
 const Investments = {
   async getAll(userId, filters = {}) {
     let query = sb.from('investments')
-      .select('*, assets(asset_type, platform_name, currency, country)')
+      .select('*, assets(asset_type, platform, currency, country)')
       .eq('user_id', userId)
       .eq('is_active', true);
 
     if (filters.asset_type) query = query.eq('assets.asset_type', filters.asset_type);
     if (filters.currency) query = query.eq('currency', filters.currency);
-    if (filters.search) query = query.ilike('investment_name', `%${filters.search}%`);
+    if (filters.search) query = query.ilike('name', `%${filters.search}%`);
 
     const { data, error } = await query.order('created_at', { ascending: false });
     return { data, error };
@@ -153,7 +153,7 @@ const Investments = {
       .select('*')
       .eq('asset_id', assetId)
       .eq('is_active', true)
-      .order('purchase_date', { ascending: false });
+      .order('date', { ascending: false });
     return { data, error };
   },
 
