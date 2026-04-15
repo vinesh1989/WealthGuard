@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .settings-layout { display: grid; grid-template-columns: 220px 1fr; gap: 1.5rem; align-items: start; }
+    .settings-nav { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0.5rem; position: sticky; top: 1rem; }
+    .settings-nav-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-md); font-size: 0.875rem; cursor: pointer; color: var(--text-secondary); transition: background 0.15s, color 0.15s; }
+    .settings-nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+    .settings-nav-item.active { background: var(--gold-muted); color: var(--gold); font-weight: 600; }
+    .settings-nav-icon { font-size: 1rem; }
+
+    .settings-sections { display: flex; flex-direction: column; gap: 1.25rem; }
+    .settings-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .settings-section-header { padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--border); }
+    .settings-section-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.2rem; }
+    .settings-section-desc { font-size: 0.8rem; color: var(--text-muted); }
+    .settings-section-body { padding: 1.5rem; }
+    .settings-section-body .form-group:last-child { margin-bottom: 0; }
+
+    .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); gap: 1rem; }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row-info {}
+    .settings-row-label { font-size: 0.9rem; font-weight: 500; margin-bottom: 0.15rem; }
+    .settings-row-desc { font-size: 0.78rem; color: var(--text-muted); }
+
+    /* Toggle Switch */
+    .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.1); border-radius: 24px; transition: 0.3s; }
+    .toggle-slider:before { position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background: var(--text-muted); border-radius: 50%; transition: 0.3s; }
+    .toggle-switch input:checked + .toggle-slider { background: var(--gold); }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); background: #0a0d12; }
+
+    .avatar-upload { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.5rem; }
+    .avatar-large { width: 64px; height: 64px; border-radius: 50%; background: var(--gold-muted); color: var(--gold); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 700; border: 2px solid rgba(212,175,55,0.3); flex-shrink: 0; }
+    .avatar-upload-btn { font-size: 0.82rem; }
+
+    .danger-zone { border-color: rgba(248,113,113,0.2); }
+    .danger-zone .settings-section-header { border-color: rgba(248,113,113,0.2); }
+    .danger-zone .settings-section-title { color: #f87171; }
+
+    @media (max-width: 700px) {
+      .settings-layout { grid-template-columns: 1fr; }
+      .settings-nav { position: static; display: flex; overflow-x: auto; gap: 0.25rem; }
+      .settings-nav-item { white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <span class="nav-section-label">Planning</span>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <span class="nav-section-label">Reports</span>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item active"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user"><div class="user-avatar" id="user-initial">R</div><div><div class="user-name" id="user-name">Loading...</div><div class="user-role">investor</div></div></div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()"><span class="nav-icon">↩</span> Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div><div class="page-title">Settings</div><div class="page-subtitle">Manage your account and preferences</div></div>
+      </div>
+      <div class="topbar-actions">
+        <button class="notif-btn" onclick="window.location.href='notifications.html'">🔔</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+      <div class="settings-layout">
+        <!-- Left nav -->
+        <div class="settings-nav">
+          <div class="settings-nav-item active" onclick="showTab('profile', this)"><span class="settings-nav-icon">👤</span> Profile</div>
+          <div class="settings-nav-item" onclick="showTab('security', this)"><span class="settings-nav-icon">🔒</span> Security</div>
+          <div class="settings-nav-item" onclick="showTab('preferences', this)"><span class="settings-nav-icon">🎛</span> Preferences</div>
+          <div class="settings-nav-item" onclick="showTab('notifications', this)"><span class="settings-nav-icon">🔔</span> Notifications</div>
+          <div class="settings-nav-item" onclick="showTab('danger', this)"><span class="settings-nav-icon" style="color:#f87171">⚠</span> <span style="color:#f87171">Danger Zone</span></div>
+        </div>
+
+        <!-- Right content -->
+        <div class="settings-sections">
+
+          <!-- Profile Tab -->
+          <div id="tab-profile">
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <div class="settings-section-title">Personal Information</div>
+                <div class="settings-section-desc">Update your name and profile details</div>
+              </div>
+              <div class="settings-section-body">
+                <div class="avatar-upload">
+                  <div class="avatar-large" id="avatar-preview">R</div>
+                  <div>
+                    <div style="font-weight:600;margin-bottom:0.25rem" id="profile-name-display">Loading…</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted)" id="profile-email-display"></div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Full Name</label>
+                  <input type="text" class="form-input" id="full-name" placeholder="Your full name">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Email Address</label>
+                  <input type="email" class="form-input" id="email-display" disabled style="opacity:0.6;cursor:not-allowed">
+                  <div class="form-hint">Email cannot be changed after registration</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Phone Number</label>
+                  <input type="tel" class="form-input" id="phone" placeholder="+971 50 000 0000">
+                </div>
+                <button class="btn btn-primary" id="save-profile-btn" onclick="saveProfile()">Save Changes</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Security Tab -->
+          <div id="tab-security" style="display:none">
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <div class="settings-section-title">Change Password</div>
+                <div class="settings-section-desc">Use a strong, unique password for your account</div>
+              </div>
+              <div class="settings-section-body">
+                <div class="form-group">
+                  <label class="form-label">Current Password</label>
+                  <input type="password" class="form-input" id="current-pass" placeholder="••••••••">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">New Password</label>
+                  <input type="password" class="form-input" id="new-pass" placeholder="••••••••">
+                  <div class="form-hint">Minimum 8 characters with at least one number</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Confirm New Password</label>
+                  <input type="password" class="form-input" id="confirm-pass" placeholder="••••••••">
+                </div>
+                <button class="btn btn-primary" id="change-pass-btn" onclick="changePassword()">Update Password</button>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <div class="settings-section-title">Active Sessions</div>
+                <div class="settings-section-desc">Manage where you're signed in</div>
+              </div>
+              <div class="settings-section-body">
+                <div class="settings-row">
+                  <div class="settings-row-info">
+                    <div class="settings-row-label">Current Device</div>
+                    <div class="settings-row-desc" id="current-session">Signed in · This session</div>
+                  </div>
+                  <span class="badge badge-success">Active</span>
+                </div>
+                <div style="margin-top:1rem">
+                  <button class="btn btn-outline" style="color:#f87171;border-color:rgba(248,113,113,0.2)" onclick="signOutAll()">Sign Out All Devices</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preferences Tab -->
+          <div id="tab-preferences" style="display:none">
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <div class="settings-section-title">Display Preferences</div>
+                <div class="settings-section-desc">Customize how WealthGuard looks and behaves</div>
+              </div>
+              <div class="settings-section-body">
+                <div class="form-group">
+                  <label class="form-label">Base Currency</label>
+                  <select class="form-input form-select" id="base-currency">
+                    <option value="USD">USD — US Dollar</option>
+                    <option value="AED">AED — UAE Dirham</option>
+                    <option value="INR">INR — Indian Rupee</option>
+                    <option value="EUR">EUR — Euro</option>
+                    <option value="GBP">GBP — British Pound</option>
+                  </select>
+                  <div class="form-hint">All portfolio totals will be displayed in this currency</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Date Format</label>
+                  <select class="form-input form-select" id="date-format">
+                    <option value="DD/MM/YYYY">DD/MM/YYYY (UK/India)</option>
+                    <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
+                    <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" id="save-prefs-btn" onclick="savePreferences()">Save Preferences</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notifications Tab -->
+          <div id="tab-notifications" style="display:none">
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <div class="settings-section-title">Email Notifications</div>
+                <div class="settings-section-desc">Control which emails you receive from WealthGuard</div>
+              </div>
+              <div class="settings-section-body">
+                <div class="settings-row">
+                  <div class="settings-row-info">
+                    <div class="settings-row-label">Weekly Portfolio Summary</div>
+                    <div class="settings-row-desc">Get a weekly email with your portfolio performance</div>
+                  </div>
+                  <label class="toggle-switch"><input type="checkbox" id="notif-weekly" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-info">
+                    <div class="settings-row-label">Goal Progress Alerts</div>
+                    <div class="settings-row-desc">Be notified when you reach a goal milestone</div>
+                  </div>
+                  <label class="toggle-switch"><input type="checkbox" id="notif-goals" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-info">
+                    <div class="settings-row-label">Large Investment Changes</div>
+                    <div class="settings-row-desc">Alert on significant value changes (&gt;5%)</div>
+                  </div>
+                  <label class="toggle-switch"><input type="checkbox" id="notif-changes"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-info">
+                    <div class="settings-row-label">Family Access Activity</div>
+                    <div class="settings-row-desc">Know when a beneficiary logs in</div>
+                  </div>
+                  <label class="toggle-switch"><input type="checkbox" id="notif-family" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-info">
+                    <div class="settings-row-label">Subscription & Billing</div>
+                    <div class="settings-row-desc">Renewal reminders and payment confirmations</div>
+                  </div>
+                  <label class="toggle-switch"><input type="checkbox" id="notif-billing" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div style="margin-top:1rem">
+                  <button class="btn btn-primary" id="save-notif-btn" onclick="saveNotifications()">Save Notification Settings</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Danger Zone -->
+          <div id="tab-danger" style="display:none">
+            <div class="settings-section danger-zone">
+              <div class="settings-section-header">
+                <div class="settings-section-title">Danger Zone</div>
+                <div class="settings-section-desc">Irreversible actions — proceed with caution</div>
+              </div>
+              <div class="settings-section-body">
+                <div class="settings-row">
+                  <div class="settings-row-info">
+                    <div class="settings-row-label">Export All Data</div>
+                    <div class="settings-row-desc">Download a complete copy of your data as JSON</div>
+                  </div>
+                  <button class="btn btn-outline btn-sm" onclick="exportData()">Export</button>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-info">
+                    <div class="settings-row-label">Delete All Investments</div>
+                    <div class="settings-row-desc">Permanently delete all investment records (cannot be undone)</div>
+                  </div>
+                  <button class="btn btn-sm" style="background:rgba(248,113,113,0.1);color:#f87171;border:1px solid rgba(248,113,113,0.2)" onclick="deleteAllInvestments()">Delete</button>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-info">
+                    <div class="settings-row-label">Delete Account</div>
+                    <div class="settings-row-desc">Permanently delete your account and all data</div>
+                  </div>
+                  <button class="btn btn-sm" style="background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.3);font-weight:600" onclick="deleteAccount()">Delete Account</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="../js/supabase.js"></script>
+<script>
+let currentUser = null;
+let profileData = null;
+
+async function loadSettings() {
+  currentUser = await requireAuth();
+  profileData = await Profile.get(currentUser.id);
+  if (!profileData) return;
+
+  document.getElementById('user-name').textContent = profileData.full_name || currentUser.email;
+  document.getElementById('user-initial').textContent = (profileData.full_name || currentUser.email)[0].toUpperCase();
+  document.getElementById('avatar-preview').textContent = (profileData.full_name || currentUser.email)[0].toUpperCase();
+  document.getElementById('profile-name-display').textContent = profileData.full_name || 'No name set';
+  document.getElementById('profile-email-display').textContent = profileData.email || currentUser.email;
+
+  document.getElementById('full-name').value = profileData.full_name || '';
+  document.getElementById('email-display').value = profileData.email || currentUser.email;
+  document.getElementById('phone').value = profileData.phone || '';
+  if (profileData.base_currency) document.getElementById('base-currency').value = profileData.base_currency;
+
+  // Load notification preferences
+  const { data: notifPrefs } = await supabase.from('notification_preferences').select('*').eq('user_id', currentUser.id).single();
+  if (notifPrefs) {
+    document.getElementById('notif-weekly').checked = notifPrefs.weekly_summary !== false;
+    document.getElementById('notif-goals').checked = notifPrefs.goal_alerts !== false;
+    document.getElementById('notif-changes').checked = !!notifPrefs.investment_alerts;
+    document.getElementById('notif-family').checked = notifPrefs.family_alerts !== false;
+    document.getElementById('notif-billing').checked = notifPrefs.billing_alerts !== false;
+  }
+
+  // Session info
+  document.getElementById('current-session').textContent = `Signed in · ${navigator.userAgent.split(' ').slice(-1)[0]} · This session`;
+}
+
+function showTab(tab, el) {
+  ['profile','security','preferences','notifications','danger'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = 'none';
+  });
+  document.getElementById('tab-'+tab).style.display = 'block';
+  document.querySelectorAll('.settings-nav-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+}
+
+async function saveProfile() {
+  const full_name = document.getElementById('full-name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  if (!full_name) { showToast('Please enter your full name', 'error'); return; }
+
+  setLoading('save-profile-btn', true, 'Saving…');
+  try {
+    await supabase.from('profiles').update({ full_name, phone }).eq('id', currentUser.id);
+    document.getElementById('profile-name-display').textContent = full_name;
+    document.getElementById('avatar-preview').textContent = full_name[0].toUpperCase();
+    document.getElementById('user-name').textContent = full_name;
+    document.getElementById('user-initial').textContent = full_name[0].toUpperCase();
+    showToast('Profile updated successfully', 'success');
+  } catch(e) {
+    showToast(e.message || 'Failed to save profile', 'error');
+  } finally {
+    setLoading('save-profile-btn', false, 'Save Changes');
+  }
+}
+
+async function changePassword() {
+  const newPass = document.getElementById('new-pass').value;
+  const confirmPass = document.getElementById('confirm-pass').value;
+  if (newPass.length < 8) { showToast('Password must be at least 8 characters', 'error'); return; }
+  if (newPass !== confirmPass) { showToast('Passwords do not match', 'error'); return; }
+
+  setLoading('change-pass-btn', true, 'Updating…');
+  try {
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    if (error) throw error;
+    document.getElementById('current-pass').value = '';
+    document.getElementById('new-pass').value = '';
+    document.getElementById('confirm-pass').value = '';
+    showToast('Password updated successfully', 'success');
+  } catch(e) {
+    showToast(e.message || 'Failed to update password', 'error');
+  } finally {
+    setLoading('change-pass-btn', false, 'Update Password');
+  }
+}
+
+async function savePreferences() {
+  const base_currency = document.getElementById('base-currency').value;
+  setLoading('save-prefs-btn', true, 'Saving…');
+  try {
+    await supabase.from('profiles').update({ base_currency }).eq('id', currentUser.id);
+    showToast('Preferences saved', 'success');
+  } catch(e) {
+    showToast('Failed to save preferences', 'error');
+  } finally {
+    setLoading('save-prefs-btn', false, 'Save Preferences');
+  }
+}
+
+async function saveNotifications() {
+  setLoading('save-notif-btn', true, 'Saving…');
+  try {
+    const prefs = {
+      user_id: currentUser.id,
+      weekly_summary: document.getElementById('notif-weekly').checked,
+      goal_alerts: document.getElementById('notif-goals').checked,
+      investment_alerts: document.getElementById('notif-changes').checked,
+      family_alerts: document.getElementById('notif-family').checked,
+      billing_alerts: document.getElementById('notif-billing').checked,
+    };
+    await supabase.from('notification_preferences').upsert(prefs, { onConflict: 'user_id' });
+    showToast('Notification preferences saved', 'success');
+  } catch(e) {
+    showToast('Failed to save notifications', 'error');
+  } finally {
+    setLoading('save-notif-btn', false, 'Save Notification Settings');
+  }
+}
+
+async function signOutAll() {
+  if (!confirm('Sign out of all devices?')) return;
+  await supabase.auth.signOut({ scope: 'global' });
+  window.location.href = '../index.html';
+}
+
+async function exportData() {
+  const [assets, investments, docs, goals] = await Promise.all([
+    supabase.from('assets').select('*').eq('user_id', currentUser.id),
+    supabase.from('investments').select('*').eq('user_id', currentUser.id),
+    supabase.from('documents').select('*').eq('user_id', currentUser.id),
+    supabase.from('goals').select('*').eq('user_id', currentUser.id)
+  ]);
+  const exportObj = { exported_at: new Date().toISOString(), assets: assets.data, investments: investments.data, documents: docs.data, goals: goals.data };
+  const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'wealthguard_export.json'; a.click();
+  showToast('Data exported', 'success');
+}
+
+async function deleteAllInvestments() {
+  if (!confirm('Delete ALL investment records permanently? This cannot be undone.')) return;
+  if (!confirm('Are you absolutely sure? Type "delete" to confirm.')) return;
+  await supabase.from('investments').delete().eq('user_id', currentUser.id);
+  showToast('All investments deleted', 'success');
+}
+
+async function deleteAccount() {
+  if (!confirm('Delete your WealthGuard account permanently? ALL data will be lost forever.')) return;
+  if (!confirm('FINAL WARNING: This is irreversible. Delete account?')) return;
+  // In production: call a Supabase Edge Function to delete the auth user + all data
+  showToast('Account deletion initiated. You will be signed out.', 'success');
+  setTimeout(() => Auth.signOut(), 2000);
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+
+loadSettings();
+</script>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assets — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+
+    .asset-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+    }
+
+    .asset-card:hover {
+      border-color: rgba(212,175,55,0.3);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-gold);
+    }
+
+    .asset-type-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--gold-muted);
+      display: grid;
+      place-items: center;
+      font-size: 1.25rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .asset-platform { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem; }
+    .asset-type { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.9rem; }
+
+    .asset-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .asset-meta-item { }
+    .asset-meta-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .asset-meta-value { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-top: 0.1rem; }
+
+    .asset-actions {
+      position: absolute;
+      top: 0.9rem;
+      right: 0.9rem;
+      display: flex;
+      gap: 0.3rem;
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .asset-card:hover .asset-actions { opacity: 1; }
+    .asset-inv-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      color: var(--gold);
+      background: var(--gold-muted);
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-top: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🛡</div>
+      <span class="sidebar-logo-text">WealthGuard</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item active"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="user-initial">R</div>
+        <div>
+          <div class="user-name" id="user-name">Loading...</div>
+          <div class="user-role" id="user-role">investor</div>
+        </div>
+      </div>
+      <button class="nav-item btn-ghost" style="width:100%; margin-top:4px;" onclick="Auth.signOut()">
+        <span class="nav-icon">↩</span> Sign Out
+      </button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div>
+          <div class="page-title">Assets</div>
+          <div class="page-subtitle">Your account containers</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary btn-sm" onclick="openAssetModal()">+ Add Asset</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+      <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;">
+        Assets are account containers (e.g., your Zerodha account, IBKR account). Add investments under each asset.
+      </p>
+
+      <div class="asset-grid" id="asset-grid">
+        <div class="skeleton" style="height: 200px; border-radius: 18px;"></div>
+        <div class="skeleton" style="height: 200px; border-radius: 18px;"></div>
+        <div class="skeleton" style="height: 200px; border-radius: 18px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT ASSET MODAL -->
+<div class="modal-backdrop" id="asset-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="asset-modal-title">Add Asset Account</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <form id="asset-form">
+      <input type="hidden" id="asset-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Asset Type <span style="color:var(--red)">*</span></label>
+          <select id="a-type" class="form-control" required>
+            <option value="">Select type…</option>
+            <option>MF</option><option>Stocks</option><option>Crypto</option>
+            <option>FD</option><option>Real Estate</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Platform / App <span style="color:var(--red)">*</span></label>
+          <input type="text" id="a-platform" class="form-control" placeholder="e.g. Zerodha, IBKR" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account Number</label>
+        <input type="text" id="a-account" class="form-control" placeholder="Optional — stored securely">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Currency <span style="color:var(--red)">*</span></label>
+          <select id="a-currency" class="form-control" required>
+            <option value="USD">USD</option>
+            <option value="AED">AED</option>
+            <option value="INR">INR</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Country / Location <span style="color:var(--red)">*</span></label>
+          <input type="text" id="a-country" class="form-control" placeholder="e.g. India, UAE" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea id="a-notes" class="form-control" rows="2" placeholder="Optional notes…"></textarea>
+      </div>
+      <div id="a-form-error" class="form-error" style="display:none; margin-bottom: 0.5rem;"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="a-submit-btn">Save Asset</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+const ASSET_EMOJI = { MF: '🏦', Stocks: '📈', Crypto: '₿', FD: '🏛', 'Real Estate': '🏠', Other: '📦' };
+let allAssets = [];
+let currentUserId = null;
+let editingId = null;
+
+async function init() {
+  const session = await requireAuth();
+  if (!session) return;
+  currentUserId = session.user.id;
+  const { data: profile } = await Profile.get(session.user.id);
+  if (profile) {
+    document.getElementById('user-name').textContent = profile.full_name;
+    document.getElementById('user-initial').textContent = profile.full_name.charAt(0).toUpperCase();
+    document.getElementById('user-role').textContent = profile.role;
+  }
+  if (window.location.hash === '#add') openAssetModal();
+  await loadAssets();
+}
+
+async function loadAssets() {
+  const { data } = await Assets.getAll(currentUserId);
+  allAssets = data || [];
+  renderAssets(allAssets);
+}
+
+function renderAssets(assets) {
+  const grid = document.getElementById('asset-grid');
+  if (assets.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column: 1/-1;">
+        <div class="empty-icon">🏦</div>
+        <div class="empty-title">No assets yet</div>
+        <div class="empty-desc">Add your first asset account to start tracking investments</div>
+        <button class="btn btn-primary" onclick="openAssetModal()">+ Add Asset</button>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = assets.map(a => `
+    <div class="asset-card" onclick="goToInvestments('${a.id}')">
+      <div class="asset-actions">
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="event.stopPropagation(); editAsset('${a.id}')" title="Edit">✏</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation(); deleteAsset('${a.id}')" title="Delete">🗑</button>
+      </div>
+      <div class="asset-type-icon">${ASSET_EMOJI[a.asset_type] || '📦'}</div>
+      <div class="asset-platform">${a.platform_name}</div>
+      <div class="asset-type">${a.asset_type} · ${a.country}</div>
+      <div class="asset-meta">
+        <div class="asset-meta-item">
+          <div class="asset-meta-label">Currency</div>
+          <div class="asset-meta-value">${a.currency}</div>
+        </div>
+        <div class="asset-meta-item">
+          <div class="asset-meta-label">Account #</div>
+          <div class="asset-meta-value">${a.account_number ? '••••' + a.account_number.slice(-4) : '—'}</div>
+        </div>
+      </div>
+      <div class="asset-inv-count">📊 View Investments →</div>
+    </div>
+  `).join('');
+}
+
+function goToInvestments(assetId) {
+  window.location.href = `investments.html?asset=${assetId}`;
+}
+
+function openAssetModal(asset = null) {
+  editingId = asset?.id || null;
+  document.getElementById('asset-modal-title').textContent = asset ? 'Edit Asset' : 'Add Asset Account';
+  document.getElementById('asset-id').value = asset?.id || '';
+  document.getElementById('a-type').value = asset?.asset_type || '';
+  document.getElementById('a-platform').value = asset?.platform_name || '';
+  document.getElementById('a-account').value = asset?.account_number || '';
+  document.getElementById('a-currency').value = asset?.currency || 'USD';
+  document.getElementById('a-country').value = asset?.country || 'United Arab Emirates';
+  document.getElementById('a-notes').value = asset?.notes || '';
+  document.getElementById('a-form-error').style.display = 'none';
+  document.getElementById('asset-modal').classList.add('open');
+}
+
+function editAsset(id) {
+  const a = allAssets.find(x => x.id === id);
+  if (a) openAssetModal(a);
+}
+
+function closeModal() {
+  document.getElementById('asset-modal').classList.remove('open');
+}
+
+document.getElementById('asset-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('a-submit-btn');
+  const errEl = document.getElementById('a-form-error');
+  errEl.style.display = 'none';
+  setLoading(btn, true);
+
+  const payload = {
+    user_id: currentUserId,
+    asset_type: document.getElementById('a-type').value,
+    platform_name: document.getElementById('a-platform').value.trim(),
+    account_number: document.getElementById('a-account').value.trim() || null,
+    currency: document.getElementById('a-currency').value,
+    country: document.getElementById('a-country').value.trim(),
+    notes: document.getElementById('a-notes').value.trim() || null
+  };
+
+  let error;
+  if (editingId) {
+    ({ error } = await Assets.update(editingId, payload));
+  } else {
+    ({ error } = await Assets.create(payload));
+  }
+
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.style.display = 'block';
+    setLoading(btn, false);
+    return;
+  }
+
+  showToast(editingId ? 'Asset updated!' : 'Asset created!', 'success');
+  closeModal();
+  setLoading(btn, false);
+  await loadAssets();
+});
+
+async function deleteAsset(id) {
+  if (!confirm('Delete this asset and all its investments? This cannot be undone.')) return;
+  const { error } = await Assets.delete(id);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('Asset deleted', 'success');
+  await loadAssets();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+init();
+</script>
+</body>
+</html>

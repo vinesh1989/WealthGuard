@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    .net-worth-card {
+      background: linear-gradient(135deg, #161c2a 0%, #1c2436 100%);
+      border: 1px solid rgba(212,175,55,0.2);
+      border-radius: var(--radius-xl);
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .net-worth-card::before {
+      content: '';
+      position: absolute;
+      top: -60px;
+      right: -60px;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .net-worth-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .net-worth-value {
+      font-family: var(--font-mono);
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
+
+    .net-worth-change {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .currency-breakdown {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .currency-chip {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.9rem;
+    }
+
+    .currency-chip-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .currency-chip-val { font-family: var(--font-mono); font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
+
+    .performers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    .performer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+    }
+
+    .performer-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    .performer-name {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .performer-platform { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+
+    .recent-activity { margin-top: 0.5rem; }
+    .activity-item {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+    .activity-info { flex: 1; }
+    .activity-name { font-size: 0.875rem; font-weight: 500; color: var(--text-primary); }
+    .activity-date { font-size: 0.75rem; color: var(--text-muted); }
+    .activity-amount { font-family: var(--font-mono); font-size: 0.875rem; text-align: right; }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .quick-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1rem 0.75rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .quick-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(212,175,55,0.3);
+      transform: translateY(-2px);
+    }
+
+    .quick-btn-icon { font-size: 1.4rem; }
+    .quick-btn-label { font-size: 0.73rem; font-weight: 600; color: var(--text-secondary); }
+
+    @media (max-width: 700px) {
+      .performers-grid { grid-template-columns: 1fr; }
+      .quick-actions { grid-template-columns: repeat(2, 1fr); }
+      .pie-chart-wrap { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🛡</div>
+      <span class="sidebar-logo-text">WealthGuard</span>
+    </div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item active"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+
+      <span class="nav-section-label">Planning</span>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+
+      <span class="nav-section-label">Reports</span>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user" id="sidebar-user">
+        <div class="user-avatar" id="user-initial">R</div>
+        <div>
+          <div class="user-name" id="user-name">Loading...</div>
+          <div class="user-role" id="user-role">investor</div>
+        </div>
+      </div>
+      <button class="nav-item btn-ghost" style="width:100%; margin-top:4px;" onclick="Auth.signOut()">
+        <span class="nav-icon">↩</span> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- Main -->
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle" id="greeting-date">Good morning, Loading…</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="notif-btn" id="notif-btn" onclick="window.location.href='notifications.html'">
+          🔔
+          <span class="notif-dot" id="notif-dot" style="display:none"></span>
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="window.location.href='investments.html#add'">+ Add Investment</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+      <!-- Trial Banner -->
+      <div class="trial-banner" id="trial-banner" style="display:none">
+        <span class="trial-text">⏰ Your free trial ends in <strong id="trial-days">7</strong> days</span>
+        <a href="subscription.html" class="btn btn-primary btn-sm">Upgrade Now</a>
+      </div>
+
+      <!-- Net Worth Hero -->
+      <div class="net-worth-card">
+        <div class="net-worth-label">Total Net Worth</div>
+        <div class="net-worth-value" id="net-worth">$0.00</div>
+        <div class="net-worth-change">
+          <span id="total-gain" class="gain" style="font-size: 0.875rem; font-weight: 600;"></span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);" id="invest-count">0 investments</span>
+        </div>
+        <div class="currency-breakdown" id="currency-breakdown">
+          <div class="currency-chip"><div class="currency-chip-label">Loading...</div></div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <a href="assets.html#add" class="quick-btn">
+          <span class="quick-btn-icon">🏦</span>
+          <span class="quick-btn-label">Add Asset</span>
+        </a>
+        <a href="investments.html#add" class="quick-btn">
+          <span class="quick-btn-icon">📈</span>
+          <span class="quick-btn-label">Add Investment</span>
+        </a>
+        <a href="import.html" class="quick-btn">
+          <span class="quick-btn-icon">⬆</span>
+          <span class="quick-btn-label">Import CSV</span>
+        </a>
+        <a href="reports.html" class="quick-btn">
+          <span class="quick-btn-icon">📄</span>
+          <span class="quick-btn-label">Export Report</span>
+        </a>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="grid-4" style="margin-bottom: 1.5rem;">
+        <div class="stat-card">
+          <div class="stat-card-icon icon-gold">📈</div>
+          <div class="card-title">Total Invested</div>
+          <div class="card-value display-num" id="stat-invested">$0</div>
+          <div class="card-meta">Across all assets</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-icon icon-green">💰</div>
+          <div class="card-title">Current Value</div>
+          <div class="card-value display-num" id="stat-current">$0</div>
+          <div class="card-meta">Mark-to-market</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-icon icon-blue">📊</div>
+          <div class="card-title">Assets</div>
+          <div class="card-value display-num" id="stat-assets">0</div>
+          <div class="card-meta">Active accounts</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-icon icon-red">🎯</div>
+          <div class="card-title">Active Goals</div>
+          <div class="card-value display-num" id="stat-goals">0</div>
+          <div class="card-meta">In progress</div>
+        </div>
+      </div>
+
+      <!-- Charts + Performers Row -->
+      <div class="grid-2" style="margin-bottom: 1.5rem; align-items: start;">
+        <!-- Allocation Chart -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Asset Allocation</div>
+            <span class="badge badge-muted" id="alloc-total-badge">—</span>
+          </div>
+          <div class="pie-chart-wrap" id="pie-wrap">
+            <canvas id="allocChart" width="160" height="160" style="max-width:160px; max-height:160px;"></canvas>
+            <div class="legend-list" id="alloc-legend">
+              <div class="skeleton" style="height: 16px; width: 80%;"></div>
+              <div class="skeleton" style="height: 16px; width: 60%;"></div>
+              <div class="skeleton" style="height: 16px; width: 70%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top / Worst Performers -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Performance Highlights</div>
+          </div>
+          <div class="performers-grid">
+            <div class="performer-card">
+              <div class="performer-label" style="color: var(--green);">🏆 Top Performer</div>
+              <div class="performer-name" id="top-name">—</div>
+              <div class="performer-platform" id="top-platform">—</div>
+              <div class="gain" id="top-return" style="font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600;">—</div>
+            </div>
+            <div class="performer-card">
+              <div class="performer-label" style="color: var(--red);">⚠ Worst Performer</div>
+              <div class="performer-name" id="worst-name">—</div>
+              <div class="performer-platform" id="worst-platform">—</div>
+              <div class="loss" id="worst-return" style="font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600;">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Investments -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Recent Investments</div>
+          <a href="investments.html" class="btn btn-ghost btn-sm">View All →</a>
+        </div>
+        <div id="recent-list">
+          <div class="skeleton" style="height: 56px; margin-bottom: 8px; border-radius: 8px;"></div>
+          <div class="skeleton" style="height: 56px; margin-bottom: 8px; border-radius: 8px;"></div>
+          <div class="skeleton" style="height: 56px; border-radius: 8px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+const ASSET_COLORS = {
+  'MF': '#d4af37',
+  'Stocks': '#60a5fa',
+  'Crypto': '#a78bfa',
+  'FD': '#34d399',
+  'Real Estate': '#f97316',
+  'Other': '#6b7280'
+};
+
+let chartInstance = null;
+
+async function init() {
+  const session = await requireAuth();
+  if (!session) return;
+
+  const { data: profile } = await Profile.get(session.user.id);
+  if (!profile) return;
+
+  // Update UI
+  document.getElementById('user-name').textContent = profile.full_name;
+  document.getElementById('user-role').textContent = profile.role;
+  document.getElementById('user-initial').textContent = profile.full_name.charAt(0).toUpperCase();
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting-date').textContent = `${greeting}, ${profile.full_name.split(' ')[0]}`;
+
+  // Trial banner
+  if (profile.subscription_status === 'trial') {
+    const daysLeft = Math.ceil((new Date(profile.trial_ends_at) - new Date()) / 86400000);
+    if (daysLeft > 0) {
+      document.getElementById('trial-days').textContent = daysLeft;
+      document.getElementById('trial-banner').style.display = 'flex';
+    }
+  }
+
+  // Notifications
+  const notifs = await Notifications.getUnread(session.user.id);
+  if (notifs.length > 0) document.getElementById('notif-dot').style.display = 'block';
+
+  // Load data
+  await loadDashboard(session.user.id, profile.base_currency || 'USD');
+}
+
+async function loadDashboard(userId, baseCurrency) {
+  const rates = await ExchangeRates.getAll();
+
+  // Get portfolio summary
+  const { data: summary } = await Investments.getPortfolioSummary(userId);
+  const { data: perf } = await Investments.getPerformance(userId);
+  const { data: allInvestments } = await Investments.getAll(userId);
+  const { data: assets } = await Assets.getAll(userId);
+  const { data: goals } = await Goals.getAll(userId);
+
+  // Calculate totals
+  let totalInvested = 0, totalCurrent = 0;
+  const currencyMap = {};
+  const assetTypeMap = {};
+
+  (summary || []).forEach(row => {
+    const invested = ExchangeRates.convert(parseFloat(row.total_invested || 0), row.currency, baseCurrency, rates);
+    const current = ExchangeRates.convert(parseFloat(row.total_current_value || 0), row.currency, baseCurrency, rates);
+    totalInvested += invested;
+    totalCurrent += current;
+
+    // Currency breakdown
+    if (!currencyMap[row.currency]) currencyMap[row.currency] = { invested: 0, current: 0 };
+    currencyMap[row.currency].invested += parseFloat(row.total_invested || 0);
+    currencyMap[row.currency].current += parseFloat(row.total_current_value || 0);
+
+    // Asset type for pie
+    const type = row.asset_type;
+    if (!assetTypeMap[type]) assetTypeMap[type] = 0;
+    assetTypeMap[type] += current;
+  });
+
+  const totalGain = totalCurrent - totalInvested;
+  const gainPct = totalInvested > 0 ? (totalGain / totalInvested * 100) : 0;
+
+  // Net worth
+  document.getElementById('net-worth').textContent = formatCurrency(totalCurrent, baseCurrency);
+  document.getElementById('stat-invested').textContent = formatCurrency(totalInvested, baseCurrency);
+  document.getElementById('stat-current').textContent = formatCurrency(totalCurrent, baseCurrency);
+  document.getElementById('stat-assets').textContent = (assets || []).length;
+  document.getElementById('stat-goals').textContent = (goals || []).filter(g => !g.is_achieved).length;
+  document.getElementById('invest-count').textContent = `${(allInvestments || []).length} investments`;
+
+  const gainEl = document.getElementById('total-gain');
+  gainEl.textContent = `${totalGain >= 0 ? '+' : ''}${formatCurrency(totalGain, baseCurrency)} (${formatPercent(gainPct)})`;
+  gainEl.className = totalGain >= 0 ? 'gain' : 'loss';
+
+  // Currency breakdown chips
+  const bkEl = document.getElementById('currency-breakdown');
+  bkEl.innerHTML = Object.entries(currencyMap).map(([cur, vals]) => `
+    <div class="currency-chip">
+      <div class="currency-chip-label">${cur}</div>
+      <div class="currency-chip-val">${formatCurrency(vals.current, cur)}</div>
+    </div>
+  `).join('') || '<div style="color:var(--text-muted); font-size: 0.85rem;">No investments yet</div>';
+
+  // Pie chart
+  renderAllocationChart(assetTypeMap);
+  document.getElementById('alloc-total-badge').textContent = formatCurrency(totalCurrent, baseCurrency);
+
+  // Performers
+  if (perf && perf.length > 0) {
+    const top = perf[0];
+    const worst = perf[perf.length - 1];
+    document.getElementById('top-name').textContent = top.investment_name;
+    document.getElementById('top-platform').textContent = `${top.asset_type} · ${top.platform_name}`;
+    document.getElementById('top-return').textContent = formatPercent(top.return_pct);
+
+    document.getElementById('worst-name').textContent = worst.investment_name;
+    document.getElementById('worst-platform').textContent = `${worst.asset_type} · ${worst.platform_name}`;
+    document.getElementById('worst-return').textContent = formatPercent(worst.return_pct);
+  }
+
+  // Recent investments
+  const recent = (allInvestments || []).slice(0, 5);
+  const recentEl = document.getElementById('recent-list');
+  if (recent.length === 0) {
+    recentEl.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <div class="empty-title">No investments yet</div>
+        <div class="empty-desc">Add your first investment to start tracking</div>
+        <a href="investments.html#add" class="btn btn-primary">Add Investment</a>
+      </div>`;
+    return;
+  }
+
+  recentEl.innerHTML = recent.map(inv => {
+    const gl = inv.current_value - inv.amount_invested;
+    const glPct = inv.amount_invested > 0 ? (gl / inv.amount_invested * 100) : 0;
+    return `
+    <div class="activity-item">
+      <div class="activity-icon icon-${inv.assets?.asset_type === 'Stocks' ? 'blue' : inv.assets?.asset_type === 'Crypto' ? 'purple' : 'gold'}" style="background: var(--gold-muted);">
+        ${getAssetEmoji(inv.assets?.asset_type)}
+      </div>
+      <div class="activity-info">
+        <div class="activity-name">${inv.investment_name}</div>
+        <div class="activity-date">${inv.assets?.platform_name} · ${inv.assets?.asset_type}</div>
+      </div>
+      <div class="activity-amount">
+        <div style="color: var(--text-primary); font-weight: 600;">${formatCurrency(inv.current_value, inv.currency)}</div>
+        <div class="${gl >= 0 ? 'gain' : 'loss'}" style="font-size: 0.75rem;">${formatPercent(glPct)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAllocationChart(assetTypeMap) {
+  const labels = Object.keys(assetTypeMap);
+  const values = Object.values(assetTypeMap);
+  const colors = labels.map(l => ASSET_COLORS[l] || '#6b7280');
+  const total = values.reduce((a, b) => a + b, 0);
+
+  if (chartInstance) chartInstance.destroy();
+
+  const ctx = document.getElementById('allocChart').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderColor: '#161c2a',
+        borderWidth: 3,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '72%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.label}: ${((ctx.raw / total) * 100).toFixed(1)}%`
+          }
+        }
+      }
+    }
+  });
+
+  // Legend
+  const legendEl = document.getElementById('alloc-legend');
+  legendEl.innerHTML = labels.map((label, i) => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background: ${colors[i]};"></div>
+      <span class="legend-label">${label}</span>
+      <span class="legend-value">${((values[i] / total) * 100).toFixed(1)}%</span>
+    </div>
+  `).join('');
+}
+
+function getAssetEmoji(type) {
+  const map = { MF: '🏦', Stocks: '📈', Crypto: '₿', FD: '🏛', 'Real Estate': '🏠', Other: '📦' };
+  return map[type] || '💼';
+}
+
+// Sidebar
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+init();
+</script>
+</body>
+</html>

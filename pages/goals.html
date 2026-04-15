@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Goals — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .goal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      transition: all var(--transition);
+    }
+    .goal-card:hover { border-color: rgba(212,175,55,0.25); }
+    .goal-header { display: flex; justify-content: space-between; margin-bottom: 0.9rem; }
+    .goal-name { font-weight: 700; color: var(--text-primary); font-size: 1rem; }
+    .goal-type { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .goal-amounts { display: flex; justify-content: space-between; margin-bottom: 0.6rem; font-size: 0.82rem; }
+    .goal-pct { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 600; color: var(--gold); margin-bottom: 0.5rem; }
+    .goal-deadline { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .goal-achieved { border-color: rgba(52,211,153,0.3); }
+    .goal-achieved .goal-pct { color: var(--green); }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <a href="goals.html" class="nav-item active"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="user-initial">R</div>
+        <div><div class="user-name" id="user-name">Loading...</div><div class="user-role">investor</div></div>
+      </div>
+      <button class="nav-item btn-ghost" style="width:100%; margin-top:4px;" onclick="Auth.signOut()">↩ Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div><div class="page-title">Goals</div><div class="page-subtitle">Track financial milestones</div></div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary btn-sm" onclick="openGoalModal()">+ Add Goal</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+      <div class="grid-auto" id="goals-grid">
+        <div class="skeleton" style="height:200px; border-radius: 18px;"></div>
+        <div class="skeleton" style="height:200px; border-radius: 18px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GOAL MODAL -->
+<div class="modal-backdrop" id="goal-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="goal-modal-title">Add Goal</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <form id="goal-form">
+      <input type="hidden" id="goal-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Goal Type <span style="color:var(--red)">*</span></label>
+          <select id="g-type" class="form-control" required>
+            <option>Retirement</option><option>Kids Education</option>
+            <option>Emergency Fund</option><option>Property</option>
+            <option>Travel</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Goal Name <span style="color:var(--red)">*</span></label>
+          <input type="text" id="g-name" class="form-control" placeholder="e.g. Retire at 55" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Target Amount <span style="color:var(--red)">*</span></label>
+          <input type="number" id="g-target" class="form-control" placeholder="0.00" step="0.01" min="0" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Current Amount</label>
+          <input type="number" id="g-current" class="form-control" placeholder="0.00" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Currency <span style="color:var(--red)">*</span></label>
+          <select id="g-currency" class="form-control">
+            <option value="USD">USD</option><option value="AED">AED</option>
+            <option value="INR">INR</option><option value="EUR">EUR</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Date</label>
+          <input type="date" id="g-date" class="form-control">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="g-desc" class="form-control" rows="2" placeholder="Optional notes…"></textarea>
+      </div>
+      <div id="g-error" class="form-error" style="display:none; margin-bottom: 0.5rem;"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="g-submit">Save Goal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+const GOAL_EMOJI = { Retirement: '🏖', 'Kids Education': '🎓', 'Emergency Fund': '🛡', Property: '🏠', Travel: '✈', Other: '🎯' };
+let allGoals = [];
+let currentUserId = null;
+let editingId = null;
+
+async function init() {
+  const session = await requireAuth();
+  if (!session) return;
+  currentUserId = session.user.id;
+  const { data: profile } = await Profile.get(session.user.id);
+  if (profile) {
+    document.getElementById('user-name').textContent = profile.full_name;
+    document.getElementById('user-initial').textContent = profile.full_name.charAt(0).toUpperCase();
+  }
+  await loadGoals();
+}
+
+async function loadGoals() {
+  const { data } = await Goals.getAll(currentUserId);
+  allGoals = data || [];
+  renderGoals(allGoals);
+}
+
+function renderGoals(goals) {
+  const grid = document.getElementById('goals-grid');
+  if (goals.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+      <div class="empty-icon">🎯</div>
+      <div class="empty-title">No goals yet</div>
+      <div class="empty-desc">Set financial goals to track your progress</div>
+      <button class="btn btn-primary" onclick="openGoalModal()">+ Add Goal</button>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = goals.map(g => {
+    const pct = g.target_amount > 0 ? Math.min((g.current_amount / g.target_amount) * 100, 100) : 0;
+    const daysLeft = g.target_date ? Math.ceil((new Date(g.target_date) - new Date()) / 86400000) : null;
+    return `
+    <div class="goal-card ${g.is_achieved ? 'goal-achieved' : ''}">
+      <div class="goal-header">
+        <div>
+          <div class="goal-type">${GOAL_EMOJI[g.goal_type]} ${g.goal_type}</div>
+          <div class="goal-name">${g.name}</div>
+        </div>
+        <div style="display:flex; gap:0.35rem;">
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="editGoal('${g.id}')">✏</button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteGoal('${g.id}')">🗑</button>
+        </div>
+      </div>
+      <div class="goal-pct">${pct.toFixed(1)}%</div>
+      <div class="progress-bar" style="margin-bottom: 0.6rem;">
+        <div class="progress-fill" style="width: ${pct}%"></div>
+      </div>
+      <div class="goal-amounts">
+        <span style="color: var(--text-muted);">${formatCurrency(g.current_amount, g.currency)}</span>
+        <span style="color: var(--text-primary); font-weight: 600;">${formatCurrency(g.target_amount, g.currency)}</span>
+      </div>
+      ${daysLeft !== null ? `<div class="goal-deadline">${daysLeft > 0 ? `${daysLeft} days remaining` : 'Past deadline'}</div>` : ''}
+      ${g.is_achieved ? '<div style="color: var(--green); font-size: 0.8rem; font-weight: 600; margin-top: 0.5rem;">✓ Goal Achieved!</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function openGoalModal(g = null) {
+  editingId = g?.id || null;
+  document.getElementById('goal-modal-title').textContent = g ? 'Edit Goal' : 'Add Goal';
+  document.getElementById('goal-id').value = g?.id || '';
+  document.getElementById('g-type').value = g?.goal_type || 'Retirement';
+  document.getElementById('g-name').value = g?.name || '';
+  document.getElementById('g-target').value = g?.target_amount || '';
+  document.getElementById('g-current').value = g?.current_amount || '';
+  document.getElementById('g-currency').value = g?.currency || 'USD';
+  document.getElementById('g-date').value = g?.target_date || '';
+  document.getElementById('g-desc').value = g?.description || '';
+  document.getElementById('g-error').style.display = 'none';
+  document.getElementById('goal-modal').classList.add('open');
+}
+
+function editGoal(id) {
+  const g = allGoals.find(x => x.id === id);
+  if (g) openGoalModal(g);
+}
+
+function closeModal() {
+  document.getElementById('goal-modal').classList.remove('open');
+}
+
+document.getElementById('goal-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('g-submit');
+  const errEl = document.getElementById('g-error');
+  errEl.style.display = 'none';
+  setLoading(btn, true);
+
+  const payload = {
+    user_id: currentUserId,
+    goal_type: document.getElementById('g-type').value,
+    name: document.getElementById('g-name').value.trim(),
+    target_amount: parseFloat(document.getElementById('g-target').value),
+    current_amount: parseFloat(document.getElementById('g-current').value) || 0,
+    currency: document.getElementById('g-currency').value,
+    target_date: document.getElementById('g-date').value || null,
+    description: document.getElementById('g-desc').value || null
+  };
+
+  let error;
+  if (editingId) {
+    ({ error } = await Goals.update(editingId, payload));
+  } else {
+    ({ error } = await Goals.create(payload));
+  }
+
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; setLoading(btn, false); return; }
+  showToast(editingId ? 'Goal updated!' : 'Goal added!', 'success');
+  closeModal();
+  setLoading(btn, false);
+  await loadGoals();
+});
+
+async function deleteGoal(id) {
+  if (!confirm('Delete this goal?')) return;
+  const { error } = await Goals.delete(id);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('Goal deleted', 'success');
+  await loadGoals();
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+init();
+</script>
+</body>
+</html>

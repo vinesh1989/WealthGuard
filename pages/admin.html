@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .admin-tabs { display: flex; gap: 0.25rem; margin-bottom: 1.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0.3rem; }
+    .admin-tab { flex: 1; text-align: center; padding: 0.6rem; border-radius: var(--radius-md); font-size: 0.85rem; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
+    .admin-tab.active { background: var(--gold-muted); color: var(--gold); font-weight: 600; }
+
+    .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.1rem; }
+    .stat-box-val { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 700; color: var(--text-primary); }
+    .stat-box-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.25rem; }
+
+    .user-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.1s; }
+    .user-row:last-child { border-bottom: none; }
+    .user-row:hover { background: rgba(255,255,255,0.02); }
+    .user-avatar-sm { width: 36px; height: 36px; border-radius: 50%; background: var(--gold-muted); color: var(--gold); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
+    .user-row-info { flex: 1; min-width: 0; }
+    .user-row-name { font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-row-email { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-row-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .user-row-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+
+    .access-select { background: var(--bg-input); border: 1px solid var(--border-input); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.78rem; padding: 0.3rem 0.5rem; cursor: pointer; }
+
+    .coupon-form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.75rem; align-items: end; margin-bottom: 1.5rem; }
+    .coupon-row-item { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .coupon-row-item:last-child { border-bottom: none; }
+
+    .admin-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.25rem; }
+    .admin-section-header { padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .admin-section-title { font-weight: 600; font-size: 0.9rem; }
+
+    .search-bar-inline { display: flex; align-items: center; gap: 0.5rem; background: var(--bg-input); border: 1px solid var(--border-input); border-radius: var(--radius-md); padding: 0.4rem 0.75rem; }
+    .search-bar-inline input { background: none; border: none; outline: none; color: var(--text-primary); font-size: 0.82rem; width: 180px; }
+
+    @media (max-width: 700px) {
+      .stat-row { grid-template-columns: 1fr 1fr; }
+      .coupon-form { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 480px) {
+      .stat-row { grid-template-columns: 1fr 1fr; }
+      .admin-tabs { overflow-x: auto; }
+      .admin-tab { white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <span class="nav-section-label">Admin</span>
+      <a href="admin.html" class="nav-item active"><span class="nav-icon">🔧</span> Admin Panel</a>
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user"><div class="user-avatar" id="user-initial">A</div><div><div class="user-name" id="user-name">Admin</div><div class="user-role">admin</div></div></div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()"><span class="nav-icon">↩</span> Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div><div class="page-title">Admin Panel</div><div class="page-subtitle">Manage users, subscriptions & access</div></div>
+      </div>
+      <div class="topbar-actions">
+        <span class="badge badge-warning" style="font-size:0.75rem;padding:0.3rem 0.8rem">Admin Mode</span>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+
+      <!-- Stats -->
+      <div class="stat-row">
+        <div class="stat-box"><div class="stat-box-val" id="st-total">—</div><div class="stat-box-label">Total Users</div></div>
+        <div class="stat-box"><div class="stat-box-val" id="st-active" style="color:#34d399">—</div><div class="stat-box-label">Active Subs</div></div>
+        <div class="stat-box"><div class="stat-box-val" id="st-trial" style="color:var(--gold)">—</div><div class="stat-box-label">On Trial</div></div>
+        <div class="stat-box"><div class="stat-box-val" id="st-expired" style="color:#f87171">—</div><div class="stat-box-label">Expired</div></div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="admin-tabs">
+        <div class="admin-tab active" onclick="showAdminTab('users', this)">👥 Users</div>
+        <div class="admin-tab" onclick="showAdminTab('subscriptions', this)">💳 Subscriptions</div>
+        <div class="admin-tab" onclick="showAdminTab('coupons', this)">🏷 Coupons</div>
+      </div>
+
+      <!-- USERS TAB -->
+      <div id="atab-users">
+        <div class="admin-section">
+          <div class="admin-section-header">
+            <div class="admin-section-title">All Users</div>
+            <div class="search-bar-inline">
+              <span>🔍</span>
+              <input type="text" placeholder="Search users…" oninput="filterUsers(this.value)" id="user-search">
+            </div>
+          </div>
+          <div id="users-list"><div class="loading-state" style="padding:1.5rem">Loading users…</div></div>
+        </div>
+      </div>
+
+      <!-- SUBSCRIPTIONS TAB -->
+      <div id="atab-subscriptions" style="display:none">
+        <div class="admin-section">
+          <div class="admin-section-header">
+            <div class="admin-section-title">Grant Access Manually</div>
+          </div>
+          <div style="padding:1.25rem">
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:0.75rem;align-items:end">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">User Email</label>
+                <input type="email" class="form-input" id="grant-email" placeholder="user@example.com">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Access Level</label>
+                <select class="form-input form-select" id="grant-level">
+                  <option value="annual">Annual Pro (1yr)</option>
+                  <option value="family">Family Plan (1yr)</option>
+                  <option value="trial">Extend Trial (+7 days)</option>
+                  <option value="lifetime">Lifetime Access</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" id="grant-btn" onclick="grantAccess()" style="white-space:nowrap">Grant Access</button>
+            </div>
+          </div>
+        </div>
+        <div class="admin-section">
+          <div class="admin-section-header"><div class="admin-section-title">All Subscriptions</div></div>
+          <div id="subs-list"><div class="loading-state" style="padding:1.5rem">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- COUPONS TAB -->
+      <div id="atab-coupons" style="display:none">
+        <div class="admin-section">
+          <div class="admin-section-header"><div class="admin-section-title">Create Coupon</div></div>
+          <div style="padding:1.25rem">
+            <div class="coupon-form">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Code</label>
+                <input type="text" class="form-input" id="coup-code" placeholder="SUMMER30" style="text-transform:uppercase;font-family:var(--font-mono)">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Discount %</label>
+                <input type="number" class="form-input" id="coup-discount" placeholder="30" min="1" max="100">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Expires</label>
+                <input type="date" class="form-input" id="coup-expires">
+              </div>
+              <button class="btn btn-primary" id="create-coupon-btn" onclick="createCoupon()">Create</button>
+            </div>
+          </div>
+        </div>
+        <div class="admin-section">
+          <div class="admin-section-header"><div class="admin-section-title">Active Coupons</div></div>
+          <div id="coupons-list"><div class="loading-state" style="padding:1.5rem">Loading…</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="../js/supabase.js"></script>
+<script>
+let allUsers = [];
+let allSubs = [];
+let allCoupons = [];
+
+async function loadAdmin() {
+  const user = await requireAuth();
+  const profile = await Profile.get(user.id);
+  if (profile?.role !== 'admin') {
+    showToast('Access denied', 'error');
+    setTimeout(() => window.location.href = 'dashboard.html', 1500);
+    return;
+  }
+  document.getElementById('user-name').textContent = profile.full_name || 'Admin';
+  document.getElementById('user-initial').textContent = (profile.full_name || 'A')[0].toUpperCase();
+
+  loadUsers();
+  loadSubscriptions();
+  loadCoupons();
+}
+
+async function loadUsers() {
+  const { data } = await supabase.from('profiles').select('*, subscriptions(status, plan_id, ends_at)').order('created_at', { ascending: false });
+  allUsers = data || [];
+  updateStats();
+  renderUsers(allUsers);
+}
+
+async function loadSubscriptions() {
+  const { data } = await supabase.from('subscriptions').select('*, profiles(full_name, email)').order('created_at', { ascending: false });
+  allSubs = data || [];
+  renderSubs();
+}
+
+async function loadCoupons() {
+  const { data } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
+  allCoupons = data || [];
+  renderCoupons();
+}
+
+function updateStats() {
+  const subs = allUsers.flatMap(u => u.subscriptions || []);
+  document.getElementById('st-total').textContent = allUsers.length;
+  document.getElementById('st-active').textContent = subs.filter(s => s.status === 'active').length;
+  document.getElementById('st-trial').textContent = subs.filter(s => s.status === 'trial').length;
+  document.getElementById('st-expired').textContent = subs.filter(s => s.status === 'expired' || s.status === 'cancelled').length;
+}
+
+function renderUsers(users) {
+  const list = document.getElementById('users-list');
+  if (!users.length) { list.innerHTML = '<div class="empty-state" style="padding:1.5rem">No users found</div>'; return; }
+  list.innerHTML = users.map(u => {
+    const sub = (u.subscriptions || [])[0];
+    const statusBadge = sub
+      ? `<span class="badge badge-${sub.status === 'active' ? 'success' : sub.status === 'trial' ? 'warning' : 'error'}">${sub.status}</span>`
+      : '<span class="badge">no sub</span>';
+    const initial = (u.full_name || u.email || '?')[0].toUpperCase();
+    return `<div class="user-row">
+      <div class="user-avatar-sm">${initial}</div>
+      <div class="user-row-info">
+        <div class="user-row-name">${u.full_name || '—'}</div>
+        <div class="user-row-email">${u.email || '—'}</div>
+        <div class="user-row-meta">Joined ${new Date(u.created_at).toLocaleDateString('en-GB')} · ${u.role || 'investor'}</div>
+      </div>
+      <div class="user-row-actions">
+        ${statusBadge}
+        <select class="access-select" onchange="changeRole('${u.id}', this.value)">
+          <option ${u.role === 'investor' ? 'selected' : ''} value="investor">Investor</option>
+          <option ${u.role === 'admin' ? 'selected' : ''} value="admin">Admin</option>
+          <option ${u.role === 'beneficiary' ? 'selected' : ''} value="beneficiary">Beneficiary</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" style="color:#f87171;border-color:rgba(248,113,113,0.15)" onclick="revokeUser('${u.id}','${u.email}')">Revoke</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterUsers(q) {
+  const filtered = allUsers.filter(u => !q || (u.full_name || '').toLowerCase().includes(q.toLowerCase()) || (u.email || '').toLowerCase().includes(q.toLowerCase()));
+  renderUsers(filtered);
+}
+
+function renderSubs() {
+  const list = document.getElementById('subs-list');
+  if (!allSubs.length) { list.innerHTML = '<div class="empty-state" style="padding:1.5rem">No subscriptions</div>'; return; }
+  list.innerHTML = allSubs.map(s => {
+    const name = s.profiles?.full_name || s.profiles?.email || '—';
+    return `<div class="user-row">
+      <div class="user-row-info">
+        <div class="user-row-name">${name}</div>
+        <div class="user-row-email">${s.profiles?.email || ''}</div>
+        <div class="user-row-meta">Plan: ${s.plan_id || '—'} · Ends: ${s.ends_at ? new Date(s.ends_at).toLocaleDateString('en-GB') : 'N/A'}</div>
+      </div>
+      <div class="user-row-actions">
+        <span class="badge badge-${s.status === 'active' ? 'success' : s.status === 'trial' ? 'warning' : 'error'}">${s.status}</span>
+        <button class="btn btn-ghost btn-sm" style="color:#f87171" onclick="revokeSub('${s.id}')">Revoke</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderCoupons() {
+  const list = document.getElementById('coupons-list');
+  if (!allCoupons.length) { list.innerHTML = '<div class="empty-state" style="padding:1.5rem">No coupons yet</div>'; return; }
+  list.innerHTML = allCoupons.map(c => `
+    <div class="coupon-row-item">
+      <div>
+        <div style="font-family:var(--font-mono);font-weight:700;color:var(--gold)">${c.code}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted)">${c.discount_percent}% off · Expires ${c.expires_at ? new Date(c.expires_at).toLocaleDateString('en-GB') : 'Never'}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <span class="badge badge-${c.is_active ? 'success' : 'error'}">${c.is_active ? 'Active' : 'Inactive'}</span>
+        <button class="btn btn-ghost btn-sm" onclick="toggleCoupon('${c.id}', ${c.is_active})">${c.is_active ? 'Deactivate' : 'Activate'}</button>
+        <button class="btn btn-ghost btn-sm" style="color:#f87171" onclick="deleteCoupon('${c.id}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+async function changeRole(userId, role) {
+  await supabase.from('profiles').update({ role }).eq('id', userId);
+  showToast('Role updated', 'success');
+}
+
+async function revokeUser(userId, email) {
+  if (!confirm(`Revoke all access for ${email}?`)) return;
+  await supabase.from('subscriptions').update({ status: 'cancelled' }).eq('user_id', userId);
+  showToast('Access revoked', 'success');
+  loadUsers();
+}
+
+async function grantAccess() {
+  const email = document.getElementById('grant-email').value.trim();
+  const level = document.getElementById('grant-level').value;
+  if (!email) { showToast('Enter email', 'error'); return; }
+  setLoading('grant-btn', true, 'Granting…');
+  try {
+    const { data: profile } = await supabase.from('profiles').select('id').eq('email', email).single();
+    if (!profile) throw new Error('User not found');
+    const endDate = new Date();
+    if (level === 'lifetime') endDate.setFullYear(endDate.getFullYear() + 100);
+    else if (level === 'trial') endDate.setDate(endDate.getDate() + 7);
+    else endDate.setFullYear(endDate.getFullYear() + 1);
+    await supabase.from('subscriptions').upsert({
+      user_id: profile.id,
+      plan_id: level,
+      status: level === 'trial' ? 'trial' : 'active',
+      starts_at: new Date().toISOString(),
+      ends_at: endDate.toISOString(),
+      amount_paid: 0
+    }, { onConflict: 'user_id' });
+    showToast(`Access granted to ${email}`, 'success');
+    document.getElementById('grant-email').value = '';
+    loadUsers();
+    loadSubscriptions();
+  } catch(e) {
+    showToast(e.message || 'Failed', 'error');
+  } finally {
+    setLoading('grant-btn', false, 'Grant Access');
+  }
+}
+
+async function revokeSub(subId) {
+  if (!confirm('Revoke this subscription?')) return;
+  await supabase.from('subscriptions').update({ status: 'cancelled' }).eq('id', subId);
+  showToast('Subscription revoked', 'success');
+  loadSubscriptions();
+}
+
+async function createCoupon() {
+  const code = document.getElementById('coup-code').value.trim().toUpperCase();
+  const discount = parseInt(document.getElementById('coup-discount').value);
+  const expires = document.getElementById('coup-expires').value;
+  if (!code || !discount) { showToast('Enter code and discount', 'error'); return; }
+  setLoading('create-coupon-btn', true, 'Creating…');
+  try {
+    await supabase.from('coupons').insert({ code, discount_percent: discount, expires_at: expires || null, is_active: true });
+    showToast(`Coupon ${code} created`, 'success');
+    document.getElementById('coup-code').value = '';
+    document.getElementById('coup-discount').value = '';
+    document.getElementById('coup-expires').value = '';
+    loadCoupons();
+  } catch(e) {
+    showToast(e.message || 'Failed to create coupon', 'error');
+  } finally {
+    setLoading('create-coupon-btn', false, 'Create');
+  }
+}
+
+async function toggleCoupon(id, current) {
+  await supabase.from('coupons').update({ is_active: !current }).eq('id', id);
+  loadCoupons();
+}
+
+async function deleteCoupon(id) {
+  if (!confirm('Delete this coupon?')) return;
+  await supabase.from('coupons').delete().eq('id', id);
+  loadCoupons();
+}
+
+function showAdminTab(tab, el) {
+  ['users','subscriptions','coupons'].forEach(t => document.getElementById('atab-'+t).style.display = 'none');
+  document.getElementById('atab-'+tab).style.display = 'block';
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+
+loadAdmin();
+</script>
+</body>
+</html>

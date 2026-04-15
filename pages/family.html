@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Sharing — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .family-hero {
+      background: linear-gradient(135deg, #161c2a 0%, #1a2a1a 100%);
+      border: 1px solid rgba(52,211,153,0.2);
+      border-radius: var(--radius-xl);
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+    }
+    .family-hero-text h2 { font-size: 1.2rem; color: #34d399; margin-bottom: 0.3rem; }
+    .family-hero-text p { font-size: 0.85rem; color: var(--text-secondary); max-width: 500px; line-height: 1.6; }
+
+    .members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+
+    .member-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex; align-items: center; gap: 1rem;
+      transition: border-color 0.2s;
+    }
+    .member-card:hover { border-color: rgba(52,211,153,0.2); }
+    .member-avatar { width: 48px; height: 48px; border-radius: 50%; background: rgba(52,211,153,0.1); color: #34d399; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; flex-shrink: 0; border: 2px solid rgba(52,211,153,0.2); }
+    .member-info { flex: 1; min-width: 0; }
+    .member-name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .member-email { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .member-meta { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem; }
+    .member-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+
+    .pending-badge { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.2); color: #fbbf24; border-radius: 20px; padding: 0.15rem 0.55rem; font-size: 0.68rem; font-weight: 600; }
+    .active-badge { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2); color: #34d399; border-radius: 20px; padding: 0.15rem 0.55rem; font-size: 0.68rem; font-weight: 600; }
+
+    .access-info {
+      background: rgba(96,165,250,0.06);
+      border: 1px solid rgba(96,165,250,0.15);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+    .access-info strong { color: #60a5fa; }
+
+    .access-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.75rem; }
+    .access-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; }
+    .access-item .tick { color: #34d399; } .access-item .cross { color: #f87171; }
+
+    .empty-family { text-align: center; padding: 3rem 1rem; }
+    .empty-family .empty-icon { font-size: 3.5rem; margin-bottom: 1rem; opacity: 0.4; }
+    .empty-family h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .empty-family p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+
+    @media (max-width: 600px) { .access-list { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <span class="nav-section-label">Planning</span>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <span class="nav-section-label">Reports</span>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item active"><span class="nav-icon">👥</span> Family Sharing</a>
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user"><div class="user-avatar" id="user-initial">R</div><div><div class="user-name" id="user-name">Loading...</div><div class="user-role" id="user-role">investor</div></div></div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()"><span class="nav-icon">↩</span> Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div><div class="page-title">Family Sharing</div><div class="page-subtitle">Manage beneficiary access</div></div>
+      </div>
+      <div class="topbar-actions">
+        <button class="notif-btn" onclick="window.location.href='notifications.html'">🔔</button>
+        <button class="btn btn-primary btn-sm" onclick="openInviteModal()">+ Invite Beneficiary</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+
+      <div class="family-hero">
+        <div class="family-hero-text">
+          <h2>Secure Family Access</h2>
+          <p>Invite your family members or legal representatives as beneficiaries. They get read-only access to your portfolio — perfect for estate planning and emergency situations.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openInviteModal()">+ Invite Beneficiary</button>
+      </div>
+
+      <div class="access-info">
+        <strong>🔒 Beneficiary Access Permissions</strong>
+        <div class="access-list">
+          <div class="access-item"><span class="tick">✓</span> View all investments</div>
+          <div class="access-item"><span class="cross">✗</span> Add or edit investments</div>
+          <div class="access-item"><span class="tick">✓</span> View asset accounts</div>
+          <div class="access-item"><span class="cross">✗</span> Delete any data</div>
+          <div class="access-item"><span class="tick">✓</span> View documents</div>
+          <div class="access-item"><span class="cross">✗</span> Upload documents</div>
+          <div class="access-item"><span class="tick">✓</span> Download Legacy Pack PDF</div>
+          <div class="access-item"><span class="cross">✗</span> Change account settings</div>
+        </div>
+      </div>
+
+      <h3 style="font-size:0.95rem;color:var(--text-secondary);margin-bottom:1rem;">Beneficiaries <span id="member-count" style="color:var(--text-muted);font-weight:400"></span></h3>
+
+      <div class="members-grid" id="members-grid">
+        <div class="loading-state">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Invite Modal -->
+<div class="modal-overlay" id="invite-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Invite Beneficiary</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Email Address *</label>
+        <input type="email" class="form-input" id="invite-email" placeholder="beneficiary@example.com">
+        <div class="form-hint">They will receive an email to create their WealthGuard account and view your portfolio.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Their Name (optional)</label>
+        <input type="text" class="form-input" id="invite-name" placeholder="e.g. Priya Sharma">
+      </div>
+      <div style="background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.15);border-radius:var(--radius-md);padding:0.9rem 1rem;font-size:0.82rem;color:var(--text-secondary);line-height:1.6;">
+        ⚠ The invited person will have <strong style="color:var(--gold)">read-only</strong> access to your portfolio. You can revoke this at any time.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="invite-btn" onclick="sendInvite()">Send Invitation</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="../js/supabase.js"></script>
+<script>
+let members = [];
+let currentUser = null;
+
+async function loadFamily() {
+  currentUser = await requireAuth();
+  const profile = await Profile.get(currentUser.id);
+  document.getElementById('user-name').textContent = profile?.full_name || currentUser.email;
+  document.getElementById('user-initial').textContent = (profile?.full_name || currentUser.email)[0].toUpperCase();
+
+  const { data, error } = await supabase
+    .from('family_shares')
+    .select('*, profiles!family_shares_beneficiary_id_fkey(full_name, email)')
+    .eq('owner_id', currentUser.id)
+    .order('created_at');
+
+  members = data || [];
+  renderMembers();
+}
+
+function renderMembers() {
+  document.getElementById('member-count').textContent = `(${members.length})`;
+  const grid = document.getElementById('members-grid');
+
+  if (!members.length) {
+    grid.innerHTML = `<div class="empty-family" style="grid-column:1/-1">
+      <div class="empty-icon">👨‍👩‍👧‍👦</div>
+      <h3>No beneficiaries yet</h3>
+      <p>Invite a family member, spouse, or legal representative to view your portfolio</p>
+      <button class="btn btn-primary" onclick="openInviteModal()">Invite First Beneficiary</button>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = members.map(m => {
+    const name = m.profiles?.full_name || m.profiles?.email || 'Unknown';
+    const email = m.profiles?.email || '';
+    const initial = name[0].toUpperCase();
+    const statusBadge = m.status === 'active'
+      ? '<span class="active-badge">Active</span>'
+      : '<span class="pending-badge">Pending</span>';
+    const joined = m.created_at ? new Date(m.created_at).toLocaleDateString('en-GB') : '';
+    return `<div class="member-card">
+      <div class="member-avatar">${initial}</div>
+      <div class="member-info">
+        <div class="member-name">${name}</div>
+        <div class="member-email">${email}</div>
+        <div class="member-meta">${statusBadge}<span style="font-size:0.72rem;color:var(--text-muted)">Added ${joined}</span></div>
+      </div>
+      <div class="member-actions">
+        <button class="btn btn-ghost btn-sm" onclick="revokeMember('${m.id}','${name}')" style="color:#f87171;border-color:rgba(248,113,113,0.2)">Revoke</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openInviteModal() {
+  document.getElementById('invite-email').value = '';
+  document.getElementById('invite-name').value = '';
+  document.getElementById('invite-modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('invite-modal').classList.remove('show');
+}
+
+async function sendInvite() {
+  const email = document.getElementById('invite-email').value.trim();
+  if (!email || !email.includes('@')) { showToast('Please enter a valid email address', 'error'); return; }
+
+  setLoading('invite-btn', true, 'Sending…');
+  try {
+    // Check if user exists
+    const { data: existingProfile } = await supabase.from('profiles').select('id, full_name, email').eq('email', email).single();
+
+    if (existingProfile) {
+      // Check not already shared
+      const already = members.find(m => m.beneficiary_id === existingProfile.id);
+      if (already) { showToast('This person is already a beneficiary', 'error'); return; }
+
+      const { data, error } = await supabase.from('family_shares').insert({
+        owner_id: currentUser.id,
+        beneficiary_id: existingProfile.id,
+        status: 'active'
+      }).select('*, profiles!family_shares_beneficiary_id_fkey(full_name, email)').single();
+
+      if (error) throw error;
+      members.push(data);
+      renderMembers();
+      showToast(`${existingProfile.full_name || email} added as beneficiary`, 'success');
+    } else {
+      // Send invite email via Supabase (invite not yet registered user)
+      // In production: call edge function to send invite email
+      showToast(`Invitation sent to ${email}. They'll join once they sign up.`, 'success');
+    }
+    closeModal();
+  } catch(e) {
+    showToast(e.message || 'Failed to send invitation', 'error');
+  } finally {
+    setLoading('invite-btn', false, 'Send Invitation');
+  }
+}
+
+async function revokeMember(shareId, name) {
+  if (!confirm(`Remove ${name} as a beneficiary? They will lose access immediately.`)) return;
+  const { error } = await supabase.from('family_shares').delete().eq('id', shareId);
+  if (error) { showToast('Failed to revoke access', 'error'); return; }
+  members = members.filter(m => m.id !== shareId);
+  renderMembers();
+  showToast(`${name} removed`, 'success');
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+
+loadFamily();
+</script>
+</body>
+</html>

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WealthGuard — Secure Financial Management</title>
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    .hero-split {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--bg-base);
+      overflow: hidden;
+    }
+
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 3rem 4rem;
+      background:
+        radial-gradient(ellipse 70% 60% at 20% 50%, rgba(212,175,55,0.06) 0%, transparent 60%),
+        var(--bg-base);
+      position: relative;
+    }
+
+    .hero-left::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: linear-gradient(to bottom, transparent, var(--border) 30%, var(--border) 70%, transparent);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--gold-muted);
+      border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 20px;
+      padding: 0.3rem 0.85rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--gold);
+      letter-spacing: 0.05em;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4.5vw, 3.2rem);
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+      color: var(--text-primary);
+    }
+
+    .hero-title em {
+      font-style: normal;
+      color: var(--gold);
+    }
+
+    .hero-desc {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+      max-width: 420px;
+    }
+
+    .hero-features {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+
+    .hero-feature {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .hero-feature-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .hero-currencies {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .currency-pill {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* RIGHT PANEL */
+    .hero-right {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+      background: var(--bg-surface);
+    }
+
+    .auth-tabs-wrapper {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .auth-tab-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--bg-input);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      gap: 3px;
+      margin-bottom: 1.75rem;
+    }
+
+    .auth-tab-btn {
+      padding: 0.55rem;
+      border-radius: calc(var(--radius-sm) - 2px);
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: all var(--transition);
+      background: transparent;
+      color: var(--text-muted);
+    }
+
+    .auth-tab-btn.active {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .auth-form-panel { display: none; }
+    .auth-form-panel.active { display: block; animation: fadeSlideUp 0.3s ease; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1.25rem 0;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .terms-note {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 1rem;
+      line-height: 1.5;
+    }
+
+    /* Floating stats cards on hero */
+    .hero-stats {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2.5rem;
+    }
+
+    .hero-stat {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.9rem 1.1rem;
+    }
+
+    .hero-stat-val {
+      font-family: var(--font-mono);
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .hero-stat-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    @media (max-width: 860px) {
+      .hero-split { grid-template-columns: 1fr; }
+      .hero-left { display: none; }
+      .hero-right { min-height: 100vh; padding: 1.5rem 1rem; background: var(--bg-base); }
+    }
+  </style>
+</head>
+<body>
+  <div class="hero-split">
+    <!-- LEFT: Marketing -->
+    <div class="hero-left">
+      <div class="auth-logo" style="justify-content: flex-start; margin-bottom: 2.5rem;">
+        <div class="auth-logo-icon">🛡</div>
+        <span class="auth-logo-text">WealthGuard</span>
+      </div>
+
+      <div class="hero-badge">
+        <span>🔒</span>
+        <span>Bank-Grade Security</span>
+      </div>
+
+      <h1 class="hero-title">
+        Your entire wealth.<br>
+        One <em>secure</em> dashboard.
+      </h1>
+
+      <p class="hero-desc">
+        Track investments across Zerodha, IBKR, mutual funds, crypto, and real estate — all in one place. Built for NRIs managing wealth across multiple countries.
+      </p>
+
+      <div class="hero-features">
+        <div class="hero-feature"><div class="hero-feature-dot"></div>Multi-currency portfolio (AED, INR, USD)</div>
+        <div class="hero-feature"><div class="hero-feature-dot"></div>Legacy planning & probate-ready documents</div>
+        <div class="hero-feature"><div class="hero-feature-dot"></div>Family sharing with read-only beneficiary access</div>
+        <div class="hero-feature"><div class="hero-feature-dot"></div>Import from Zerodha, IBKR, or CSV</div>
+        <div class="hero-feature"><div class="hero-feature-dot"></div>Weekly email reports & goal tracking</div>
+      </div>
+
+      <div class="hero-currencies">
+        <span class="currency-pill">AED</span>
+        <span class="currency-pill">INR</span>
+        <span class="currency-pill">USD</span>
+        <span class="currency-pill">EUR</span>
+        <span class="currency-pill">GBP</span>
+      </div>
+
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-val">7 Days</div>
+          <div class="hero-stat-label">Free Trial</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-val">5 Types</div>
+          <div class="hero-stat-label">Asset Classes</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-val">100%</div>
+          <div class="hero-stat-label">Private & Encrypted</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Auth -->
+    <div class="hero-right">
+      <div class="auth-tabs-wrapper">
+        <div class="auth-logo" style="justify-content: flex-start; margin-bottom: 1.75rem;">
+          <div class="auth-logo-icon">🛡</div>
+          <span class="auth-logo-text">WealthGuard</span>
+        </div>
+
+        <div class="auth-tab-btns">
+          <button class="auth-tab-btn active" onclick="switchTab('login')">Sign In</button>
+          <button class="auth-tab-btn" onclick="switchTab('register')">Create Account</button>
+        </div>
+
+        <!-- LOGIN -->
+        <div class="auth-form-panel active" id="panel-login">
+          <h2 class="auth-title">Welcome back</h2>
+          <p class="auth-subtitle">Sign in to your secure vault</p>
+
+          <form id="login-form">
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <input type="email" id="login-email" class="form-control" placeholder="you@email.com" required autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input type="password" id="login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+              <div style="text-align:right; margin-top: 0.3rem;">
+                <a href="pages/forgot-password.html" style="font-size: 0.78rem;">Forgot password?</a>
+              </div>
+            </div>
+            <div id="login-error" class="form-error" style="display:none; margin-bottom: 0.75rem;"></div>
+            <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-btn">
+              Sign In
+            </button>
+          </form>
+        </div>
+
+        <!-- REGISTER -->
+        <div class="auth-form-panel" id="panel-register">
+          <h2 class="auth-title">Start your free trial</h2>
+          <p class="auth-subtitle">7 days free, no credit card needed</p>
+
+          <form id="register-form">
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input type="text" id="reg-name" class="form-control" placeholder="Rajesh Kumar" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <input type="email" id="reg-email" class="form-control" placeholder="you@email.com" required autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input type="password" id="reg-password" class="form-control" placeholder="Min. 8 characters" required minlength="8" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label class="form-label">I am joining as</label>
+              <select id="reg-role" class="form-control">
+                <option value="investor">Investor (Full Access)</option>
+                <option value="beneficiary">Beneficiary (Read-Only)</option>
+              </select>
+            </div>
+            <div id="reg-error" class="form-error" style="display:none; margin-bottom: 0.75rem;"></div>
+            <button type="submit" class="btn btn-primary btn-full btn-lg" id="reg-btn">
+              Create Account
+            </button>
+            <p class="terms-note">By creating an account you agree to our Terms of Service and Privacy Policy.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script>
+    // Check if already logged in
+    (async () => {
+      const session = await Auth.getSession();
+      if (session) window.location.href = 'pages/dashboard.html';
+    })();
+
+    function switchTab(tab) {
+      document.querySelectorAll('.auth-tab-btn').forEach((b, i) => {
+        b.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+      });
+      document.getElementById('panel-login').classList.toggle('active', tab === 'login');
+      document.getElementById('panel-register').classList.toggle('active', tab === 'register');
+    }
+
+    // Login
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('login-btn');
+      const errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+      setLoading(btn, true);
+
+      const { data, error } = await Auth.signIn(
+        document.getElementById('login-email').value.trim(),
+        document.getElementById('login-password').value
+      );
+
+      if (error) {
+        errEl.textContent = error.message;
+        errEl.style.display = 'block';
+        setLoading(btn, false);
+        return;
+      }
+
+      // Check role for redirect
+      const { data: profile } = await Profile.get(data.user.id);
+      if (profile?.role === 'admin') {
+        window.location.href = 'pages/admin.html';
+      } else {
+        window.location.href = 'pages/dashboard.html';
+      }
+    });
+
+    // Register
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('reg-btn');
+      const errEl = document.getElementById('reg-error');
+      errEl.style.display = 'none';
+      setLoading(btn, true);
+
+      const { data, error } = await Auth.signUp(
+        document.getElementById('reg-email').value.trim(),
+        document.getElementById('reg-password').value,
+        document.getElementById('reg-name').value.trim(),
+        document.getElementById('reg-role').value
+      );
+
+      if (error) {
+        errEl.textContent = error.message;
+        errEl.style.display = 'block';
+        setLoading(btn, false);
+        return;
+      }
+
+      showToast('Account created! Please check your email to verify.', 'success');
+      setTimeout(() => switchTab('login'), 1500);
+      setLoading(btn, false);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Import — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .import-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .import-option {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .import-option:hover, .import-option.selected {
+      border-color: var(--gold);
+      background: var(--gold-muted);
+    }
+    .import-option-icon { font-size: 2rem; margin-bottom: 0.6rem; }
+    .import-option-name { font-weight: 700; color: var(--text-primary); }
+    .import-option-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    .import-step { display: none; }
+    .import-step.active { display: block; animation: fadeSlideUp 0.3s ease; }
+
+    .preview-table-wrap { max-height: 320px; overflow-y: auto; margin-top: 1rem; }
+
+    .mapping-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; }
+    .mapping-arrow { color: var(--gold); font-size: 1.1rem; }
+
+    .csv-hint {
+      background: rgba(96,165,250,0.07);
+      border: 1px solid rgba(96,165,250,0.2);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+    }
+
+    .csv-hint code {
+      font-family: var(--font-mono);
+      background: rgba(255,255,255,0.07);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.78rem;
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item active"><span class="nav-icon">⬆</span> Import</a>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="user-initial">R</div>
+        <div><div class="user-name" id="user-name">Loading...</div><div class="user-role" id="user-role">investor</div></div>
+      </div>
+      <button class="nav-item btn-ghost" style="width:100%; margin-top:4px;" onclick="Auth.signOut()">↩ Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div><div class="page-title">Import</div><div class="page-subtitle">Bulk import your investments</div></div>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+      <!-- Step 1: Choose Source -->
+      <div class="import-step active" id="step-1">
+        <h3 style="margin-bottom: 0.5rem; font-family: var(--font-display);">Choose import source</h3>
+        <p style="margin-bottom: 1.5rem; font-size: 0.875rem; color: var(--text-muted);">Select how you want to import your investments</p>
+
+        <div class="import-options">
+          <div class="import-option" onclick="selectSource('zerodha')">
+            <div class="import-option-icon">🇮🇳</div>
+            <div class="import-option-name">Zerodha</div>
+            <div class="import-option-desc">Upload tradebook / P&L CSV from Kite</div>
+          </div>
+          <div class="import-option" onclick="selectSource('ibkr')">
+            <div class="import-option-icon">🌐</div>
+            <div class="import-option-name">IBKR</div>
+            <div class="import-option-desc">Interactive Brokers activity CSV</div>
+          </div>
+          <div class="import-option" onclick="selectSource('csv')">
+            <div class="import-option-icon">📄</div>
+            <div class="import-option-name">Custom CSV</div>
+            <div class="import-option-desc">Any spreadsheet with custom mapping</div>
+          </div>
+          <div class="import-option" onclick="selectSource('excel')">
+            <div class="import-option-icon">📊</div>
+            <div class="import-option-name">Excel (.xlsx)</div>
+            <div class="import-option-desc">Import from Excel spreadsheet</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Upload -->
+      <div class="import-step" id="step-2">
+        <div style="display:flex; align-items:center; gap: 1rem; margin-bottom: 1.5rem;">
+          <button class="btn btn-ghost" onclick="goToStep(1)">← Back</button>
+          <div>
+            <h3 style="font-family: var(--font-display);" id="step2-title">Upload Zerodha CSV</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Step 2 of 3</p>
+          </div>
+        </div>
+
+        <div class="csv-hint" id="source-hint">
+          <strong>Zerodha:</strong> Go to Kite → Console → Reports → Tradebook → Download as CSV
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Target Asset Account</label>
+          <select id="import-asset" class="form-control">
+            <option value="">Create new asset automatically</option>
+          </select>
+        </div>
+
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <div class="drop-zone-icon">📁</div>
+          <div class="drop-zone-text">Click to upload or drag & drop</div>
+          <div class="drop-zone-sub">CSV or XLSX, up to 10MB</div>
+          <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(this.files[0])">
+        </div>
+
+        <div id="file-info" style="display:none; margin-top:1rem;" class="card">
+          <div style="display:flex; align-items:center; gap: 0.75rem;">
+            <span style="font-size: 1.5rem;">📄</span>
+            <div>
+              <div style="font-weight: 600;" id="file-name">—</div>
+              <div style="font-size: 0.78rem; color: var(--text-muted);" id="file-size">—</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="clearFile()">✕ Remove</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Map + Preview -->
+      <div class="import-step" id="step-3">
+        <div style="display:flex; align-items:center; gap: 1rem; margin-bottom: 1.5rem;">
+          <button class="btn btn-ghost" onclick="goToStep(2)">← Back</button>
+          <div>
+            <h3 style="font-family: var(--font-display);">Map columns & preview</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Step 3 of 3 — <span id="row-count">0</span> rows detected</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 1.25rem;">
+          <div class="card-header"><div class="card-title">Column Mapping</div></div>
+          <div id="mapping-rows"><!-- dynamic --></div>
+        </div>
+
+        <div class="preview-table-wrap table-wrapper">
+          <table id="preview-table">
+            <thead><tr id="preview-header"></tr></thead>
+            <tbody id="preview-body"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top: 1.5rem; display:flex; gap: 0.75rem; justify-content: flex-end;">
+          <button class="btn btn-secondary" onclick="goToStep(1)">Cancel</button>
+          <button class="btn btn-primary" id="import-btn" onclick="importData()">
+            Import <span id="import-count">0</span> Investments
+          </button>
+        </div>
+      </div>
+
+      <!-- Import History -->
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <div class="card-title">Import History</div>
+        </div>
+        <div id="import-history">
+          <div style="color: var(--text-muted); font-size: 0.875rem; text-align: center; padding: 1.5rem;">No imports yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+let currentSource = null;
+let csvData = [];
+let csvHeaders = [];
+let currentUserId = null;
+
+const SOURCE_HINTS = {
+  zerodha: '🇮🇳 <strong>Zerodha:</strong> Kite → Console → Reports → Tradebook → Download CSV',
+  ibkr: '🌐 <strong>IBKR:</strong> Account Management → Reports → Activity → Download CSV',
+  csv: '📄 <strong>Custom CSV:</strong> Any CSV with columns for Name, Amount, Current Value, Currency, Date',
+  excel: '📊 <strong>Excel:</strong> Export your spreadsheet as CSV first, or upload .xlsx directly'
+};
+
+const ZERODHA_MAP = { 'symbol': 'investment_name', 'trade date': 'purchase_date', 'quantity': 'quantity', 'price': 'unit_price', 'trade type': null };
+const IBKR_MAP = { 'symbol': 'investment_name', 'date/time': 'purchase_date', 'quantity': 'quantity', 't. price': 'unit_price', 'proceeds': 'amount_invested' };
+const FIELD_OPTIONS = ['investment_name','amount_invested','current_value','currency','purchase_date','quantity','unit_price','category','ticker_symbol','skip'];
+
+async function init() {
+  const session = await requireAuth();
+  if (!session) return;
+  currentUserId = session.user.id;
+  const { data: profile } = await Profile.get(session.user.id);
+  if (profile) {
+    document.getElementById('user-name').textContent = profile.full_name;
+    document.getElementById('user-initial').textContent = profile.full_name.charAt(0).toUpperCase();
+  }
+
+  const { data: assets } = await Assets.getAll(currentUserId);
+  const sel = document.getElementById('import-asset');
+  (assets || []).forEach(a => {
+    sel.innerHTML += `<option value="${a.id}">${a.platform_name} (${a.asset_type})</option>`;
+  });
+
+  await loadImportHistory();
+}
+
+function selectSource(source) {
+  currentSource = source;
+  document.getElementById('step2-title').textContent = `Upload ${source.charAt(0).toUpperCase() + source.slice(1)} ${source === 'excel' ? '.xlsx' : 'CSV'}`;
+  document.getElementById('source-hint').innerHTML = SOURCE_HINTS[source];
+  document.getElementById('file-input').accept = source === 'excel' ? '.xlsx,.xls' : '.csv,.xlsx';
+  goToStep(2);
+}
+
+function goToStep(n) {
+  document.querySelectorAll('.import-step').forEach((s, i) => s.classList.toggle('active', i === n - 1));
+}
+
+function handleFile(file) {
+  if (!file) return;
+  document.getElementById('file-name').textContent = file.name;
+  document.getElementById('file-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+  document.getElementById('file-info').style.display = 'block';
+
+  const reader = new FileReader();
+  reader.onload = (e) => parseCSV(e.target.result);
+  reader.readAsText(file);
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) { showToast('File appears empty', 'error'); return; }
+
+  csvHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
+  csvData = lines.slice(1).map(line => {
+    const vals = line.split(',').map(v => v.trim().replace(/"/g, ''));
+    const row = {};
+    csvHeaders.forEach((h, i) => row[h] = vals[i] || '');
+    return row;
+  });
+
+  document.getElementById('row-count').textContent = csvData.length;
+  document.getElementById('import-count').textContent = csvData.length;
+
+  // Auto-map
+  const autoMap = getAutoMap();
+  renderMappingUI(autoMap);
+  renderPreview(csvData.slice(0, 5));
+  goToStep(3);
+}
+
+function getAutoMap() {
+  const map = {};
+  const source = currentSource;
+  csvHeaders.forEach(h => {
+    if (source === 'zerodha' && ZERODHA_MAP[h] !== undefined) map[h] = ZERODHA_MAP[h] || 'skip';
+    else if (source === 'ibkr' && IBKR_MAP[h] !== undefined) map[h] = IBKR_MAP[h] || 'skip';
+    else {
+      if (h.includes('name') || h.includes('symbol') || h.includes('stock')) map[h] = 'investment_name';
+      else if (h.includes('invest') || h.includes('cost') || h.includes('paid')) map[h] = 'amount_invested';
+      else if (h.includes('current') || h.includes('value') || h.includes('market')) map[h] = 'current_value';
+      else if (h.includes('currency') || h === 'cur') map[h] = 'currency';
+      else if (h.includes('date')) map[h] = 'purchase_date';
+      else if (h.includes('qty') || h.includes('quantity')) map[h] = 'quantity';
+      else map[h] = 'skip';
+    }
+  });
+  return map;
+}
+
+function renderMappingUI(autoMap) {
+  const el = document.getElementById('mapping-rows');
+  el.innerHTML = csvHeaders.map(h => `
+    <div class="mapping-row">
+      <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.75rem; font-family: var(--font-mono); font-size: 0.82rem;">${h}</div>
+      <div class="mapping-arrow">→</div>
+      <select class="form-control" id="map-${h}" style="font-size: 0.82rem;">
+        ${FIELD_OPTIONS.map(f => `<option value="${f}" ${autoMap[h] === f ? 'selected' : ''}>${f === 'skip' ? '— Skip —' : f}</option>`).join('')}
+      </select>
+    </div>
+  `).join('');
+}
+
+function renderPreview(rows) {
+  const thead = document.getElementById('preview-header');
+  const tbody = document.getElementById('preview-body');
+  thead.innerHTML = csvHeaders.map(h => `<th>${h}</th>`).join('');
+  tbody.innerHTML = rows.map(row => `<tr>${csvHeaders.map(h => `<td style="font-size:0.8rem; white-space:nowrap;">${row[h] || '—'}</td>`).join('')}</tr>`).join('');
+}
+
+async function importData() {
+  const btn = document.getElementById('import-btn');
+  setLoading(btn, true);
+
+  const mappings = {};
+  csvHeaders.forEach(h => { mappings[h] = document.getElementById(`map-${h}`).value; });
+
+  const assetId = document.getElementById('import-asset').value;
+
+  // Need at least investment_name
+  const hasName = Object.values(mappings).includes('investment_name');
+  if (!hasName) {
+    showToast('Please map at least the Investment Name column', 'error');
+    setLoading(btn, false);
+    return;
+  }
+
+  const investments = csvData.map(row => {
+    const inv = { user_id: currentUserId, asset_id: assetId || null, currency: 'USD', import_source: currentSource.toUpperCase() };
+    csvHeaders.forEach(h => {
+      const field = mappings[h];
+      if (field && field !== 'skip') inv[field] = row[h];
+    });
+    inv.amount_invested = parseFloat(inv.amount_invested) || 0;
+    inv.current_value = parseFloat(inv.current_value) || inv.amount_invested;
+    return inv;
+  }).filter(i => i.investment_name);
+
+  if (!assetId) {
+    // Auto-create an asset
+    const { data: newAsset, error: ae } = await Assets.create({
+      user_id: currentUserId,
+      asset_type: 'Stocks',
+      platform_name: currentSource.charAt(0).toUpperCase() + currentSource.slice(1),
+      currency: 'USD',
+      country: 'Auto-imported'
+    });
+    if (newAsset) investments.forEach(i => i.asset_id = newAsset.id);
+  }
+
+  const { data, error } = await Investments.bulkInsert(investments);
+
+  if (error) {
+    showToast('Import failed: ' + error.message, 'error');
+  } else {
+    showToast(`Successfully imported ${data.length} investments!`, 'success');
+    await loadImportHistory();
+    goToStep(1);
+  }
+
+  setLoading(btn, false);
+}
+
+async function loadImportHistory() {
+  const { data } = await sb.from('import_logs').select('*').eq('user_id', currentUserId).order('created_at', { ascending: false }).limit(10);
+  const el = document.getElementById('import-history');
+  if (!data || data.length === 0) {
+    el.innerHTML = '<div style="color: var(--text-muted); font-size: 0.875rem; text-align: center; padding: 1.5rem;">No imports yet</div>';
+    return;
+  }
+  el.innerHTML = data.map(log => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+      <div>
+        <span class="badge badge-${log.status === 'completed' ? 'green' : 'red'}">${log.status}</span>
+        <span style="margin-left: 0.5rem; font-size: 0.85rem; color: var(--text-primary);">${log.source}</span>
+        <span style="font-size: 0.78rem; color: var(--text-muted); margin-left: 0.5rem;">${new Date(log.created_at).toLocaleDateString()}</span>
+      </div>
+      <span style="font-size: 0.8rem; color: var(--text-secondary);">${log.records_imported} imported</span>
+    </div>
+  `).join('');
+}
+
+function clearFile() {
+  document.getElementById('file-input').value = '';
+  document.getElementById('file-info').style.display = 'none';
+  csvData = [];
+  csvHeaders = [];
+}
+
+// Drag and drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+
+init();
+</script>
+</body>
+</html>

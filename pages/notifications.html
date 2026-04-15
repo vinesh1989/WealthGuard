@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .notif-list { display: flex; flex-direction: column; gap: 0; }
+    .notif-item {
+      display: flex; align-items: flex-start; gap: 0.9rem;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.1s;
+      position: relative;
+    }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-item:hover { background: rgba(255,255,255,0.02); }
+    .notif-item.unread { background: rgba(212,175,55,0.03); }
+    .notif-item.unread::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); border-radius: 0 2px 2px 0; }
+
+    .notif-icon { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+    .notif-icon.portfolio { background: rgba(96,165,250,0.1); }
+    .notif-icon.goal { background: rgba(212,175,55,0.1); }
+    .notif-icon.family { background: rgba(52,211,153,0.1); }
+    .notif-icon.system { background: rgba(167,139,250,0.1); }
+    .notif-icon.billing { background: rgba(251,191,36,0.1); }
+
+    .notif-body { flex: 1; min-width: 0; }
+    .notif-title { font-size: 0.875rem; font-weight: 600; margin-bottom: 0.15rem; }
+    .notif-message { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; }
+    .notif-time { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; font-family: var(--font-mono); }
+    .notif-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+
+    .notif-header-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .filter-tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0.3rem; }
+    .filter-tab { flex: 1; text-align: center; padding: 0.5rem; border-radius: var(--radius-md); font-size: 0.8rem; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
+    .filter-tab.active { background: var(--gold-muted); color: var(--gold); font-weight: 600; }
+
+    .empty-notif { text-align: center; padding: 3rem 1rem; }
+    .empty-notif .empty-icon { font-size: 3rem; opacity: 0.3; margin-bottom: 0.75rem; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <span class="nav-section-label">Planning</span>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <span class="nav-section-label">Reports</span>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user"><div class="user-avatar" id="user-initial">R</div><div><div class="user-name" id="user-name">Loading...</div><div class="user-role">investor</div></div></div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()"><span class="nav-icon">↩</span> Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div><div class="page-title">Notifications</div><div class="page-subtitle" id="unread-label">Loading…</div></div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="markAllRead()">Mark all read</button>
+        <button class="btn btn-ghost btn-sm" style="color:#f87171" onclick="clearAll()">Clear all</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+      <div class="filter-tabs">
+        <div class="filter-tab active" onclick="setFilter('all', this)">All</div>
+        <div class="filter-tab" onclick="setFilter('unread', this)">Unread</div>
+        <div class="filter-tab" onclick="setFilter('portfolio', this)">Portfolio</div>
+        <div class="filter-tab" onclick="setFilter('goal', this)">Goals</div>
+        <div class="filter-tab" onclick="setFilter('billing', this)">Billing</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+        <div class="notif-list" id="notif-list">
+          <div class="loading-state" style="padding:2rem;text-align:center">Loading notifications…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="../js/supabase.js"></script>
+<script>
+let notifications = [];
+let activeFilter = 'all';
+let currentUser = null;
+
+async function loadNotifs() {
+  currentUser = await requireAuth();
+  const profile = await Profile.get(currentUser.id);
+  document.getElementById('user-name').textContent = profile?.full_name || currentUser.email;
+  document.getElementById('user-initial').textContent = (profile?.full_name || currentUser.email)[0].toUpperCase();
+
+  const { data } = await supabase.from('notifications').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(100);
+  notifications = data || [];
+
+  // If no real notifications, seed with sample system ones for demo
+  if (!notifications.length) {
+    notifications = [
+      { id: '1', type: 'system', title: 'Welcome to WealthGuard!', message: 'Your account is set up. Start by adding your first asset account.', is_read: false, created_at: new Date().toISOString() },
+      { id: '2', type: 'goal', title: 'Tip: Set a goal', message: 'Add a retirement or education goal to start tracking your progress.', is_read: false, created_at: new Date(Date.now() - 3600000).toISOString() },
+      { id: '3', type: 'billing', title: 'Trial Started', message: 'Your 7-day free trial is active. Upgrade before it expires to continue access.', is_read: true, created_at: new Date(Date.now() - 86400000).toISOString() },
+    ];
+  }
+
+  render();
+}
+
+function render() {
+  const unread = notifications.filter(n => !n.is_read).length;
+  document.getElementById('unread-label').textContent = unread > 0 ? `${unread} unread notification${unread > 1 ? 's' : ''}` : 'All caught up';
+
+  let filtered = notifications;
+  if (activeFilter === 'unread') filtered = notifications.filter(n => !n.is_read);
+  else if (activeFilter !== 'all') filtered = notifications.filter(n => n.type === activeFilter);
+
+  const list = document.getElementById('notif-list');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-notif"><div class="empty-icon">🔔</div><h3>No notifications</h3><p style="color:var(--text-muted);font-size:0.85rem">You're all caught up!</p></div>`;
+    return;
+  }
+
+  const icons = { portfolio: '📈', goal: '🎯', family: '👥', system: '🛡', billing: '💳' };
+  list.innerHTML = filtered.map(n => {
+    const icon = icons[n.type] || '🔔';
+    const timeAgo = getTimeAgo(n.created_at);
+    return `<div class="notif-item ${n.is_read ? '' : 'unread'}" id="notif-${n.id}">
+      <div class="notif-icon ${n.type}">${icon}</div>
+      <div class="notif-body">
+        <div class="notif-title">${n.title}</div>
+        <div class="notif-message">${n.message}</div>
+        <div class="notif-time">${timeAgo}</div>
+      </div>
+      <div class="notif-actions">
+        ${!n.is_read ? `<button class="btn btn-ghost btn-sm" style="font-size:0.72rem" onclick="markRead('${n.id}')">Mark read</button>` : ''}
+        <button class="btn btn-ghost btn-sm" style="font-size:0.72rem;color:#f87171" onclick="deleteNotif('${n.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getTimeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-GB');
+}
+
+async function markRead(id) {
+  await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+  const n = notifications.find(x => x.id === id);
+  if (n) n.is_read = true;
+  render();
+}
+
+async function markAllRead() {
+  await supabase.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id);
+  notifications.forEach(n => n.is_read = true);
+  render();
+  showToast('All notifications marked as read', 'success');
+}
+
+async function deleteNotif(id) {
+  await supabase.from('notifications').delete().eq('id', id);
+  notifications = notifications.filter(n => n.id !== id);
+  render();
+}
+
+async function clearAll() {
+  if (!confirm('Clear all notifications?')) return;
+  await supabase.from('notifications').delete().eq('user_id', currentUser.id);
+  notifications = [];
+  render();
+  showToast('Notifications cleared', 'success');
+}
+
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+
+loadNotifs();
+</script>
+</body>
+</html>

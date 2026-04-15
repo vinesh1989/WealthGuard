@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Investments — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<div class="app-shell">
+  <!-- Sidebar (shared component) -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🛡</div>
+      <span class="sidebar-logo-text">WealthGuard</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item active"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="user-initial">R</div>
+        <div>
+          <div class="user-name" id="user-name">Loading...</div>
+          <div class="user-role" id="user-role">investor</div>
+        </div>
+      </div>
+      <button class="nav-item btn-ghost" style="width:100%; margin-top:4px;" onclick="Auth.signOut()">
+        <span class="nav-icon">↩</span> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div>
+          <div class="page-title">Investments</div>
+          <div class="page-subtitle">Track all your positions</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary btn-sm" id="add-inv-btn" onclick="openInvModal()">+ Add Investment</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+      <!-- Summary Bar -->
+      <div class="grid-3" style="margin-bottom: 1.25rem;">
+        <div class="stat-card">
+          <div class="card-title">Total Invested</div>
+          <div class="card-value display-num" id="s-invested">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="card-title">Current Value</div>
+          <div class="card-value display-num" id="s-current">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="card-title">Overall Return</div>
+          <div class="card-value display-num" id="s-return">—</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-row">
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search investments…" id="search-input" oninput="filterTable()">
+        </div>
+        <select class="filter-select" id="f-type" onchange="filterTable()">
+          <option value="">All Types</option>
+          <option>MF</option><option>Stocks</option><option>Crypto</option>
+          <option>FD</option><option>Real Estate</option><option>Other</option>
+        </select>
+        <select class="filter-select" id="f-currency" onchange="filterTable()">
+          <option value="">All Currencies</option>
+          <option>AED</option><option>INR</option><option>USD</option><option>EUR</option><option>GBP</option>
+        </select>
+        <select class="filter-select" id="f-platform" onchange="filterTable()">
+          <option value="">All Platforms</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Investment</th>
+              <th>Type</th>
+              <th>Platform</th>
+              <th>Currency</th>
+              <th>Invested</th>
+              <th>Current Value</th>
+              <th>Gain / Loss</th>
+              <th>Return %</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="inv-table-body">
+            <tr><td colspan="10" style="text-align:center; padding: 2rem; color: var(--text-muted);">
+              <div class="skeleton" style="height:14px; width:60%; margin: 0 auto 8px;"></div>
+              <div class="skeleton" style="height:14px; width:40%; margin: 0 auto;"></div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT INVESTMENT MODAL -->
+<div class="modal-backdrop" id="inv-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="inv-modal-title">Add Investment</div>
+      <button class="modal-close" onclick="closeModal('inv-modal')">✕</button>
+    </div>
+    <form id="inv-form">
+      <input type="hidden" id="inv-id">
+      <div class="form-group">
+        <label class="form-label">Asset Account <span style="color:var(--red)">*</span></label>
+        <select id="inv-asset" class="form-control" required>
+          <option value="">Select an asset account…</option>
+        </select>
+        <div class="form-hint">Don't have one? <a href="assets.html#add">Create an asset first</a></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Investment Name <span style="color:var(--red)">*</span></label>
+        <input type="text" id="inv-name" class="form-control" placeholder="e.g. Axis Bluechip Fund" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Amount Invested <span style="color:var(--red)">*</span></label>
+          <input type="number" id="inv-invested" class="form-control" placeholder="0.00" step="0.01" min="0" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Current Value <span style="color:var(--red)">*</span></label>
+          <input type="number" id="inv-current" class="form-control" placeholder="0.00" step="0.01" min="0" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Currency <span style="color:var(--red)">*</span></label>
+          <select id="inv-currency" class="form-control" required>
+            <option value="USD">USD — US Dollar</option>
+            <option value="AED">AED — UAE Dirham</option>
+            <option value="INR">INR — Indian Rupee</option>
+            <option value="EUR">EUR — Euro</option>
+            <option value="GBP">GBP — British Pound</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Purchase Date</label>
+          <input type="date" id="inv-date" class="form-control">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <input type="text" id="inv-category" class="form-control" placeholder="e.g. Large Cap, Equity">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ticker Symbol</label>
+          <input type="text" id="inv-ticker" class="form-control" placeholder="e.g. AAPL">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea id="inv-notes" class="form-control" rows="2" placeholder="Optional notes…"></textarea>
+      </div>
+      <div id="inv-form-error" class="form-error" style="display:none; margin-bottom: 0.5rem;"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('inv-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="inv-submit-btn">Save Investment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+let allInvestments = [];
+let allAssets = [];
+let currentUserId = null;
+let editingId = null;
+
+async function init() {
+  const session = await requireAuth();
+  if (!session) return;
+  currentUserId = session.user.id;
+
+  const { data: profile } = await Profile.get(session.user.id);
+  if (profile) {
+    document.getElementById('user-name').textContent = profile.full_name;
+    document.getElementById('user-initial').textContent = profile.full_name.charAt(0).toUpperCase();
+    document.getElementById('user-role').textContent = profile.role;
+  }
+
+  // Check for #add anchor
+  if (window.location.hash === '#add') openInvModal();
+
+  await loadData();
+}
+
+async function loadData() {
+  const [{ data: investments }, { data: assets }] = await Promise.all([
+    Investments.getAll(currentUserId),
+    Assets.getAll(currentUserId)
+  ]);
+
+  allInvestments = investments || [];
+  allAssets = assets || [];
+
+  // Populate platform filter
+  const platforms = [...new Set(allAssets.map(a => a.platform_name))];
+  const pf = document.getElementById('f-platform');
+  pf.innerHTML = '<option value="">All Platforms</option>' +
+    platforms.map(p => `<option>${p}</option>`).join('');
+
+  // Populate asset dropdown
+  const assetSel = document.getElementById('inv-asset');
+  assetSel.innerHTML = '<option value="">Select an asset account…</option>' +
+    allAssets.map(a => `<option value="${a.id}">${a.platform_name} · ${a.asset_type} (${a.currency})</option>`).join('');
+
+  // Compute totals
+  let totalInv = 0, totalCur = 0;
+  allInvestments.forEach(i => { totalInv += parseFloat(i.amount_invested); totalCur += parseFloat(i.current_value); });
+
+  document.getElementById('s-invested').textContent = formatCurrency(totalInv, 'USD');
+  document.getElementById('s-current').textContent = formatCurrency(totalCur, 'USD');
+  const ret = totalInv > 0 ? (totalCur - totalInv) / totalInv * 100 : 0;
+  const retEl = document.getElementById('s-return');
+  retEl.textContent = formatPercent(ret);
+  retEl.className = `card-value display-num ${ret >= 0 ? 'gain' : 'loss'}`;
+
+  renderTable(allInvestments);
+}
+
+function renderTable(investments) {
+  const tbody = document.getElementById('inv-table-body');
+  if (investments.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10">
+      <div class="empty-state">
+        <div class="empty-icon">📈</div>
+        <div class="empty-title">No investments found</div>
+        <div class="empty-desc">Add your first investment or import from Zerodha / IBKR</div>
+        <button class="btn btn-primary" onclick="openInvModal()">+ Add Investment</button>
+      </div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = investments.map(inv => {
+    const gl = parseFloat(inv.current_value) - parseFloat(inv.amount_invested);
+    const glPct = inv.amount_invested > 0 ? (gl / inv.amount_invested * 100) : 0;
+    return `
+    <tr>
+      <td class="td-name">${inv.investment_name}${inv.ticker_symbol ? `<br><span style="font-size:0.72rem; color:var(--text-muted); font-family:var(--font-mono)">${inv.ticker_symbol}</span>` : ''}</td>
+      <td><span class="badge badge-muted">${inv.assets?.asset_type || '—'}</span></td>
+      <td>${inv.assets?.platform_name || '—'}</td>
+      <td><span class="badge badge-gold">${inv.currency}</span></td>
+      <td class="td-mono">${formatCurrency(inv.amount_invested, inv.currency)}</td>
+      <td class="td-mono" style="color: var(--text-primary); font-weight: 600;">${formatCurrency(inv.current_value, inv.currency)}</td>
+      <td class="td-mono ${gl >= 0 ? 'gain' : 'loss'}">${gl >= 0 ? '+' : ''}${formatCurrency(gl, inv.currency)}</td>
+      <td class="${glPct >= 0 ? 'gain' : 'loss'}" style="font-weight: 600;">${formatPercent(glPct)}</td>
+      <td style="color: var(--text-muted); font-size: 0.8rem;">${inv.purchase_date ? new Date(inv.purchase_date).toLocaleDateString('en-GB') : '—'}</td>
+      <td>
+        <div style="display:flex; gap:0.4rem;">
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="editInvestment('${inv.id}')" title="Edit">✏</button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteInvestment('${inv.id}')" title="Delete">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterTable() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const fType = document.getElementById('f-type').value;
+  const fCur = document.getElementById('f-currency').value;
+  const fPlat = document.getElementById('f-platform').value;
+
+  const filtered = allInvestments.filter(inv => {
+    if (search && !inv.investment_name.toLowerCase().includes(search)) return false;
+    if (fType && inv.assets?.asset_type !== fType) return false;
+    if (fCur && inv.currency !== fCur) return false;
+    if (fPlat && inv.assets?.platform_name !== fPlat) return false;
+    return true;
+  });
+
+  renderTable(filtered);
+}
+
+function clearFilters() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('f-type').value = '';
+  document.getElementById('f-currency').value = '';
+  document.getElementById('f-platform').value = '';
+  renderTable(allInvestments);
+}
+
+function openInvModal(inv = null) {
+  editingId = inv?.id || null;
+  document.getElementById('inv-modal-title').textContent = inv ? 'Edit Investment' : 'Add Investment';
+  document.getElementById('inv-id').value = inv?.id || '';
+  document.getElementById('inv-asset').value = inv?.asset_id || '';
+  document.getElementById('inv-name').value = inv?.investment_name || '';
+  document.getElementById('inv-invested').value = inv?.amount_invested || '';
+  document.getElementById('inv-current').value = inv?.current_value || '';
+  document.getElementById('inv-currency').value = inv?.currency || 'USD';
+  document.getElementById('inv-date').value = inv?.purchase_date || '';
+  document.getElementById('inv-category').value = inv?.category || '';
+  document.getElementById('inv-ticker').value = inv?.ticker_symbol || '';
+  document.getElementById('inv-notes').value = inv?.notes || '';
+  document.getElementById('inv-form-error').style.display = 'none';
+  document.getElementById('inv-modal').classList.add('open');
+}
+
+function editInvestment(id) {
+  const inv = allInvestments.find(i => i.id === id);
+  if (inv) openInvModal(inv);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+document.getElementById('inv-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('inv-submit-btn');
+  const errEl = document.getElementById('inv-form-error');
+  errEl.style.display = 'none';
+  setLoading(btn, true);
+
+  const payload = {
+    asset_id: document.getElementById('inv-asset').value,
+    user_id: currentUserId,
+    investment_name: document.getElementById('inv-name').value.trim(),
+    amount_invested: parseFloat(document.getElementById('inv-invested').value),
+    current_value: parseFloat(document.getElementById('inv-current').value),
+    currency: document.getElementById('inv-currency').value,
+    purchase_date: document.getElementById('inv-date').value || null,
+    category: document.getElementById('inv-category').value || null,
+    ticker_symbol: document.getElementById('inv-ticker').value || null,
+    notes: document.getElementById('inv-notes').value || null
+  };
+
+  let error;
+  if (editingId) {
+    ({ error } = await Investments.update(editingId, payload));
+  } else {
+    ({ error } = await Investments.create(payload));
+  }
+
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.style.display = 'block';
+    setLoading(btn, false);
+    return;
+  }
+
+  showToast(editingId ? 'Investment updated!' : 'Investment added!', 'success');
+  closeModal('inv-modal');
+  setLoading(btn, false);
+  await loadData();
+});
+
+async function deleteInvestment(id) {
+  if (!confirm('Delete this investment? This cannot be undone.')) return;
+  const { error } = await Investments.delete(id);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('Investment deleted', 'success');
+  await loadData();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legacy Pack — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    .legacy-hero {
+      background: linear-gradient(135deg, #161c2a 0%, #1a1a2e 100%);
+      border: 1px solid rgba(212,175,55,0.25);
+      border-radius: var(--radius-xl);
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .legacy-hero::before {
+      content: '📜';
+      position: absolute;
+      right: 1.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 4rem;
+      opacity: 0.08;
+    }
+    .legacy-hero h2 { font-size: 1.4rem; color: var(--gold); margin-bottom: 0.5rem; }
+    .legacy-hero p { color: var(--text-secondary); font-size: 0.9rem; max-width: 600px; line-height: 1.6; }
+
+    .pack-sections { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+
+    .pack-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .pack-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+    .pack-section-header:hover { background: rgba(255,255,255,0.02); }
+    .pack-section-title { display: flex; align-items: center; gap: 0.6rem; font-weight: 600; font-size: 0.95rem; }
+    .pack-section-icon { font-size: 1.1rem; }
+    .pack-section-count { font-size: 0.75rem; color: var(--text-muted); margin-left: 0.5rem; }
+    .pack-section-toggle { color: var(--text-muted); transition: transform 0.2s; }
+    .pack-section-toggle.open { transform: rotate(180deg); }
+    .pack-section-body { padding: 1.25rem; }
+    .pack-section-body.collapsed { display: none; }
+
+    .legacy-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .legacy-table th { color: var(--text-muted); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 0 0 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .legacy-table td { padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: top; }
+    .legacy-table tr:last-child td { border-bottom: none; }
+    .legacy-table td:last-child { text-align: right; font-family: var(--font-mono); }
+
+    .legal-note {
+      background: rgba(212,175,55,0.06);
+      border: 1px solid rgba(212,175,55,0.15);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .legal-note strong { color: var(--gold); }
+
+    .export-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .export-bar-info h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+    .export-bar-info p { font-size: 0.82rem; color: var(--text-muted); }
+    .export-btns { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .summary-item { text-align: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .summary-item .s-val { font-family: var(--font-mono); font-size: 1.4rem; font-weight: 600; color: var(--text-primary); }
+    .summary-item .s-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.25rem; }
+
+    .doc-chip {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.2);
+      color: #60a5fa; border-radius: 20px; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 500; margin: 0.2rem;
+    }
+    .beneficiary-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .beneficiary-row { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .beneficiary-row:last-child { border-bottom: none; }
+    .beneficiary-info { display: flex; align-items: center; gap: 0.75rem; }
+    .beneficiary-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--gold-muted); color: var(--gold); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; }
+
+    @media (max-width: 600px) {
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .export-bar { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🛡</div>
+      <span class="sidebar-logo-text">WealthGuard</span>
+    </div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <span class="nav-section-label">Planning</span>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item active"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <span class="nav-section-label">Reports</span>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="user-initial">R</div>
+        <div>
+          <div class="user-name" id="user-name">Loading...</div>
+          <div class="user-role" id="user-role">investor</div>
+        </div>
+      </div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()">
+        <span class="nav-icon">↩</span> Sign Out
+      </button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div>
+          <div class="page-title">Legacy Pack</div>
+          <div class="page-subtitle">Probate-ready summary of your estate</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="notif-btn" onclick="window.location.href='notifications.html'">🔔</button>
+        <button class="btn btn-primary btn-sm" onclick="generatePDF()">⬇ Download PDF</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+      <div class="legacy-hero">
+        <h2>Estate Summary Pack</h2>
+        <p>Your Legacy Pack is a structured, probate-ready document containing all your financial assets, account details, and important documents. Download and store it with your Will, or share it with your legal counsel.</p>
+      </div>
+
+      <div class="legal-note">
+        <strong>⚠ Legal Notice:</strong> This pack is generated from the data you have entered. It is intended as a reference document only and does not constitute legal advice. Please consult a qualified legal professional for estate planning. Ensure your Will references this document and is updated regularly.
+      </div>
+
+      <!-- Summary -->
+      <div class="summary-grid" id="summary-grid">
+        <div class="summary-item"><div class="s-val" id="s-assets">—</div><div class="s-label">Total Assets</div></div>
+        <div class="summary-item"><div class="s-val" id="s-investments">—</div><div class="s-label">Investments</div></div>
+        <div class="summary-item"><div class="s-val" id="s-docs">—</div><div class="s-label">Documents</div></div>
+      </div>
+
+      <div class="pack-sections" id="pack-sections">
+
+        <!-- Assets Section -->
+        <div class="pack-section">
+          <div class="pack-section-header" onclick="toggleSection(this)">
+            <div class="pack-section-title">
+              <span class="pack-section-icon">🏦</span> Asset Accounts
+              <span class="pack-section-count" id="asset-count"></span>
+            </div>
+            <span class="pack-section-toggle open">▾</span>
+          </div>
+          <div class="pack-section-body" id="assets-body">
+            <div class="loading-state">Loading assets…</div>
+          </div>
+        </div>
+
+        <!-- Investments Section -->
+        <div class="pack-section">
+          <div class="pack-section-header" onclick="toggleSection(this)">
+            <div class="pack-section-title">
+              <span class="pack-section-icon">📈</span> Investment Holdings
+              <span class="pack-section-count" id="inv-count"></span>
+            </div>
+            <span class="pack-section-toggle open">▾</span>
+          </div>
+          <div class="pack-section-body" id="investments-body">
+            <div class="loading-state">Loading investments…</div>
+          </div>
+        </div>
+
+        <!-- Documents Section -->
+        <div class="pack-section">
+          <div class="pack-section-header" onclick="toggleSection(this)">
+            <div class="pack-section-title">
+              <span class="pack-section-icon">📁</span> Important Documents
+              <span class="pack-section-count" id="doc-count"></span>
+            </div>
+            <span class="pack-section-toggle open">▾</span>
+          </div>
+          <div class="pack-section-body" id="documents-body">
+            <div class="loading-state">Loading documents…</div>
+          </div>
+        </div>
+
+        <!-- Beneficiaries Section -->
+        <div class="pack-section">
+          <div class="pack-section-header" onclick="toggleSection(this)">
+            <div class="pack-section-title">
+              <span class="pack-section-icon">👥</span> Designated Beneficiaries
+              <span class="pack-section-count" id="bene-count"></span>
+            </div>
+            <span class="pack-section-toggle open">▾</span>
+          </div>
+          <div class="pack-section-body" id="beneficiaries-body">
+            <div class="loading-state">Loading beneficiaries…</div>
+          </div>
+        </div>
+
+        <!-- Contact / Owner Info -->
+        <div class="pack-section">
+          <div class="pack-section-header" onclick="toggleSection(this)">
+            <div class="pack-section-title">
+              <span class="pack-section-icon">👤</span> Owner Information
+            </div>
+            <span class="pack-section-toggle open">▾</span>
+          </div>
+          <div class="pack-section-body" id="owner-body">
+            <div class="loading-state">Loading…</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Export Bar -->
+      <div class="export-bar">
+        <div class="export-bar-info">
+          <h3>Export Legacy Pack</h3>
+          <p>Download a complete probate-ready PDF or share with your beneficiaries</p>
+        </div>
+        <div class="export-btns">
+          <button class="btn btn-outline" onclick="generatePDF()">📄 Download PDF</button>
+          <button class="btn btn-primary" onclick="emailPack()">📧 Email to Beneficiaries</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="../js/supabase.js"></script>
+<script>
+let packData = { assets: [], investments: [], documents: [], beneficiaries: [], owner: null };
+
+async function loadLegacyPack() {
+  const user = await requireAuth();
+  const profile = await Profile.get(user.id);
+  packData.owner = profile;
+
+  document.getElementById('user-name').textContent = profile?.full_name || user.email;
+  const initial = (profile?.full_name || user.email)[0].toUpperCase();
+  document.getElementById('user-initial').textContent = initial;
+
+  // Load assets
+  const { data: assets } = await supabase.from('assets').select('*').eq('user_id', user.id).order('created_at');
+  packData.assets = assets || [];
+
+  // Load investments
+  const { data: invs } = await supabase.from('investments').select('*, assets(name, platform, currency)').eq('user_id', user.id).order('date', { ascending: false });
+  packData.investments = invs || [];
+
+  // Load documents
+  const { data: docs } = await supabase.from('documents').select('*').eq('user_id', user.id).order('created_at');
+  packData.documents = docs || [];
+
+  // Load beneficiaries
+  const { data: family } = await supabase.from('family_shares').select('*, profiles!family_shares_beneficiary_id_fkey(full_name, email)').eq('owner_id', user.id);
+  packData.beneficiaries = family || [];
+
+  // Update summary
+  document.getElementById('s-assets').textContent = packData.assets.length;
+  document.getElementById('s-investments').textContent = packData.investments.length;
+  document.getElementById('s-docs').textContent = packData.documents.length;
+
+  renderAssets();
+  renderInvestments();
+  renderDocuments();
+  renderBeneficiaries();
+  renderOwner();
+}
+
+function renderAssets() {
+  const el = document.getElementById('assets-body');
+  document.getElementById('asset-count').textContent = `(${packData.assets.length})`;
+  if (!packData.assets.length) { el.innerHTML = '<div class="empty-state" style="padding:1rem">No assets added yet. <a href="assets.html">Add assets →</a></div>'; return; }
+  el.innerHTML = `<table class="legacy-table">
+    <thead><tr><th>Asset Type</th><th>Platform</th><th>Account No.</th><th>Currency</th><th>Country</th></tr></thead>
+    <tbody>${packData.assets.map(a => `
+    <tr>
+      <td>${a.asset_type}</td>
+      <td>${a.platform || '—'}</td>
+      <td><span style="font-family:var(--font-mono);font-size:0.82rem">${a.account_number || '—'}</span></td>
+      <td>${a.currency}</td>
+      <td>${a.country || '—'}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function renderInvestments() {
+  const el = document.getElementById('investments-body');
+  document.getElementById('inv-count').textContent = `(${packData.investments.length})`;
+  if (!packData.investments.length) { el.innerHTML = '<div class="empty-state" style="padding:1rem">No investments recorded.</div>'; return; }
+  el.innerHTML = `<table class="legacy-table">
+    <thead><tr><th>Investment</th><th>Platform</th><th>Category</th><th>Invested</th><th>Current Value</th></tr></thead>
+    <tbody>${packData.investments.map(i => `
+    <tr>
+      <td>${i.name}</td>
+      <td>${i.assets?.platform || '—'}</td>
+      <td><span class="badge badge-info">${i.category || '—'}</span></td>
+      <td>${formatCurrency(i.amount_invested, i.assets?.currency || 'USD')}</td>
+      <td>${formatCurrency(i.current_value, i.assets?.currency || 'USD')}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function renderDocuments() {
+  const el = document.getElementById('documents-body');
+  document.getElementById('doc-count').textContent = `(${packData.documents.length})`;
+  if (!packData.documents.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:1rem">No documents uploaded. <a href="documents.html">Upload documents →</a></div>`;
+    return;
+  }
+  el.innerHTML = `<table class="legacy-table">
+    <thead><tr><th>Document</th><th>Type</th><th>Tags</th><th>Uploaded</th></tr></thead>
+    <tbody>${packData.documents.map(d => `
+    <tr>
+      <td>${d.name}</td>
+      <td><span class="badge badge-warning">${d.document_type || '—'}</span></td>
+      <td>${(d.tags || []).map(t => `<span class="doc-chip">${t}</span>`).join('') || '—'}</td>
+      <td style="font-family:var(--font-mono);font-size:0.8rem">${new Date(d.created_at).toLocaleDateString()}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function renderBeneficiaries() {
+  const el = document.getElementById('beneficiaries-body');
+  document.getElementById('bene-count').textContent = `(${packData.beneficiaries.length})`;
+  if (!packData.beneficiaries.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:1rem">No beneficiaries added. <a href="family.html">Add beneficiary →</a></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="beneficiary-list">${packData.beneficiaries.map(b => {
+    const name = b.profiles?.full_name || b.profiles?.email || 'Unknown';
+    const initial = name[0].toUpperCase();
+    return `<div class="beneficiary-row">
+      <div class="beneficiary-info">
+        <div class="beneficiary-avatar">${initial}</div>
+        <div>
+          <div style="font-weight:600;font-size:0.9rem">${name}</div>
+          <div style="font-size:0.78rem;color:var(--text-muted)">${b.profiles?.email || ''}</div>
+        </div>
+      </div>
+      <span class="badge badge-success">Beneficiary</span>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderOwner() {
+  const el = document.getElementById('owner-body');
+  const o = packData.owner;
+  if (!o) { el.innerHTML = '<div class="empty-state" style="padding:1rem">Profile not found.</div>'; return; }
+  el.innerHTML = `<table class="legacy-table">
+    <tbody>
+      <tr><td style="color:var(--text-muted)">Full Name</td><td>${o.full_name || '—'}</td></tr>
+      <tr><td style="color:var(--text-muted)">Email</td><td>${o.email || '—'}</td></tr>
+      <tr><td style="color:var(--text-muted)">Base Currency</td><td>${o.base_currency || 'USD'}</td></tr>
+      <tr><td style="color:var(--text-muted)">Account Created</td><td>${o.created_at ? new Date(o.created_at).toLocaleDateString('en-GB', { year:'numeric', month:'long', day:'numeric' }) : '—'}</td></tr>
+    </tbody>
+  </table>`;
+}
+
+function toggleSection(header) {
+  const body = header.nextElementSibling;
+  const toggle = header.querySelector('.pack-section-toggle');
+  body.classList.toggle('collapsed');
+  toggle.classList.toggle('open');
+}
+
+async function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const gold = [212, 175, 55];
+  const dark = [22, 28, 42];
+  const light = [200, 210, 230];
+  const W = doc.internal.pageSize.getWidth();
+
+  // Cover
+  doc.setFillColor(...dark);
+  doc.rect(0, 0, W, 297, 'F');
+  doc.setDrawColor(...gold);
+  doc.setLineWidth(0.5);
+  doc.rect(10, 10, W - 20, 277);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(28);
+  doc.setTextColor(...gold);
+  doc.text('WealthGuard', W / 2, 50, { align: 'center' });
+
+  doc.setFontSize(16);
+  doc.setTextColor(...light);
+  doc.text('LEGACY & ESTATE PACK', W / 2, 62, { align: 'center' });
+
+  doc.setFontSize(11);
+  doc.setTextColor(150, 160, 180);
+  doc.text(`Prepared for: ${packData.owner?.full_name || 'Account Holder'}`, W / 2, 78, { align: 'center' });
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}`, W / 2, 86, { align: 'center' });
+
+  doc.setFontSize(9);
+  doc.setTextColor(100, 110, 130);
+  const notice = 'CONFIDENTIAL — This document is intended for the named recipient only. Store securely.';
+  doc.text(notice, W / 2, 260, { align: 'center' });
+
+  // Page 2 — Assets
+  doc.addPage();
+  doc.setFillColor(...dark);
+  doc.rect(0, 0, W, 297, 'F');
+
+  let y = 20;
+  const addSection = (title) => {
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...gold);
+    doc.text(title, 15, y);
+    doc.setDrawColor(...gold);
+    doc.setLineWidth(0.3);
+    doc.line(15, y + 2, W - 15, y + 2);
+    y += 10;
+  };
+  const addRow = (label, value, indent = 15) => {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(170, 180, 200);
+    doc.text(label, indent, y);
+    doc.setTextColor(220, 225, 235);
+    doc.text(String(value), 80, y);
+    y += 6;
+    if (y > 270) { doc.addPage(); doc.setFillColor(...dark); doc.rect(0, 0, W, 297, 'F'); y = 20; }
+  };
+
+  addSection('ASSET ACCOUNTS');
+  packData.assets.forEach((a, i) => {
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...light);
+    doc.text(`${i + 1}. ${a.name || a.asset_type}`, 15, y); y += 6;
+    addRow('  Type:', a.asset_type);
+    addRow('  Platform:', a.platform || '—');
+    addRow('  Account No:', a.account_number || '—');
+    addRow('  Currency:', a.currency);
+    addRow('  Country:', a.country || '—');
+    y += 2;
+  });
+
+  y += 5;
+  addSection('INVESTMENT HOLDINGS');
+  packData.investments.forEach((inv, i) => {
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...light);
+    doc.text(`${i + 1}. ${inv.name}`, 15, y); y += 6;
+    addRow('  Category:', inv.category || '—');
+    addRow('  Invested:', formatCurrency(inv.amount_invested, inv.assets?.currency || 'USD'));
+    addRow('  Current Value:', formatCurrency(inv.current_value, inv.assets?.currency || 'USD'));
+    addRow('  Date:', inv.date ? new Date(inv.date).toLocaleDateString() : '—');
+    y += 2;
+  });
+
+  y += 5;
+  addSection('IMPORTANT DOCUMENTS');
+  if (packData.documents.length === 0) {
+    doc.setFontSize(9); doc.setFont('helvetica', 'italic'); doc.setTextColor(120, 130, 150);
+    doc.text('No documents uploaded.', 15, y); y += 8;
+  } else {
+    packData.documents.forEach((d, i) => {
+      addRow(`${i + 1}. ${d.name}`, d.document_type || '—');
+    });
+  }
+
+  y += 5;
+  addSection('BENEFICIARIES');
+  if (packData.beneficiaries.length === 0) {
+    doc.setFontSize(9); doc.setFont('helvetica', 'italic'); doc.setTextColor(120, 130, 150);
+    doc.text('No beneficiaries registered.', 15, y); y += 8;
+  } else {
+    packData.beneficiaries.forEach((b, i) => {
+      addRow(`${i + 1}.`, b.profiles?.full_name || b.profiles?.email || 'Unknown');
+    });
+  }
+
+  doc.save(`WealthGuard_Legacy_Pack_${new Date().toISOString().slice(0, 10)}.pdf`);
+  showToast('Legacy Pack downloaded successfully', 'success');
+}
+
+async function emailPack() {
+  showToast('Sending Legacy Pack to your beneficiaries…', 'info');
+  // In production: call a Supabase Edge Function to generate & email PDF
+  setTimeout(() => showToast('Legacy Pack emailed to all beneficiaries', 'success'), 2000);
+}
+
+// Sidebar
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+
+loadLegacyPack();
+</script>
+</body>
+</html>

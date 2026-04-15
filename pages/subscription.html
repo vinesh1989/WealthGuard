@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscription — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem; }
+
+    .plan-card {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 1.75rem;
+      display: flex; flex-direction: column; gap: 0.75rem;
+      transition: border-color 0.2s, transform 0.15s;
+      position: relative;
+    }
+    .plan-card:hover { transform: translateY(-2px); }
+    .plan-card.active { border-color: var(--gold); }
+    .plan-card.featured { border-color: rgba(96,165,250,0.4); background: linear-gradient(135deg, #161c2a 0%, #1a2038 100%); }
+
+    .plan-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--gold); color: #0a0d12; border-radius: 20px;
+      padding: 0.2rem 0.9rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .plan-badge.blue { background: #60a5fa; }
+
+    .plan-icon { font-size: 2rem; }
+    .plan-name { font-size: 1.1rem; font-weight: 700; }
+    .plan-price { display: flex; align-items: baseline; gap: 0.25rem; }
+    .plan-price-val { font-family: var(--font-mono); font-size: 2rem; font-weight: 700; color: var(--text-primary); }
+    .plan-price-per { font-size: 0.8rem; color: var(--text-muted); }
+    .plan-desc { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; }
+
+    .plan-features { list-style: none; padding: 0; margin: 0.5rem 0; display: flex; flex-direction: column; gap: 0.5rem; }
+    .plan-features li { font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem; }
+    .plan-features li::before { content: '✓'; color: #34d399; font-weight: 700; flex-shrink: 0; }
+    .plan-features li.cross::before { content: '✗'; color: #f87171; }
+
+    .plan-cta { margin-top: auto; }
+
+    .current-plan-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .current-plan-info h3 { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+    .current-plan-name { font-size: 1.2rem; font-weight: 700; color: var(--gold); }
+    .current-plan-meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+    .trial-progress { background: var(--bg-card); border: 1px solid rgba(212,175,55,0.2); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+    .trial-progress h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--gold); }
+    .trial-bar { background: rgba(255,255,255,0.06); border-radius: 6px; height: 8px; overflow: hidden; margin-bottom: 0.5rem; }
+    .trial-bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold), #f59e0b); border-radius: 6px; transition: width 0.5s; }
+    .trial-bar-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); }
+
+    .coupon-row { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
+    .coupon-row .form-input { flex: 1; }
+
+    .billing-history { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .billing-history-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <span class="nav-section-label">Planning</span>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <span class="nav-section-label">Reports</span>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item active"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user"><div class="user-avatar" id="user-initial">R</div><div><div class="user-name" id="user-name">Loading...</div><div class="user-role">investor</div></div></div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()"><span class="nav-icon">↩</span> Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div><div class="page-title">Subscription</div><div class="page-subtitle">Manage your WealthGuard plan</div></div>
+      </div>
+      <div class="topbar-actions">
+        <button class="notif-btn" onclick="window.location.href='notifications.html'">🔔</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+
+      <!-- Current Plan Status -->
+      <div class="current-plan-card" id="current-plan-card">
+        <div class="current-plan-info">
+          <h3>Current Plan</h3>
+          <div class="current-plan-name" id="plan-name">Loading…</div>
+          <div class="current-plan-meta" id="plan-meta"></div>
+        </div>
+        <div id="plan-actions"></div>
+      </div>
+
+      <!-- Trial Progress (shown if on trial) -->
+      <div class="trial-progress" id="trial-progress" style="display:none">
+        <h3>⏰ Free Trial</h3>
+        <div class="trial-bar"><div class="trial-bar-fill" id="trial-bar-fill" style="width:100%"></div></div>
+        <div class="trial-bar-labels">
+          <span>Day 1</span>
+          <span id="trial-days-left">7 days remaining</span>
+          <span>Day 7</span>
+        </div>
+      </div>
+
+      <!-- Plans -->
+      <h3 style="font-size:0.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:1rem">Available Plans</h3>
+      <div class="plan-grid">
+
+        <div class="plan-card">
+          <div class="plan-icon">🌱</div>
+          <div class="plan-name">Free Trial</div>
+          <div class="plan-price"><span class="plan-price-val">$0</span><span class="plan-price-per">/ 7 days</span></div>
+          <div class="plan-desc">Get full access to all features for 7 days, no credit card required.</div>
+          <ul class="plan-features">
+            <li>All features unlocked</li>
+            <li>Up to 50 investments</li>
+            <li>5 documents</li>
+            <li class="cross">Priority support</li>
+            <li class="cross">Unlimited family sharing</li>
+          </ul>
+          <div class="plan-cta">
+            <button class="btn btn-outline btn-sm" disabled style="width:100%;opacity:0.5;cursor:default">Auto-enabled on signup</button>
+          </div>
+        </div>
+
+        <div class="plan-card featured">
+          <div class="plan-badge blue">Most Popular</div>
+          <div class="plan-icon">💎</div>
+          <div class="plan-name">Annual Pro</div>
+          <div class="plan-price"><span class="plan-price-val">$99</span><span class="plan-price-per">/ year · $8.25/mo</span></div>
+          <div class="plan-desc">Full access for NRI investors managing multi-currency wealth.</div>
+          <ul class="plan-features">
+            <li>Unlimited investments</li>
+            <li>Unlimited documents</li>
+            <li>5 beneficiaries</li>
+            <li>Legacy Pack PDF</li>
+            <li>Weekly email reports</li>
+            <li>Priority email support</li>
+          </ul>
+          <div class="plan-cta">
+            <button class="btn btn-primary" style="width:100%" id="upgrade-btn" onclick="openCheckout('annual')">Upgrade to Pro — $99/yr</button>
+          </div>
+        </div>
+
+        <div class="plan-card">
+          <div class="plan-icon">🏢</div>
+          <div class="plan-name">Family Plan</div>
+          <div class="plan-price"><span class="plan-price-val">$149</span><span class="plan-price-per">/ year</span></div>
+          <div class="plan-desc">Ideal for families managing shared wealth and estate planning.</div>
+          <ul class="plan-features">
+            <li>Everything in Pro</li>
+            <li>Up to 10 beneficiaries</li>
+            <li>Shared family dashboard</li>
+            <li>Dedicated support</li>
+            <li>Annual review call</li>
+          </ul>
+          <div class="plan-cta">
+            <button class="btn btn-outline" style="width:100%" onclick="openCheckout('family')">Get Family Plan — $149/yr</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Coupon Code -->
+      <div class="settings-section" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1.25rem;">
+        <div style="padding:1.1rem 1.5rem;border-bottom:1px solid var(--border)">
+          <div style="font-weight:600;font-size:0.95rem">Have a Coupon Code?</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.2rem">Enter your discount or referral code</div>
+        </div>
+        <div style="padding:1.25rem">
+          <div class="coupon-row">
+            <input type="text" class="form-input" id="coupon-input" placeholder="e.g. WEALTHGUARD50" style="text-transform:uppercase;font-family:var(--font-mono);letter-spacing:0.05em">
+            <button class="btn btn-outline" id="coupon-btn" onclick="applyCoupon()">Apply</button>
+          </div>
+          <div id="coupon-msg" style="margin-top:0.5rem;font-size:0.82rem;display:none"></div>
+        </div>
+      </div>
+
+      <!-- Billing History -->
+      <div class="billing-history">
+        <div class="billing-history-header">Billing History</div>
+        <table class="data-table" id="billing-table">
+          <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody id="billing-tbody">
+            <tr><td colspan="4"><div class="empty-state" style="padding:1.5rem">No billing history yet</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Checkout Modal -->
+<div class="modal-overlay" id="checkout-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="checkout-title">Upgrade to Pro</h2>
+      <button class="modal-close" onclick="closeCheckout()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.15);border-radius:var(--radius-md);padding:1rem;margin-bottom:1.25rem">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:600" id="checkout-plan-label">Annual Pro Plan</span>
+          <span class="plan-price-val" style="font-size:1.4rem" id="checkout-price">$99</span>
+        </div>
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem">Billed annually · Cancel anytime</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Card Number</label>
+        <input type="text" class="form-input" placeholder="4242 4242 4242 4242" maxlength="19" oninput="formatCard(this)">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+        <div class="form-group">
+          <label class="form-label">Expiry</label>
+          <input type="text" class="form-input" placeholder="MM / YY" maxlength="7">
+        </div>
+        <div class="form-group">
+          <label class="form-label">CVC</label>
+          <input type="text" class="form-input" placeholder="123" maxlength="4">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cardholder Name</label>
+        <input type="text" class="form-input" placeholder="As shown on card">
+      </div>
+      <div style="font-size:0.75rem;color:var(--text-muted);text-align:center;line-height:1.5">
+        🔒 Payments are securely processed. WealthGuard does not store card details.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeCheckout()">Cancel</button>
+      <button class="btn btn-primary" id="pay-btn" onclick="processPayment()">Pay Now</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="../js/supabase.js"></script>
+<script>
+let currentUser = null;
+let sub = null;
+let selectedPlan = null;
+
+async function loadSubscription() {
+  currentUser = await requireAuth();
+  const profile = await Profile.get(currentUser.id);
+  document.getElementById('user-name').textContent = profile?.full_name || currentUser.email;
+  document.getElementById('user-initial').textContent = (profile?.full_name || currentUser.email)[0].toUpperCase();
+
+  const { data: subData } = await supabase.from('subscriptions').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(1).single();
+  sub = subData;
+
+  updatePlanDisplay();
+}
+
+function updatePlanDisplay() {
+  const nameEl = document.getElementById('plan-name');
+  const metaEl = document.getElementById('plan-meta');
+  const actionsEl = document.getElementById('plan-actions');
+
+  if (!sub) {
+    nameEl.textContent = 'Free Trial';
+    metaEl.textContent = 'No active subscription';
+    actionsEl.innerHTML = '<button class="btn btn-primary btn-sm" onclick="openCheckout(\'annual\')">Upgrade Now</button>';
+    return;
+  }
+
+  const status = sub.status;
+  if (status === 'trial') {
+    const trialEnd = new Date(sub.trial_ends_at);
+    const now = new Date();
+    const daysLeft = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)));
+    const elapsed = 7 - daysLeft;
+    const pct = Math.min(100, (elapsed / 7) * 100);
+
+    nameEl.textContent = 'Free Trial';
+    metaEl.textContent = `${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining · Expires ${trialEnd.toLocaleDateString('en-GB')}`;
+    actionsEl.innerHTML = '<button class="btn btn-primary btn-sm" onclick="openCheckout(\'annual\')">Upgrade to Pro</button>';
+
+    document.getElementById('trial-progress').style.display = 'block';
+    document.getElementById('trial-bar-fill').style.width = `${100 - pct}%`;
+    document.getElementById('trial-days-left').textContent = `${daysLeft} days remaining`;
+
+  } else if (status === 'active') {
+    const endDate = sub.ends_at ? new Date(sub.ends_at).toLocaleDateString('en-GB', { year:'numeric', month:'long', day:'numeric' }) : 'N/A';
+    const planLabel = sub.plan_id === 'family' ? 'Family Plan' : 'Annual Pro';
+    nameEl.textContent = `${planLabel} ✓`;
+    metaEl.textContent = `Active · Renews ${endDate}`;
+    nameEl.style.color = '#34d399';
+    actionsEl.innerHTML = '<button class="btn btn-ghost btn-sm" onclick="cancelSubscription()">Cancel Plan</button>';
+  } else if (status === 'expired') {
+    nameEl.textContent = 'Expired';
+    nameEl.style.color = '#f87171';
+    metaEl.textContent = 'Your subscription has expired';
+    actionsEl.innerHTML = '<button class="btn btn-primary btn-sm" onclick="openCheckout(\'annual\')">Renew Now</button>';
+  }
+}
+
+function openCheckout(plan) {
+  selectedPlan = plan;
+  const labels = { annual: { label: 'Annual Pro Plan', price: '$99' }, family: { label: 'Family Plan', price: '$149' } };
+  const info = labels[plan] || labels.annual;
+  document.getElementById('checkout-title').textContent = `Upgrade to ${info.label.replace(' Plan', '')}`;
+  document.getElementById('checkout-plan-label').textContent = info.label;
+  document.getElementById('checkout-price').textContent = info.price;
+  document.getElementById('checkout-modal').classList.add('show');
+}
+
+function closeCheckout() { document.getElementById('checkout-modal').classList.remove('show'); }
+
+function formatCard(input) {
+  let v = input.value.replace(/\D/g, '').substring(0, 16);
+  input.value = v.replace(/(.{4})/g, '$1 ').trim();
+}
+
+async function processPayment() {
+  setLoading('pay-btn', true, 'Processing…');
+  // Simulated payment — in production, integrate Stripe.js here
+  await new Promise(r => setTimeout(r, 2000));
+  try {
+    const planPrices = { annual: 99, family: 149 };
+    const endDate = new Date();
+    endDate.setFullYear(endDate.getFullYear() + 1);
+    await supabase.from('subscriptions').upsert({
+      user_id: currentUser.id,
+      plan_id: selectedPlan,
+      status: 'active',
+      starts_at: new Date().toISOString(),
+      ends_at: endDate.toISOString(),
+      amount_paid: planPrices[selectedPlan],
+    }, { onConflict: 'user_id' });
+    closeCheckout();
+    showToast('🎉 Subscription activated! Welcome to WealthGuard Pro.', 'success');
+    await loadSubscription();
+  } catch(e) {
+    showToast('Payment failed. Please try again.', 'error');
+  } finally {
+    setLoading('pay-btn', false, 'Pay Now');
+  }
+}
+
+async function applyCoupon() {
+  const code = document.getElementById('coupon-input').value.trim().toUpperCase();
+  if (!code) return;
+  setLoading('coupon-btn', true, 'Checking…');
+  const { data: coupon } = await supabase.from('coupons').select('*').eq('code', code).single();
+  setLoading('coupon-btn', false, 'Apply');
+  const msgEl = document.getElementById('coupon-msg');
+  msgEl.style.display = 'block';
+  if (!coupon || !coupon.is_active) {
+    msgEl.textContent = '✗ Invalid or expired coupon code';
+    msgEl.style.color = '#f87171';
+  } else {
+    msgEl.textContent = `✓ ${coupon.discount_percent}% discount applied! Code: ${code}`;
+    msgEl.style.color = '#34d399';
+  }
+}
+
+async function cancelSubscription() {
+  if (!confirm('Cancel your subscription? You will retain access until the end of your billing period.')) return;
+  await supabase.from('subscriptions').update({ status: 'cancelled' }).eq('user_id', currentUser.id);
+  showToast('Subscription cancelled. You retain access until expiry.', 'success');
+  loadSubscription();
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+
+loadSubscription();
+</script>
+</body>
+</html>

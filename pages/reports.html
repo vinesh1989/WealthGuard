@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    .report-config { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; }
+    .report-preview { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; }
+    .report-header { border-bottom: 2px solid var(--gold); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+    .report-logo { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; color: var(--gold); }
+    .report-subtitle { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; }
+    .report-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .report-summary-item { background: var(--bg-surface); border-radius: var(--radius-sm); padding: 0.9rem; }
+    .report-summary-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .report-summary-value { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin-top: 0.2rem; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <a href="reports.html" class="nav-item active"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="user-initial">R</div>
+        <div><div class="user-name" id="user-name">Loading...</div><div class="user-role">investor</div></div>
+      </div>
+      <button class="nav-item btn-ghost" style="width:100%; margin-top:4px;" onclick="Auth.signOut()">↩ Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div><div class="page-title">Reports</div><div class="page-subtitle">Generate & export portfolio reports</div></div>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+      <!-- Config -->
+      <div class="report-config">
+        <h3 style="font-family: var(--font-display); margin-bottom: 1.25rem;">Report Configuration</h3>
+        <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
+          <div class="form-group">
+            <label class="form-label">Asset Type</label>
+            <select id="r-type" class="form-control" onchange="generateReport()">
+              <option value="">All Types</option>
+              <option>MF</option><option>Stocks</option><option>Crypto</option>
+              <option>FD</option><option>Real Estate</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Currency</label>
+            <select id="r-currency" class="form-control" onchange="generateReport()">
+              <option value="">All Currencies</option>
+              <option>USD</option><option>AED</option><option>INR</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Report Currency (Display)</label>
+            <select id="r-display-currency" class="form-control" onchange="generateReport()">
+              <option value="USD">USD</option>
+              <option value="AED">AED</option>
+              <option value="INR">INR</option>
+            </select>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+          <button class="btn btn-primary" onclick="exportPDF()" id="pdf-btn">⬇ Export PDF</button>
+          <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+          <button class="btn btn-secondary" onclick="emailReport()">✉ Email Report</button>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="report-preview" id="report-preview">
+        <div class="report-header">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div class="report-logo">🛡 WealthGuard</div>
+              <div class="report-subtitle">Portfolio Report · <span id="r-date"></span></div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.78rem; color: var(--text-muted);">Prepared for</div>
+              <div style="font-weight: 600;" id="r-owner">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="report-summary-grid">
+          <div class="report-summary-item">
+            <div class="report-summary-label">Total Invested</div>
+            <div class="report-summary-value" id="r-total-inv">—</div>
+          </div>
+          <div class="report-summary-item">
+            <div class="report-summary-label">Current Value</div>
+            <div class="report-summary-value" id="r-total-cur">—</div>
+          </div>
+          <div class="report-summary-item">
+            <div class="report-summary-label">Total Return</div>
+            <div class="report-summary-value" id="r-total-ret">—</div>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Investment</th>
+                <th>Type</th>
+                <th>Platform</th>
+                <th>Currency</th>
+                <th>Invested</th>
+                <th>Current Value</th>
+                <th>Gain/Loss</th>
+                <th>Return %</th>
+              </tr>
+            </thead>
+            <tbody id="report-table-body">
+              <tr><td colspan="9" style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+let allInvestments = [];
+let rates = [];
+let currentUser = null;
+let currentProfile = null;
+
+async function init() {
+  const session = await requireAuth();
+  if (!session) return;
+  currentUser = session.user.id;
+
+  const { data: profile } = await Profile.get(session.user.id);
+  currentProfile = profile;
+  if (profile) {
+    document.getElementById('user-name').textContent = profile.full_name;
+    document.getElementById('user-initial').textContent = profile.full_name.charAt(0).toUpperCase();
+    document.getElementById('r-owner').textContent = profile.full_name;
+    document.getElementById('r-display-currency').value = profile.base_currency || 'USD';
+  }
+
+  document.getElementById('r-date').textContent = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  rates = await ExchangeRates.getAll();
+
+  const { data } = await Investments.getAll(session.user.id);
+  allInvestments = data || [];
+  generateReport();
+}
+
+function generateReport() {
+  const fType = document.getElementById('r-type').value;
+  const fCur = document.getElementById('r-currency').value;
+  const displayCur = document.getElementById('r-display-currency').value;
+
+  let filtered = allInvestments.filter(inv => {
+    if (fType && inv.assets?.asset_type !== fType) return false;
+    if (fCur && inv.currency !== fCur) return false;
+    return true;
+  });
+
+  let totalInv = 0, totalCur = 0;
+  filtered.forEach(inv => {
+    totalInv += ExchangeRates.convert(parseFloat(inv.amount_invested), inv.currency, displayCur, rates);
+    totalCur += ExchangeRates.convert(parseFloat(inv.current_value), inv.currency, displayCur, rates);
+  });
+
+  const totalGL = totalCur - totalInv;
+  const totalPct = totalInv > 0 ? (totalGL / totalInv * 100) : 0;
+
+  document.getElementById('r-total-inv').textContent = formatCurrency(totalInv, displayCur);
+  document.getElementById('r-total-cur').textContent = formatCurrency(totalCur, displayCur);
+  const retEl = document.getElementById('r-total-ret');
+  retEl.textContent = `${formatPercent(totalPct)}`;
+  retEl.style.color = totalPct >= 0 ? 'var(--green)' : 'var(--red)';
+
+  const tbody = document.getElementById('report-table-body');
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 1.5rem; color: var(--text-muted);">No investments match the filters</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((inv, i) => {
+    const gl = parseFloat(inv.current_value) - parseFloat(inv.amount_invested);
+    const glPct = inv.amount_invested > 0 ? (gl / inv.amount_invested * 100) : 0;
+    return `
+      <tr>
+        <td style="color: var(--text-muted);">${i + 1}</td>
+        <td class="td-name">${inv.investment_name}</td>
+        <td><span class="badge badge-muted">${inv.assets?.asset_type || '—'}</span></td>
+        <td>${inv.assets?.platform_name || '—'}</td>
+        <td>${inv.currency}</td>
+        <td class="td-mono">${formatCurrency(inv.amount_invested, inv.currency)}</td>
+        <td class="td-mono" style="font-weight: 600; color: var(--text-primary);">${formatCurrency(inv.current_value, inv.currency)}</td>
+        <td class="td-mono ${gl >= 0 ? 'gain' : 'loss'}">${gl >= 0 ? '+' : ''}${formatCurrency(gl, inv.currency)}</td>
+        <td class="${glPct >= 0 ? 'gain' : 'loss'}" style="font-weight: 600;">${formatPercent(glPct)}</td>
+      </tr>`;
+  }).join('');
+}
+
+async function exportPDF() {
+  const btn = document.getElementById('pdf-btn');
+  setLoading(btn, true);
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const displayCur = document.getElementById('r-display-currency').value;
+    const date = new Date().toLocaleDateString('en-GB');
+
+    // Header
+    doc.setFillColor(13, 18, 26);
+    doc.rect(0, 0, 297, 297, 'F');
+    doc.setTextColor(212, 175, 55);
+    doc.setFontSize(22);
+    doc.text('WealthGuard', 14, 20);
+    doc.setTextColor(136, 146, 164);
+    doc.setFontSize(10);
+    doc.text(`Portfolio Report · ${date} · ${currentProfile?.full_name}`, 14, 27);
+
+    // Summary
+    doc.setTextColor(240, 242, 245);
+    doc.setFontSize(11);
+    doc.text('SUMMARY', 14, 38);
+    doc.setFontSize(10);
+    doc.text(`Total Invested: ${document.getElementById('r-total-inv').textContent}`, 14, 46);
+    doc.text(`Current Value: ${document.getElementById('r-total-cur').textContent}`, 90, 46);
+    doc.text(`Return: ${document.getElementById('r-total-ret').textContent}`, 170, 46);
+
+    // Table
+    const fType = document.getElementById('r-type').value;
+    const fCur = document.getElementById('r-currency').value;
+    let rows = allInvestments.filter(inv => {
+      if (fType && inv.assets?.asset_type !== fType) return false;
+      if (fCur && inv.currency !== fCur) return false;
+      return true;
+    });
+
+    doc.setFontSize(9);
+    doc.setTextColor(136, 146, 164);
+    let y = 58;
+    doc.text('Investment Name', 14, y);
+    doc.text('Type', 80, y);
+    doc.text('Platform', 110, y);
+    doc.text('Currency', 150, y);
+    doc.text('Invested', 170, y);
+    doc.text('Current Value', 210, y);
+    doc.text('Return %', 260, y);
+    doc.setDrawColor(40, 50, 70);
+    doc.line(14, y + 3, 283, y + 3);
+    y += 9;
+
+    rows.forEach(inv => {
+      if (y > 180) { doc.addPage(); y = 20; }
+      const glPct = inv.amount_invested > 0 ? ((inv.current_value - inv.amount_invested) / inv.amount_invested * 100) : 0;
+      doc.setTextColor(240, 242, 245);
+      doc.text(inv.investment_name.substring(0, 28), 14, y);
+      doc.setTextColor(136, 146, 164);
+      doc.text(inv.assets?.asset_type || '—', 80, y);
+      doc.text((inv.assets?.platform_name || '—').substring(0, 16), 110, y);
+      doc.text(inv.currency, 150, y);
+      doc.text(formatCurrency(inv.amount_invested, inv.currency), 170, y);
+      doc.text(formatCurrency(inv.current_value, inv.currency), 210, y);
+      glPct >= 0 ? doc.setTextColor(52, 211, 153) : doc.setTextColor(248, 113, 113);
+      doc.text(formatPercent(glPct), 260, y);
+      y += 8;
+    });
+
+    doc.save(`WealthGuard_Report_${date.replace(/\//g, '-')}.pdf`);
+    showToast('PDF exported successfully!', 'success');
+  } catch (err) {
+    showToast('PDF export failed: ' + err.message, 'error');
+  }
+
+  setLoading(btn, false);
+}
+
+function exportCSV() {
+  const fType = document.getElementById('r-type').value;
+  const fCur = document.getElementById('r-currency').value;
+  let rows = allInvestments.filter(inv => {
+    if (fType && inv.assets?.asset_type !== fType) return false;
+    if (fCur && inv.currency !== fCur) return false;
+    return true;
+  });
+
+  const headers = ['Investment Name', 'Asset Type', 'Platform', 'Currency', 'Amount Invested', 'Current Value', 'Gain/Loss', 'Return %', 'Purchase Date'];
+  const csvLines = [
+    headers.join(','),
+    ...rows.map(inv => {
+      const gl = inv.current_value - inv.amount_invested;
+      const glPct = inv.amount_invested > 0 ? (gl / inv.amount_invested * 100).toFixed(2) : 0;
+      return [inv.investment_name, inv.assets?.asset_type, inv.assets?.platform_name, inv.currency,
+        inv.amount_invested, inv.current_value, gl.toFixed(2), glPct, inv.purchase_date || ''].join(',');
+    })
+  ];
+
+  const blob = new Blob([csvLines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `WealthGuard_Report_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  showToast('CSV exported!', 'success');
+}
+
+function emailReport() {
+  showToast('Weekly email reports are configured in Settings → Notifications', 'info');
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+
+init();
+</script>
+</body>
+</html>
