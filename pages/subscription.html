@@ -138,7 +138,7 @@
       <h3 style="font-size:0.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:1rem">Available Plans</h3>
       <div class="plan-grid">
 
-        <div class="plan-card">
+        <div class="plan-card" id="plan-card-trial">
           <div class="plan-icon">🌱</div>
           <div class="plan-name">Free Trial</div>
           <div class="plan-price"><span class="plan-price-val">$0</span><span class="plan-price-per">/ 7 days</span></div>
@@ -272,6 +272,13 @@ async function loadSubscription() {
   const profile = await Profile.get(currentUser.id);
   document.getElementById('user-name').textContent = profile?.full_name || currentUser.email;
   document.getElementById('user-initial').textContent = (profile?.full_name || currentUser.email || 'U')[0].toUpperCase();
+
+  // Admins get full platform access — hide the Free Trial plan card
+  if (profile?.role === 'admin') {
+    const trialCard = document.getElementById('plan-card-trial');
+    if (trialCard) trialCard.style.display = 'none';
+    document.getElementById('trial-progress').style.display = 'none';
+  }
 
   const { data: subData } = await sb.from('subscriptions').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(1).single();
   sub = subData;
