@@ -361,7 +361,7 @@ async function init() {
   const session = await requireAuth();
   if (!session) return;
 
-  const { data: profile } = await Profile.get(session.user.id);
+  const profile = await Profile.get(session.user.id);
   if (!profile) return;
 
   // Update UI

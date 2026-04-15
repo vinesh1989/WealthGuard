@@ -206,7 +206,7 @@ async function init() {
   if (!session) return;
   currentUserId = session.user.id;
 
-  const { data: profile } = await Profile.get(session.user.id);
+  const profile = await Profile.get(session.user.id);
   if (profile) {
     document.getElementById('user-name').textContent = profile.full_name || profile.email || 'User';
     document.getElementById('user-initial').textContent = (profile.full_name||'?').charAt(0).toUpperCase();
