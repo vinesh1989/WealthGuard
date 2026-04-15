@@ -151,26 +151,26 @@
       <input type="hidden" id="asset-id">
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Asset Type <span style="color:var(--red)">*</span></label>
-          <select id="a-type" class="form-control" required>
+          <label class="form-label">Asset Type <span class="form-required">*</span></label>
+          <select id="a-type" class="form-control">
             <option value="">Select type…</option>
             <option>MF</option><option>Stocks</option><option>Crypto</option>
             <option>FD</option><option>Real Estate</option><option>Other</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Platform / App <span style="color:var(--red)">*</span></label>
+          <label class="form-label">Platform / App <span class="form-required">*</span></label>
           <input type="text" id="a-platform" class="form-control" placeholder="e.g. Zerodha, IBKR" required>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Account Number</label>
+        <label class="form-label">Account Number <span class="form-label-optional">(optional)</span></label>
         <input type="text" id="a-account" class="form-control" placeholder="Optional — stored securely">
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Currency <span style="color:var(--red)">*</span></label>
-          <select id="a-currency" class="form-control" required>
+          <label class="form-label">Currency <span class="form-required">*</span></label>
+          <select id="a-currency" class="form-control">
             <option value="USD">USD</option>
             <option value="AED">AED</option>
             <option value="INR">INR</option>
@@ -179,7 +179,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Country / Location <span style="color:var(--red)">*</span></label>
+          <label class="form-label">Country / Location <span class="form-required">*</span></label>
           <input type="text" id="a-country" class="form-control" placeholder="e.g. India, UAE" required>
         </div>
       </div>

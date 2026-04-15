@@ -18,7 +18,9 @@
   --bg-overlay: rgba(10, 13, 18, 0.85);
 
   --border: rgba(255,255,255,0.07);
+  --border-input: rgba(255,255,255,0.1);
   --border-active: rgba(212, 175, 55, 0.4);
+  --bg-input-hover: rgba(255,255,255,0.03);
 
   --gold: #d4af37;
   --gold-light: #f0d060;
@@ -464,54 +466,505 @@ p { color: var(--text-secondary); }
 .icon-blue { background: var(--blue-bg); color: var(--blue); }
 
 /* ============================================================
-   FORMS
+   FORMS — Comprehensive Design System
    ============================================================ */
-.form-group { margin-bottom: 1.1rem; }
 
+/* ── Layout ─────────────────────────────────────────────────── */
+.form-group { margin-bottom: 1.25rem; position: relative; }
+.form-group:last-child { margin-bottom: 0; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+/* Form section divider */
+.form-section {
+  margin: 1.5rem 0 1.25rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.form-section::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Label ───────────────────────────────────────────────────── */
 .form-label {
-  display: block;
-  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.45rem;
   letter-spacing: 0.03em;
+  user-select: none;
 }
 
-.form-control {
+.form-required {
+  color: var(--red);
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.form-label-optional {
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 0.2rem;
+}
+
+/* ── Base input/select/textarea (both .form-control and .form-input work) ── */
+.form-control,
+.form-input {
   width: 100%;
   background: var(--bg-input);
-  border: 1px solid var(--border);
+  border: 1.5px solid rgba(255,255,255,0.08);
   border-radius: var(--radius-sm);
-  padding: 0.65rem 0.9rem;
+  padding: 0.7rem 0.95rem;
   color: var(--text-primary);
   font-family: var(--font-body);
-  font-size: 0.9rem;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
 }
 
-.form-control:focus {
+.form-control:hover,
+.form-input:hover {
+  border-color: rgba(255,255,255,0.15);
+}
+
+.form-control:focus,
+.form-input:focus {
   outline: none;
+  border-color: var(--gold);
+  background: rgba(14, 18, 25, 0.95);
+  box-shadow: 0 0 0 3px rgba(212,175,55,0.12), 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.form-control::placeholder,
+.form-input::placeholder { color: var(--text-muted); font-size: 0.85rem; }
+
+/* ── States ──────────────────────────────────────────────────── */
+.form-control.error,
+.form-input.error {
+  border-color: var(--red);
+  background: rgba(248,113,113,0.04);
+  box-shadow: 0 0 0 3px rgba(248,113,113,0.1);
+}
+
+.form-control.success,
+.form-input.success {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(52,211,153,0.1);
+}
+
+.form-control:disabled,
+.form-input:disabled,
+.form-control[readonly],
+.form-input[readonly] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.05);
+}
+
+/* ── Select ──────────────────────────────────────────────────── */
+select.form-control,
+select.form-input,
+.form-select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238892a4' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  padding-right: 2.25rem;
+}
+
+select.form-control option,
+select.form-input option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 0.5rem;
+}
+
+/* ── Textarea ────────────────────────────────────────────────── */
+textarea.form-control,
+textarea.form-input,
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+  padding-top: 0.75rem;
+}
+
+/* ── Input with icon prefix ──────────────────────────────────── */
+.form-field {
+  position: relative;
+}
+
+.form-field-icon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  pointer-events: none;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+}
+
+.form-field .form-control,
+.form-field .form-input {
+  padding-left: 2.4rem;
+}
+
+/* ── Input addons (prefix/suffix — e.g. currency symbol, %) ─── */
+.form-addon-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.form-addon-wrap .form-control,
+.form-addon-wrap .form-input {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.form-addon {
+  display: flex;
+  align-items: center;
+  padding: 0 0.85rem;
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-right: none;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  user-select: none;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.form-addon-right {
+  border-right: 1.5px solid rgba(255,255,255,0.08);
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.form-addon-wrap .form-control:focus ~ .form-addon,
+.form-addon-wrap .form-input:focus ~ .form-addon,
+.form-addon-wrap:focus-within .form-addon {
+  border-color: var(--gold);
+}
+
+/* ── Field with suffix (action button inside input) ─────────── */
+.form-field-suffix {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+.form-field .form-control.has-suffix,
+.form-field .form-input.has-suffix {
+  padding-right: 3rem;
+}
+
+/* ── Password toggle button ──────────────────────────────────── */
+.btn-pw-toggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  transition: color var(--transition);
+  display: flex;
+  align-items: center;
+}
+.btn-pw-toggle:hover { color: var(--text-secondary); }
+
+/* ── Number input — hide spinners ────────────────────────────── */
+.form-control.no-spin::-webkit-inner-spin-button,
+.form-input.no-spin::-webkit-inner-spin-button,
+input[type=number].no-spin::-webkit-inner-spin-button { -webkit-appearance: none; }
+input[type=number].no-spin { -moz-appearance: textfield; }
+
+/* ── Character counter ───────────────────────────────────────── */
+.form-counter {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: 0.25rem;
+  font-family: var(--font-mono);
+  transition: color 0.2s;
+}
+.form-counter.warn  { color: #fbbf24; }
+.form-counter.over  { color: var(--red); }
+
+/* ── Hints and validation messages ──────────────────────────── */
+.form-hint {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.form-error {
+  font-size: 0.74rem;
+  color: var(--red);
+  margin-top: 0.35rem;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3rem;
+  animation: slideDown 0.15s ease;
+}
+
+.form-success-msg {
+  font-size: 0.74rem;
+  color: var(--green);
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Custom Checkbox / Radio ─────────────────────────────────── */
+.form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-check input[type="checkbox"],
+.form-check input[type="radio"] {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  accent-color: var(--gold);
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.form-check-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.form-check-label strong { color: var(--text-primary); }
+
+/* ── Toggle switch ───────────────────────────────────────────── */
+.toggle-switch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.1);
+  border-radius: 24px;
+  cursor: pointer;
+  transition: 0.25s;
+  border: 1.5px solid rgba(255,255,255,0.08);
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: 0.25s;
+}
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+  background: #0a0d12;
+}
+
+/* ── Input group (connected fields) ─────────────────────────── */
+.form-input-group {
+  display: flex;
+  gap: 0;
+}
+.form-input-group .form-control:not(:last-child),
+.form-input-group .form-input:not(:last-child) {
+  border-right: none;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.form-input-group .form-control:not(:first-child),
+.form-input-group .form-input:not(:first-child) {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.form-input-group > select { flex: 0 0 auto; width: auto; }
+
+/* ── Amount + currency combo ─────────────────────────────────── */
+.form-amount-group {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0;
+}
+.form-amount-group .form-control,
+.form-amount-group .form-input {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  border-right: none;
+  font-family: var(--font-mono);
+}
+.form-amount-group select {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  width: auto;
+  min-width: 80px;
+  border-left: 1.5px solid rgba(255,255,255,0.04) !important;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  padding: 0.7rem 1.8rem 0.7rem 0.7rem;
+  background-color: rgba(255,255,255,0.03);
+}
+
+/* Focus state for amount group */
+.form-amount-group:focus-within .form-control,
+.form-amount-group:focus-within .form-input,
+.form-amount-group:focus-within select {
+  border-color: var(--gold);
+}
+
+/* ── Date input ──────────────────────────────────────────────── */
+input[type="date"].form-control,
+input[type="date"].form-input {
+  color-scheme: dark;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+/* ── Number input ────────────────────────────────────────────── */
+input[type="number"].form-control,
+input[type="number"].form-input {
+  font-family: var(--font-mono);
+}
+
+/* ── Search input ────────────────────────────────────────────── */
+.form-search {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--bg-input);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.9rem;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.form-search:focus-within {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(212,175,55,0.1);
 }
+.form-search-icon { color: var(--text-muted); font-size: 0.875rem; flex-shrink: 0; }
+.form-search input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  flex: 1;
+  min-width: 0;
+}
+.form-search input::placeholder { color: var(--text-muted); }
 
-.form-control::placeholder { color: var(--text-muted); }
-
-.form-control.error { border-color: var(--red); }
-
-select.form-control {
-  cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238892a4' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  padding-right: 2rem;
+/* ── File input ──────────────────────────────────────────────── */
+.form-file {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.form-file input[type="file"] { display: none; }
+.form-file-btn {
+  flex-shrink: 0;
+}
+.form-file-name {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+/* ── Inline form (horizontal label + input) ──────────────────── */
+.form-inline {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.form-inline .form-label {
+  margin-bottom: 0;
+  white-space: nowrap;
+  min-width: 120px;
+}
+.form-inline .form-control,
+.form-inline .form-input { flex: 1; }
 
-.form-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; }
-.form-error { font-size: 0.75rem; color: var(--red); margin-top: 0.3rem; }
+/* ── Settings row (label left, control right) ────────────────── */
+.form-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.form-settings-row:last-child { border-bottom: none; }
+.form-settings-info {}
+.form-settings-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+.form-settings-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
 
 /* ============================================================
    BUTTONS
@@ -959,7 +1412,11 @@ tbody tr:hover td { background: rgba(255,255,255,0.02); color: var(--text-primar
   .grid-3 { grid-template-columns: repeat(2, 1fr); }
   .grid-2 { grid-template-columns: 1fr; }
 
-  .form-row { grid-template-columns: 1fr; }
+  .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  .form-amount-group { grid-template-columns: 1fr auto; }
+  .form-amount-group select { min-width: 70px; }
+  .form-inline { flex-direction: column; align-items: flex-start; }
+  .form-inline .form-label { min-width: unset; }
 
   .page-content { padding: 1rem; }
 }

@@ -459,6 +459,163 @@ const Approvals = {
 // UTILITY: Check auth on every protected page
 // ============================================================
 
+
+// ============================================================
+// FORM UTILITIES
+// ============================================================
+
+const FormUtils = {
+  // Show field-level error
+  setError(fieldId, message) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+    field.classList.add('error');
+    field.classList.remove('success');
+    // Find or create error el
+    let errEl = field.parentElement.querySelector('.form-error');
+    if (!errEl) {
+      errEl = document.createElement('div');
+      errEl.className = 'form-error';
+      field.parentElement.appendChild(errEl);
+    }
+    errEl.innerHTML = `✕ ${message}`;
+    errEl.style.display = 'flex';
+  },
+
+  // Mark field as valid
+  setSuccess(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+    field.classList.remove('error');
+    field.classList.add('success');
+    const errEl = field.parentElement.querySelector('.form-error');
+    if (errEl) errEl.style.display = 'none';
+  },
+
+  // Clear all errors in a container
+  clearErrors(containerId) {
+    const container = containerId ? document.getElementById(containerId) : document;
+    if (!container) return;
+    container.querySelectorAll('.form-control, .form-input').forEach(f => {
+      f.classList.remove('error', 'success');
+    });
+    container.querySelectorAll('.form-error').forEach(e => e.style.display = 'none');
+  },
+
+  // Validate required fields, returns true if all valid
+  validateRequired(fieldIds) {
+    let valid = true;
+    fieldIds.forEach(id => {
+      const field = document.getElementById(id);
+      if (!field) return;
+      const val = field.value?.trim();
+      if (!val) {
+        FormUtils.setError(id, 'This field is required');
+        valid = false;
+      } else {
+        FormUtils.setSuccess(id);
+      }
+    });
+    return valid;
+  },
+
+  // Validate number > 0
+  validatePositive(fieldId, label) {
+    const field = document.getElementById(fieldId);
+    if (!field) return true;
+    const val = parseFloat(field.value);
+    if (!val || val <= 0) {
+      FormUtils.setError(fieldId, `${label || 'Value'} must be greater than 0`);
+      return false;
+    }
+    FormUtils.setSuccess(fieldId);
+    return true;
+  },
+
+  // Validate email
+  validateEmail(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (!field) return true;
+    const val = field.value?.trim();
+    if (!val || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+      FormUtils.setError(fieldId, 'Enter a valid email address');
+      return false;
+    }
+    FormUtils.setSuccess(fieldId);
+    return true;
+  },
+
+  // Attach real-time character counter to a textarea/input
+  attachCounter(fieldId, maxLen) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+    field.setAttribute('maxlength', maxLen);
+    let counter = field.parentElement.querySelector('.form-counter');
+    if (!counter) {
+      counter = document.createElement('div');
+      counter.className = 'form-counter';
+      field.parentElement.appendChild(counter);
+    }
+    const update = () => {
+      const remaining = maxLen - field.value.length;
+      counter.textContent = `${field.value.length} / ${maxLen}`;
+      counter.className = 'form-counter' + (remaining < 20 ? ' warn' : '') + (remaining < 0 ? ' over' : '');
+    };
+    field.addEventListener('input', update);
+    update();
+  },
+
+  // Password show/hide toggle — call after modal opens
+  attachPasswordToggle(fieldId, btnId) {
+    const field = document.getElementById(fieldId);
+    const btn   = document.getElementById(btnId);
+    if (!field || !btn) return;
+    btn.addEventListener('click', () => {
+      const isText = field.type === 'text';
+      field.type = isText ? 'password' : 'text';
+      btn.textContent = isText ? '👁' : '🙈';
+    });
+  },
+
+  // Auto-format number with commas on blur
+  attachNumberFormat(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+    field.addEventListener('blur', () => {
+      const v = parseFloat(field.value.replace(/,/g, ''));
+      if (!isNaN(v)) field.dataset.raw = v;
+    });
+    field.addEventListener('focus', () => {
+      if (field.dataset.raw) field.value = field.dataset.raw;
+    });
+  },
+
+  // Get raw value of a number field
+  getNumber(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (!field) return 0;
+    return parseFloat(String(field.value).replace(/,/g, '')) || 0;
+  },
+
+  // Get trimmed string value
+  getString(fieldId) {
+    return (document.getElementById(fieldId)?.value || '').trim();
+  },
+
+  // Set value and clear error
+  setValue(fieldId, value) {
+    const field = document.getElementById(fieldId);
+    if (field) {
+      field.value = value ?? '';
+      field.classList.remove('error', 'success');
+    }
+  },
+
+  // Reset entire form to blank
+  resetForm(formFields) {
+    formFields.forEach(({ id, value = '' }) => FormUtils.setValue(id, value));
+  },
+};
 async function requireAuth() {
   const session = await Auth.getSession();
   if (!session) {

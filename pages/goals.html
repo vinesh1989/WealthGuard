@@ -86,7 +86,7 @@
       <input type="hidden" id="goal-id">
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Goal Type <span style="color:var(--red)">*</span></label>
+          <label class="form-label">Goal Type <span class="form-required">*</span></label>
           <select id="g-type" class="form-control" required>
             <option>Retirement</option><option>Kids Education</option>
             <option>Emergency Fund</option><option>Property</option>
@@ -94,35 +94,35 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Goal Name <span style="color:var(--red)">*</span></label>
+          <label class="form-label">Goal Name <span class="form-required">*</span></label>
           <input type="text" id="g-name" class="form-control" placeholder="e.g. Retire at 55" required>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Target Amount <span style="color:var(--red)">*</span></label>
-          <input type="number" id="g-target" class="form-control" placeholder="0.00" step="0.01" min="0" required>
+          <label class="form-label">Target Amount <span class="form-required">*</span></label>
+          <input type="number" id="g-target" class="form-control no-spin" placeholder="0.00" step="0.01" min="0" required>
         </div>
         <div class="form-group">
-          <label class="form-label">Current Amount</label>
-          <input type="number" id="g-current" class="form-control" placeholder="0.00" step="0.01" min="0">
+          <label class="form-label">Current Amount <span class="form-label-optional">(optional)</span></label>
+          <input type="number" id="g-current" class="form-control no-spin" placeholder="0.00" step="0.01" min="0">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Currency <span style="color:var(--red)">*</span></label>
+          <label class="form-label">Currency <span class="form-required">*</span></label>
           <select id="g-currency" class="form-control">
             <option value="USD">USD</option><option value="AED">AED</option>
             <option value="INR">INR</option><option value="EUR">EUR</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Target Date</label>
+          <label class="form-label">Target Date <span class="form-label-optional">(optional)</span></label>
           <input type="date" id="g-date" class="form-control">
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Description</label>
+        <label class="form-label">Description <span class="form-label-optional">(optional)</span></label>
         <textarea id="g-desc" class="form-control" rows="2" placeholder="Optional notes…"></textarea>
       </div>
       <div id="g-error" class="form-error" style="display:none; margin-bottom: 0.5rem;"></div>
@@ -209,7 +209,8 @@ function openGoalModal(g = null) {
   document.getElementById('g-name').value = g?.name || '';
   document.getElementById('g-target').value = g?.target_amount || '';
   document.getElementById('g-current').value = g?.current_amount || '';
-  document.getElementById('g-currency').value = g?.currency || 'USD';
+  // currency now in amount group
+  if (document.getElementById("g-currency")) document.getElementById("g-currency").value = g?.currency || "USD";
   document.getElementById('g-date').value = g?.target_date || '';
   document.getElementById('g-desc').value = g?.description || '';
   document.getElementById('g-error').style.display = 'none';

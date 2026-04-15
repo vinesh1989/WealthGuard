@@ -171,11 +171,11 @@
         <div style="font-size:0.75rem;color:var(--text-muted)" id="file-preview-size">0 KB</div>
       </div>
       <div class="form-group">
-        <label class="form-label">Document Name *</label>
+        <label class="form-label">Document Name <span class="form-required">*</span></label>
         <input type="text" class="form-input" id="doc-name" placeholder="e.g. My Will 2024">
       </div>
       <div class="form-group">
-        <label class="form-label">Document Type *</label>
+        <label class="form-label">Document Type <span class="form-required">*</span></label>
         <select class="form-input form-select" id="doc-type">
           <option value="will">Will</option>
           <option value="insurance">Insurance Policy</option>
@@ -184,7 +184,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Tags <span style="color:var(--text-muted);font-weight:400">(press Enter to add)</span></label>
+        <label class="form-label">Tags <span class="form-label-optional">(press Enter to add)</span></label>
         <div class="tag-input-wrap" id="tag-wrap">
           <input type="text" class="tag-input" id="tag-input" placeholder="Add tag…" onkeydown="handleTagKey(event)">
         </div>

@@ -138,60 +138,71 @@
     </div>
     <form id="inv-form">
       <input type="hidden" id="inv-id">
+
       <div class="form-group">
-        <label class="form-label">Asset Account <span style="color:var(--red)">*</span></label>
-        <select id="inv-asset" class="form-control" required>
+        <label class="form-label">Asset Account <span class="form-required">*</span></label>
+        <select id="inv-asset" class="form-control">
           <option value="">Select an asset account…</option>
         </select>
-        <div class="form-hint">Don't have one? <a href="assets.html#add">Create an asset first</a></div>
+        <div class="form-hint">Don't have one? <a href="assets.html#add">Create an asset first →</a></div>
       </div>
+
       <div class="form-group">
-        <label class="form-label">Investment Name <span style="color:var(--red)">*</span></label>
-        <input type="text" id="inv-name" class="form-control" placeholder="e.g. Axis Bluechip Fund" required>
+        <label class="form-label">Investment Name <span class="form-required">*</span></label>
+        <input type="text" id="inv-name" class="form-control" placeholder="e.g. Axis Bluechip Fund, Apple Inc." autocomplete="off">
       </div>
+
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Amount Invested <span style="color:var(--red)">*</span></label>
-          <input type="number" id="inv-invested" class="form-control" placeholder="0.00" step="0.01" min="0" required>
+          <label class="form-label">Amount Invested <span class="form-required">*</span></label>
+          <div class="form-amount-group">
+            <input type="number" id="inv-invested" class="form-control no-spin" placeholder="0.00" step="0.01" min="0">
+            <select id="inv-currency" class="form-control">
+              <option value="USD">USD</option>
+              <option value="AED">AED</option>
+              <option value="INR">INR</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+            </select>
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Current Value <span style="color:var(--red)">*</span></label>
-          <input type="number" id="inv-current" class="form-control" placeholder="0.00" step="0.01" min="0" required>
+          <label class="form-label">Current Value <span class="form-required">*</span></label>
+          <input type="number" id="inv-current" class="form-control no-spin" placeholder="0.00" step="0.01" min="0">
+          <div class="form-hint">Leave same as invested if unknown</div>
         </div>
       </div>
+
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Currency <span style="color:var(--red)">*</span></label>
-          <select id="inv-currency" class="form-control" required>
-            <option value="USD">USD — US Dollar</option>
-            <option value="AED">AED — UAE Dirham</option>
-            <option value="INR">INR — Indian Rupee</option>
-            <option value="EUR">EUR — Euro</option>
-            <option value="GBP">GBP — British Pound</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Purchase Date</label>
+          <label class="form-label">Purchase Date <span class="form-label-optional">(optional)</span></label>
           <input type="date" id="inv-date" class="form-control">
         </div>
+        <div class="form-group">
+          <label class="form-label">Category <span class="form-label-optional">(optional)</span></label>
+          <input type="text" id="inv-category" class="form-control" placeholder="e.g. Large Cap, Equity, Bond">
+        </div>
       </div>
+
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Category</label>
-          <input type="text" id="inv-category" class="form-control" placeholder="e.g. Large Cap, Equity">
+          <label class="form-label">Ticker / ISIN <span class="form-label-optional">(optional)</span></label>
+          <input type="text" id="inv-ticker" class="form-control" placeholder="e.g. AAPL, NIFTY50" style="text-transform:uppercase;font-family:var(--font-mono)">
         </div>
         <div class="form-group">
-          <label class="form-label">Ticker Symbol</label>
-          <input type="text" id="inv-ticker" class="form-control" placeholder="e.g. AAPL">
+          <label class="form-label">Quantity / Units <span class="form-label-optional">(optional)</span></label>
+          <input type="number" id="inv-qty" class="form-control no-spin" placeholder="0.000" step="0.001" min="0" style="font-family:var(--font-mono)">
         </div>
       </div>
+
       <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea id="inv-notes" class="form-control" rows="2" placeholder="Optional notes…"></textarea>
+        <label class="form-label">Notes <span class="form-label-optional">(optional)</span></label>
+        <textarea id="inv-notes" class="form-control" rows="2" placeholder="Any additional details…" maxlength="300"></textarea>
       </div>
+
       <div id="inv-form-error" class="form-error" style="display:none; margin-bottom: 0.5rem;"></div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="closeModal('inv-modal')">Cancel</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('inv-modal')">Cancel</button>
         <button type="submit" class="btn btn-primary" id="inv-submit-btn">Save Investment</button>
       </div>
     </form>
@@ -333,8 +344,10 @@ function openInvModal(inv = null) {
   document.getElementById('inv-date').value = inv?.date || '';
   document.getElementById('inv-category').value = inv?.category || '';
   document.getElementById('inv-ticker').value = inv?.ticker_symbol || '';
-  document.getElementById('inv-notes').value = inv?.notes || '';
+  document.getElementById('inv-qty').value    = inv?.quantity || '';
+  document.getElementById('inv-notes').value  = inv?.notes || '';
   document.getElementById('inv-form-error').style.display = 'none';
+  FormUtils.clearErrors('inv-modal');
   document.getElementById('inv-modal').classList.add('open');
 }
 
@@ -350,21 +363,32 @@ function closeModal(id) {
 document.getElementById('inv-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('inv-submit-btn');
-  const errEl = document.getElementById('inv-form-error');
-  errEl.style.display = 'none';
+  FormUtils.clearErrors('inv-modal');
   setLoading(btn, true);
 
+  const name       = FormUtils.getString('inv-name');
+  const asset_id   = FormUtils.getString('inv-asset');
+  const invested   = FormUtils.getNumber('inv-invested');
+  const current    = FormUtils.getNumber('inv-current');
+
+  let valid = true;
+  if (!name)       { FormUtils.setError('inv-name', 'Investment name is required'); valid = false; }
+  if (invested <= 0) { FormUtils.setError('inv-invested', 'Amount must be greater than 0'); valid = false; }
+  if (current < 0)   { FormUtils.setError('inv-current', 'Current value cannot be negative'); valid = false; }
+  if (!valid) { setLoading(btn, false); return; }
+
   const payload = {
-    asset_id: document.getElementById('inv-asset').value,
-    user_id: currentUserId,
-    name: document.getElementById('inv-name').value.trim(),
-    amount_invested: parseFloat(document.getElementById('inv-invested').value),
-    current_value: parseFloat(document.getElementById('inv-current').value),
-    currency: document.getElementById('inv-currency').value,
-    date: document.getElementById('inv-date').value || null,
-    category: document.getElementById('inv-category').value || null,
-    ticker_symbol: document.getElementById('inv-ticker').value || null,
-    notes: document.getElementById('inv-notes').value || null
+    asset_id:       asset_id || null,
+    user_id:        currentUserId,
+    name,
+    amount_invested: invested,
+    current_value:  current || invested,
+    currency:       FormUtils.getString('inv-currency') || 'USD',
+    date:           FormUtils.getString('inv-date') || null,
+    category:       FormUtils.getString('inv-category') || null,
+    ticker_symbol:  FormUtils.getString('inv-ticker') || null,
+    quantity:       FormUtils.getNumber('inv-qty') || null,
+    notes:          FormUtils.getString('inv-notes') || null,
   };
 
   let error;

@@ -149,18 +149,27 @@
               </div>
               <div class="settings-section-body">
                 <div class="form-group">
-                  <label class="form-label">Current Password</label>
-                  <input type="password" class="form-input" id="current-pass" placeholder="••••••••">
+                  <label class="form-label">Current Password <span class="form-required">*</span></label>
+                  <div class="form-field">
+                    <input type="password" class="form-input has-suffix" id="current-pass" placeholder="••••••••">
+                    <div class="form-field-suffix"><button type="button" class="btn-pw-toggle" onclick="togglePw('current-pass',this)">👁</button></div>
+                  </div>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">New Password</label>
-                  <input type="password" class="form-input" id="new-pass" placeholder="••••••••">
-                  <div class="form-hint">Minimum 8 characters with at least one number</div>
+                  <label class="form-label">New Password <span class="form-required">*</span></label>
+                  <div class="form-field">
+                    <input type="password" class="form-input has-suffix" id="new-pass" placeholder="Min. 8 characters">
+                    <div class="form-field-suffix"><button type="button" class="btn-pw-toggle" onclick="togglePw('new-pass',this)">👁</button></div>
+                  </div>
+                  <div class="form-hint">Use a mix of letters, numbers and symbols</div>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Confirm New Password</label>
-                  <input type="password" class="form-input" id="confirm-pass" placeholder="••••••••">
-                </div>
+                  <label class="form-label">Confirm New Password <span class="form-required">*</span></label>
+                  <div class="form-field">
+                    <input type="password" class="form-input has-suffix" id="confirm-pass" placeholder="••••••••">
+                    <div class="form-field-suffix"><button type="button" class="btn-pw-toggle" onclick="togglePw('confirm-pass',this)">👁</button></div>
+                  </div>
+                </div></div>
                 <button class="btn btn-primary" id="change-pass-btn" onclick="changePassword()">Update Password</button>
               </div>
             </div>
@@ -171,10 +180,10 @@
                 <div class="settings-section-desc">Manage where you're signed in</div>
               </div>
               <div class="settings-section-body">
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <div class="settings-row-label">Current Device</div>
-                    <div class="settings-row-desc" id="current-session">Signed in · This session</div>
+                <div class="form-settings-row">
+                  <div class="form-settings-info">
+                    <div class="form-settings-label">Current Device</div>
+                    <div class="form-settings-desc" id="current-session">Signed in · This session</div>
                   </div>
                   <span class="badge badge-success">Active</span>
                 </div>
@@ -225,38 +234,38 @@
                 <div class="settings-section-desc">Control which emails you receive from WealthGuard</div>
               </div>
               <div class="settings-section-body">
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <div class="settings-row-label">Weekly Portfolio Summary</div>
-                    <div class="settings-row-desc">Get a weekly email with your portfolio performance</div>
+                <div class="form-settings-row">
+                  <div class="form-settings-info">
+                    <div class="form-settings-label">Weekly Portfolio Summary</div>
+                    <div class="form-settings-desc">Get a weekly email with your portfolio performance</div>
                   </div>
                   <label class="toggle-switch"><input type="checkbox" id="notif-weekly" checked><span class="toggle-slider"></span></label>
                 </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <div class="settings-row-label">Goal Progress Alerts</div>
-                    <div class="settings-row-desc">Be notified when you reach a goal milestone</div>
+                <div class="form-settings-row">
+                  <div class="form-settings-info">
+                    <div class="form-settings-label">Goal Progress Alerts</div>
+                    <div class="form-settings-desc">Be notified when you reach a goal milestone</div>
                   </div>
                   <label class="toggle-switch"><input type="checkbox" id="notif-goals" checked><span class="toggle-slider"></span></label>
                 </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <div class="settings-row-label">Large Investment Changes</div>
-                    <div class="settings-row-desc">Alert on significant value changes (&gt;5%)</div>
+                <div class="form-settings-row">
+                  <div class="form-settings-info">
+                    <div class="form-settings-label">Large Investment Changes</div>
+                    <div class="form-settings-desc">Alert on significant value changes (&gt;5%)</div>
                   </div>
                   <label class="toggle-switch"><input type="checkbox" id="notif-changes"><span class="toggle-slider"></span></label>
                 </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <div class="settings-row-label">Family Access Activity</div>
-                    <div class="settings-row-desc">Know when a beneficiary logs in</div>
+                <div class="form-settings-row">
+                  <div class="form-settings-info">
+                    <div class="form-settings-label">Family Access Activity</div>
+                    <div class="form-settings-desc">Know when a beneficiary logs in</div>
                   </div>
                   <label class="toggle-switch"><input type="checkbox" id="notif-family" checked><span class="toggle-slider"></span></label>
                 </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <div class="settings-row-label">Subscription & Billing</div>
-                    <div class="settings-row-desc">Renewal reminders and payment confirmations</div>
+                <div class="form-settings-row">
+                  <div class="form-settings-info">
+                    <div class="form-settings-label">Subscription & Billing</div>
+                    <div class="form-settings-desc">Renewal reminders and payment confirmations</div>
                   </div>
                   <label class="toggle-switch"><input type="checkbox" id="notif-billing" checked><span class="toggle-slider"></span></label>
                 </div>
@@ -275,24 +284,24 @@
                 <div class="settings-section-desc">Irreversible actions — proceed with caution</div>
               </div>
               <div class="settings-section-body">
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <div class="settings-row-label">Export All Data</div>
-                    <div class="settings-row-desc">Download a complete copy of your data as JSON</div>
+                <div class="form-settings-row">
+                  <div class="form-settings-info">
+                    <div class="form-settings-label">Export All Data</div>
+                    <div class="form-settings-desc">Download a complete copy of your data as JSON</div>
                   </div>
                   <button class="btn btn-outline btn-sm" onclick="exportData()">Export</button>
                 </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <div class="settings-row-label">Delete All Investments</div>
-                    <div class="settings-row-desc">Permanently delete all investment records (cannot be undone)</div>
+                <div class="form-settings-row">
+                  <div class="form-settings-info">
+                    <div class="form-settings-label">Delete All Investments</div>
+                    <div class="form-settings-desc">Permanently delete all investment records (cannot be undone)</div>
                   </div>
                   <button class="btn btn-sm" style="background:rgba(248,113,113,0.1);color:#f87171;border:1px solid rgba(248,113,113,0.2)" onclick="deleteAllInvestments()">Delete</button>
                 </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <div class="settings-row-label">Delete Account</div>
-                    <div class="settings-row-desc">Permanently delete your account and all data</div>
+                <div class="form-settings-row">
+                  <div class="form-settings-info">
+                    <div class="form-settings-label">Delete Account</div>
+                    <div class="form-settings-desc">Permanently delete your account and all data</div>
                   </div>
                   <button class="btn btn-sm" style="background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.3);font-weight:600" onclick="deleteAccount()">Delete Account</button>
                 </div>
@@ -313,6 +322,13 @@
 <script>
 let currentUser = null;
 let profileData = null;
+
+function togglePw(fieldId, btn) {
+  const f = document.getElementById(fieldId);
+  if (!f) return;
+  f.type = f.type === 'text' ? 'password' : 'text';
+  btn.textContent = f.type === 'text' ? '🙈' : '👁';
+}
 
 async function loadSettings() {
   const _session = await requireAuth();

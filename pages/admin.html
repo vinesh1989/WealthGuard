@@ -111,7 +111,7 @@
         <div class="admin-section">
           <div class="admin-section-header">
             <div class="admin-section-title">Pending Signups</div>
-            <div class="search-bar-inline"><span>🔍</span><input type="text" placeholder="Search…" oninput="filterApprovals(this.value)"></div>
+            <div class="form-search" style="min-width:180px"><span class="form-search-icon">🔍</span><input type="text" placeholder="Search…" oninput="filterApprovals(this.value)"></div>
           </div>
           <div id="approvals-list"><div class="loading-state" style="padding:1.5rem">Loading…</div></div>
         </div>
@@ -134,7 +134,7 @@
                 <option value="rejected">Rejected</option>
                 <option value="suspended">Suspended</option>
               </select>
-              <div class="search-bar-inline"><span>🔍</span><input type="text" placeholder="Search users…" oninput="filterUsers(this.value)" id="user-search"></div>
+              <div class="form-search" style="min-width:180px"><span class="form-search-icon">🔍</span><input type="text" placeholder="Search users…" oninput="filterUsers(this.value)" id="user-search"></div>
             </div>
           </div>
           <div id="users-list"><div class="loading-state" style="padding:1.5rem">Loading…</div></div>
@@ -183,7 +183,7 @@
           <div style="padding:1.25rem">
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:0.75rem;align-items:end">
               <div class="form-group" style="margin-bottom:0"><label class="form-label">Code</label><input type="text" class="form-input" id="coup-code" placeholder="SUMMER30" style="text-transform:uppercase;font-family:var(--font-mono)"></div>
-              <div class="form-group" style="margin-bottom:0"><label class="form-label">Discount %</label><input type="number" class="form-input" id="coup-discount" placeholder="30" min="1" max="100"></div>
+              <div class="form-group" style="margin-bottom:0"><label class="form-label">Discount %</label><input type="number" class="form-input no-spin" id="coup-discount" placeholder="30" min="1" max="100"></div>
               <div class="form-group" style="margin-bottom:0"><label class="form-label">Expires</label><input type="date" class="form-input" id="coup-expires"></div>
               <button class="btn btn-primary" id="create-coupon-btn" onclick="createCoupon()">Create</button>
             </div>
@@ -227,7 +227,7 @@
                 </div>
                 <div class="form-group" style="margin-bottom:0">
                   <label class="form-label">Rate (1 FROM = ? TO)</label>
-                  <input type="number" class="form-input" id="rate-value" placeholder="e.g. 3.6725" step="0.000001" min="0">
+                  <input type="number" class="form-input no-spin" id="rate-value" placeholder="e.g. 3.6725" step="0.000001" min="0" class="form-input no-spin" style="font-family:var(--font-mono)">
                 </div>
                 <button class="btn btn-primary" id="save-rate-btn" onclick="saveRate()">Save Rate</button>
               </div>
@@ -249,16 +249,16 @@
         Invited users are <strong style="color:#60a5fa">auto-approved</strong> on signup — they skip the pending queue and receive the assigned plan immediately.
       </div>
       <div class="invite-form-grid">
-        <div class="form-group"><label class="form-label">Email Address *</label><input type="email" class="form-input" id="inv-email" placeholder="user@example.com"></div>
+        <div class="form-group"><label class="form-label">Email Address <span class="form-required">*</span></label><input type="email" class="form-input" id="inv-email" placeholder="user@example.com"></div>
         <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input" id="inv-name" placeholder="e.g. Priya Sharma"></div>
-        <div class="form-group"><label class="form-label">Role *</label>
+        <div class="form-group"><label class="form-label">Role <span class="form-required">*</span></label>
           <select class="form-input form-select" id="inv-role">
             <option value="investor">Investor (Full Access)</option>
             <option value="beneficiary">Beneficiary (Read-Only)</option>
             <option value="admin">Admin</option>
           </select>
         </div>
-        <div class="form-group"><label class="form-label">Assign Plan *</label>
+        <div class="form-group"><label class="form-label">Assign Plan <span class="form-required">*</span></label>
           <select class="form-input form-select" id="inv-plan">
             <option value="annual">Annual Pro</option><option value="family">Family Plan</option>
             <option value="trial">Trial (7 days)</option><option value="lifetime">Lifetime</option>
@@ -294,7 +294,7 @@
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
         <div class="form-group">
-          <label class="form-label">Assign Plan *</label>
+          <label class="form-label">Assign Plan <span class="form-required">*</span></label>
           <select class="form-input form-select" id="approve-plan">
             <option value="annual">Annual Pro</option><option value="family">Family Plan</option>
             <option value="trial">Trial</option><option value="lifetime">Lifetime</option>

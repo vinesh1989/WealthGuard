@@ -125,11 +125,11 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
 
         <div class="form-group" style="grid-column:1/-1">
-          <label class="form-label">Property Name *</label>
+          <label class="form-label">Property Name <span class="form-required">*</span></label>
           <input type="text" class="form-input" id="re-name" placeholder="e.g. Flat 4B, Lodha Palava, Dombivli">
         </div>
         <div class="form-group">
-          <label class="form-label">Property Type *</label>
+          <label class="form-label">Property Type <span class="form-required">*</span></label>
           <select class="form-input form-select" id="re-type">
             <option value="Residential">Residential (Flat/House)</option>
             <option value="Commercial">Commercial</option>
@@ -141,12 +141,13 @@
         <div class="form-group">
           <label class="form-label">Currency</label>
           <select class="form-input form-select" id="re-currency">
-            <option value="INR">INR — Indian Rupee</option>
-            <option value="AED">AED — UAE Dirham</option>
-            <option value="USD">USD — US Dollar</option>
-            <option value="EUR">EUR — Euro</option>
-            <option value="GBP">GBP — British Pound</option>
+            <option value="INR">INR</option>
+            <option value="AED">AED</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
           </select>
+          <div class="form-hint">All amounts below are in this currency</div>
         </div>
 
         <div class="form-group" style="grid-column:1/-1">
@@ -163,28 +164,28 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Area (sq ft)</label>
-          <input type="number" class="form-input" id="re-area" placeholder="0" min="0">
+          <label class="form-label">Area (sq ft) <span class="form-label-optional">(optional)</span></label>
+          <input type="number" class="form-input no-spin no-spin" id="re-area" placeholder="0" min="0">
         </div>
         <div class="form-group">
           <label class="form-label">Ownership % <span style="color:var(--text-muted);font-weight:400">(for joint)</span></label>
-          <input type="number" class="form-input" id="re-ownership" placeholder="100" min="1" max="100" value="100">
+          <input type="number" class="form-input no-spin no-spin" id="re-ownership" placeholder="100" min="1" max="100" value="100">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Purchase Price *</label>
-          <input type="number" class="form-input" id="re-purchase" placeholder="0" step="0.01" min="0">
+          <label class="form-label">Purchase Price <span class="form-required">*</span></label>
+          <input type="number" class="form-input no-spin no-spin" id="re-purchase" placeholder="0.00" style="font-family:var(--font-mono)" step="0.01" min="0">
         </div>
         <div class="form-group">
           <label class="form-label">Current Market Value</label>
-          <input type="number" class="form-input" id="re-current" placeholder="0" step="0.01" min="0">
+          <input type="number" class="form-input no-spin no-spin" id="re-current" placeholder="0.00" style="font-family:var(--font-mono)" step="0.01" min="0">
         </div>
         <div class="form-group">
           <label class="form-label">Purchase Date</label>
           <input type="date" class="form-input" id="re-date">
         </div>
         <div class="form-group">
-          <label class="form-label">Registration Number</label>
+          <label class="form-label">Registration Number <span class="form-label-optional">(optional)</span></label>
           <input type="text" class="form-input" id="re-regno" placeholder="e.g. MH-04-2019-12345">
         </div>
 
@@ -197,11 +198,11 @@
           <div id="mortgage-fields" style="display:none;grid-template-columns:1fr 1fr;gap:0.75rem">
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Outstanding Loan</label>
-              <input type="number" class="form-input" id="re-mort-outstanding" placeholder="0" min="0">
+              <input type="number" class="form-input no-spin no-spin" id="re-mort-outstanding" placeholder="0.00" style="font-family:var(--font-mono)" min="0">
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Monthly EMI</label>
-              <input type="number" class="form-input" id="re-mort-emi" placeholder="0" min="0">
+              <input type="number" class="form-input no-spin no-spin" id="re-mort-emi" placeholder="0.00" style="font-family:var(--font-mono)" min="0">
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Lender Bank</label>
