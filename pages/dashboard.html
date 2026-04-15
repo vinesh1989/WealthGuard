@@ -416,8 +416,8 @@ async function init() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   document.getElementById('greeting-date').textContent = `${greeting}, ${(profile.full_name || profile.email || 'there').split(' ')[0]}`;
 
-  // Trial banner
-  if (profile.subscription_status === 'trial') {
+  // Trial banner — never show for admin users
+  if (profile.subscription_status === 'trial' && profile.role !== 'admin') {
     const daysLeft = Math.ceil((new Date(profile.trial_ends_at) - new Date()) / 86400000);
     if (daysLeft > 0) {
       document.getElementById('trial-days').textContent = daysLeft;
