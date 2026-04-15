@@ -17,6 +17,8 @@ DROP VIEW IF EXISTS portfolio_summary CASCADE;
 
 -- Step 4: Drop tables (reverse FK order)
 DROP TABLE IF EXISTS audit_log CASCADE;
+DROP TABLE IF EXISTS insurance_policies CASCADE;
+DROP TABLE IF EXISTS real_estate_assets CASCADE;
 DROP TABLE IF EXISTS import_logs CASCADE;
 DROP TABLE IF EXISTS exchange_rates CASCADE;
 DROP TABLE IF EXISTS notification_preferences CASCADE;

@@ -297,6 +297,62 @@ CREATE TABLE audit_log (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+
+-- ============================================================
+-- INSURANCE POLICIES
+-- ============================================================
+
+CREATE TABLE insurance_policies (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  policy_name TEXT NOT NULL,
+  policy_number TEXT,
+  insurer TEXT NOT NULL,
+  policy_type TEXT NOT NULL DEFAULT 'Life',   -- Life, Health, Vehicle, Property, Term, ULIP, Other
+  sum_assured DECIMAL(15,2) NOT NULL DEFAULT 0,
+  premium_amount DECIMAL(15,2) DEFAULT 0,
+  premium_frequency TEXT DEFAULT 'Annual',     -- Monthly, Quarterly, Annual, Single
+  start_date DATE,
+  maturity_date DATE,
+  nominee_name TEXT,
+  nominee_relation TEXT,
+  currency currency_type DEFAULT 'INR',
+  is_active BOOLEAN DEFAULT TRUE,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- REAL ESTATE ASSETS
+-- ============================================================
+
+CREATE TABLE real_estate_assets (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  property_name TEXT NOT NULL,
+  property_type TEXT NOT NULL DEFAULT 'Residential', -- Residential, Commercial, Land, Industrial, Other
+  address TEXT,
+  city TEXT,
+  country TEXT DEFAULT 'India',
+  area_sqft DECIMAL(12,2),
+  ownership_percent DECIMAL(5,2) DEFAULT 100,     -- % owned (for joint properties)
+  purchase_price DECIMAL(15,2) NOT NULL DEFAULT 0,
+  current_value DECIMAL(15,2) DEFAULT 0,
+  purchase_date DATE,
+  registration_number TEXT,
+  has_mortgage BOOLEAN DEFAULT FALSE,
+  mortgage_outstanding DECIMAL(15,2) DEFAULT 0,
+  mortgage_bank TEXT,
+  mortgage_emi DECIMAL(12,2) DEFAULT 0,
+  mortgage_end_date DATE,
+  currency currency_type DEFAULT 'INR',
+  is_active BOOLEAN DEFAULT TRUE,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================================
 -- VIEWS
 -- ============================================================
@@ -359,6 +415,8 @@ ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE import_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invitations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE insurance_policies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE real_estate_assets ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: user sees own + admin sees all
 -- Profiles RLS: SELECT/UPDATE/DELETE own row; INSERT allowed for new users
@@ -416,6 +474,18 @@ CREATE POLICY "subscriptions_own" ON subscriptions FOR ALL USING (user_id = auth
 
 -- Import logs: own only
 CREATE POLICY "import_logs_own" ON import_logs FOR ALL USING (user_id = auth.uid());
+
+-- Insurance: owner only (+ beneficiary read)
+CREATE POLICY "insurance_owner" ON insurance_policies FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "insurance_beneficiary" ON insurance_policies FOR SELECT USING (
+  EXISTS (SELECT 1 FROM family_shares WHERE beneficiary_id = auth.uid() AND owner_id = insurance_policies.user_id AND is_accepted = TRUE)
+);
+
+-- Real Estate: owner only (+ beneficiary read)
+CREATE POLICY "realestate_owner" ON real_estate_assets FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "realestate_beneficiary" ON real_estate_assets FOR SELECT USING (
+  EXISTS (SELECT 1 FROM family_shares WHERE beneficiary_id = auth.uid() AND owner_id = real_estate_assets.user_id AND is_accepted = TRUE)
+);
 
 -- Invitations: admin full access
 CREATE POLICY "invitations_admin" ON invitations FOR ALL USING (
@@ -510,6 +580,8 @@ CREATE TRIGGER update_assets_ts BEFORE UPDATE ON assets FOR EACH ROW EXECUTE FUN
 CREATE TRIGGER update_investments_ts BEFORE UPDATE ON investments FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_goals_ts BEFORE UPDATE ON goals FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_documents_ts BEFORE UPDATE ON documents FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_insurance_ts BEFORE UPDATE ON insurance_policies FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_realestate_ts BEFORE UPDATE ON real_estate_assets FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ============================================================
 -- SEED: Exchange Rates (approximate)
@@ -543,3 +615,5 @@ CREATE INDEX idx_family_shares_beneficiary ON family_shares(beneficiary_id);
 CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
 CREATE INDEX idx_audit_log_user ON audit_log(user_id, created_at);
 CREATE INDEX idx_inv_history_investment ON investment_history(investment_id, recorded_at);
+CREATE INDEX idx_insurance_user ON insurance_policies(user_id);
+CREATE INDEX idx_realestate_user ON real_estate_assets(user_id);

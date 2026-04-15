@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real Estate — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .re-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem; }
+
+    .re-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .re-card:hover { border-color: rgba(249,115,22,0.3); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(249,115,22,0.06); }
+
+    .re-card-banner {
+      height: 8px;
+    }
+    .re-card-body { padding: 1.25rem; }
+
+    .re-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.75rem; }
+    .re-type-badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.65rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+    .re-card-actions { display: flex; gap: 0.35rem; opacity: 0; transition: opacity 0.15s; }
+    .re-card:hover .re-card-actions { opacity: 1; }
+
+    .re-name { font-weight: 700; font-size: 1rem; margin-bottom: 0.2rem; }
+    .re-location { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.35rem; }
+
+    .re-values { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.9rem; }
+    .re-val-box { background: var(--bg-surface); border-radius: var(--radius-sm); padding: 0.65rem 0.75rem; }
+    .re-val-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .re-val-num { font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin-top: 0.15rem; }
+
+    .re-appreciation { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.9rem; padding: 0.5rem 0.75rem; background: var(--bg-surface); border-radius: var(--radius-sm); }
+    .re-appr-label { font-size: 0.75rem; color: var(--text-muted); flex: 1; }
+    .re-appr-val { font-family: var(--font-mono); font-weight: 600; font-size: 0.875rem; }
+
+    .re-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-muted); }
+
+    .mortgage-badge { display: inline-flex; align-items: center; gap: 0.3rem; background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: #f87171; border-radius: 20px; padding: 0.15rem 0.55rem; font-size: 0.7rem; }
+
+    .summary-bar { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+
+    .type-colors-re {
+      Residential: '#f97316', Commercial: '#60a5fa',
+      Land: '#34d399', Industrial: '#a78bfa', Other: '#9ca3af'
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+
+      <span class="nav-section-label">Portfolio</span>
+      <a href="insurance.html" class="nav-item"><span class="nav-icon">🛡</span> Insurance</a>
+      <a href="realestate.html" class="nav-item active"><span class="nav-icon">🏠</span> Real Estate</a>
+
+      <span class="nav-section-label">Planning</span>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+
+      <span class="nav-section-label">Reports</span>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user"><div class="user-avatar" id="user-initial">R</div><div><div class="user-name" id="user-name">Loading...</div><div class="user-role">investor</div></div></div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()"><span class="nav-icon">↩</span> Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div><div class="page-title">Real Estate</div><div class="page-subtitle">Properties, land &amp; commercial assets</div></div>
+      </div>
+      <div class="topbar-actions">
+        <button class="notif-btn" onclick="window.location.href='notifications.html'">🔔</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal()">+ Add Property</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+
+      <!-- Summary -->
+      <div class="summary-bar">
+        <div class="stat-card"><div class="card-title">Properties</div><div class="card-value display-num" id="re-count">—</div></div>
+        <div class="stat-card"><div class="card-title">Total Value</div><div class="card-value display-num" id="re-value">—</div></div>
+        <div class="stat-card"><div class="card-title">Total Appreciation</div><div class="card-value display-num" style="color:var(--green)" id="re-appr">—</div></div>
+        <div class="stat-card"><div class="card-title">Mortgage Outstanding</div><div class="card-value display-num" style="color:#f87171" id="re-mortgage">—</div></div>
+      </div>
+
+      <div class="re-grid" id="re-grid">
+        <div class="loading-state" style="grid-column:1/-1">Loading properties…</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-backdrop" id="re-modal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-title">Add Property</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Property Name *</label>
+          <input type="text" class="form-input" id="re-name" placeholder="e.g. Flat 4B, Lodha Palava, Dombivli">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Property Type *</label>
+          <select class="form-input form-select" id="re-type">
+            <option value="Residential">Residential (Flat/House)</option>
+            <option value="Commercial">Commercial</option>
+            <option value="Land">Land / Plot</option>
+            <option value="Industrial">Industrial</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Currency</label>
+          <select class="form-input form-select" id="re-currency">
+            <option value="INR">INR — Indian Rupee</option>
+            <option value="AED">AED — UAE Dirham</option>
+            <option value="USD">USD — US Dollar</option>
+            <option value="EUR">EUR — Euro</option>
+            <option value="GBP">GBP — British Pound</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Full Address</label>
+          <input type="text" class="form-input" id="re-address" placeholder="Flat/House No., Street, Area">
+        </div>
+        <div class="form-group">
+          <label class="form-label">City</label>
+          <input type="text" class="form-input" id="re-city" placeholder="e.g. Mumbai">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Country</label>
+          <input type="text" class="form-input" id="re-country" placeholder="e.g. India" value="India">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Area (sq ft)</label>
+          <input type="number" class="form-input" id="re-area" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ownership % <span style="color:var(--text-muted);font-weight:400">(for joint)</span></label>
+          <input type="number" class="form-input" id="re-ownership" placeholder="100" min="1" max="100" value="100">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Purchase Price *</label>
+          <input type="number" class="form-input" id="re-purchase" placeholder="0" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Current Market Value</label>
+          <input type="number" class="form-input" id="re-current" placeholder="0" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Purchase Date</label>
+          <input type="date" class="form-input" id="re-date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Registration Number</label>
+          <input type="text" class="form-input" id="re-regno" placeholder="e.g. MH-04-2019-12345">
+        </div>
+
+        <!-- Mortgage section -->
+        <div style="grid-column:1/-1;background:rgba(248,113,113,0.05);border:1px solid rgba(248,113,113,0.15);border-radius:var(--radius-md);padding:1rem">
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem">
+            <input type="checkbox" id="re-has-mortgage" onchange="toggleMortgage(this.checked)" style="width:16px;height:16px;accent-color:#f97316">
+            <label for="re-has-mortgage" style="font-weight:600;font-size:0.88rem;cursor:pointer">This property has a home loan / mortgage</label>
+          </div>
+          <div id="mortgage-fields" style="display:none;grid-template-columns:1fr 1fr;gap:0.75rem">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Outstanding Loan</label>
+              <input type="number" class="form-input" id="re-mort-outstanding" placeholder="0" min="0">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Monthly EMI</label>
+              <input type="number" class="form-input" id="re-mort-emi" placeholder="0" min="0">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Lender Bank</label>
+              <input type="text" class="form-input" id="re-mort-bank" placeholder="e.g. HDFC Bank">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Loan End Date</label>
+              <input type="date" class="form-input" id="re-mort-end">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Notes</label>
+          <textarea class="form-input form-textarea" id="re-notes" rows="2" placeholder="Any additional details about the property…"></textarea>
+        </div>
+      </div>
+      <div id="re-error" style="color:#f87171;font-size:0.82rem;display:none;margin-top:0.25rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="re-save-btn" onclick="saveProperty()">Save Property</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+let properties = [];
+let currentUser = null;
+let editingId = null;
+
+const TYPE_COLORS = {
+  Residential: { banner:'#f97316', bg:'rgba(249,115,22,0.1)', color:'#f97316' },
+  Commercial:  { banner:'#60a5fa', bg:'rgba(96,165,250,0.1)',  color:'#60a5fa' },
+  Land:        { banner:'#34d399', bg:'rgba(52,211,153,0.1)',   color:'#34d399' },
+  Industrial:  { banner:'#a78bfa', bg:'rgba(167,139,250,0.1)', color:'#a78bfa' },
+  Other:       { banner:'#9ca3af', bg:'rgba(107,114,128,0.1)', color:'#9ca3af' },
+};
+const TYPE_ICONS = { Residential:'🏠', Commercial:'🏢', Land:'🌳', Industrial:'🏭', Other:'🏗' };
+
+async function init() {
+  const session = await requireAuth();
+  if (!session) return;
+  currentUser = session.user.id;
+  const profile = await Profile.get(session.user.id);
+  document.getElementById('user-name').textContent = profile?.full_name || session.user.email;
+  document.getElementById('user-initial').textContent = (profile?.full_name || session.user.email || 'U')[0].toUpperCase();
+  await load();
+}
+
+async function load() {
+  const { data } = await sb.from('real_estate_assets').select('*').eq('user_id', currentUser).eq('is_active', true).order('created_at', { ascending: false });
+  properties = data || [];
+  render();
+}
+
+function fmtCur(v, currency) {
+  const sym = { INR:'₹', USD:'$', AED:'AED ', EUR:'€', GBP:'£' }[currency] || (currency + ' ');
+  return sym + (parseFloat(v) || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function render() {
+  let totVal = 0, totPurchase = 0, totMortgage = 0;
+  properties.forEach(p => {
+    const cv = parseFloat(p.current_value) || parseFloat(p.purchase_price) || 0;
+    const pp = parseFloat(p.purchase_price) || 0;
+    const own = (parseFloat(p.ownership_percent) || 100) / 100;
+    totVal += cv * own;
+    totPurchase += pp * own;
+    if (p.has_mortgage) totMortgage += parseFloat(p.mortgage_outstanding) || 0;
+  });
+  const totAppr = totVal - totPurchase;
+
+  document.getElementById('re-count').textContent   = properties.length;
+  document.getElementById('re-value').textContent   = '₹' + totVal.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  const apEl = document.getElementById('re-appr');
+  apEl.textContent = (totAppr >= 0 ? '+' : '') + '₹' + totAppr.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  apEl.style.color = totAppr >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('re-mortgage').textContent = totMortgage > 0 ? '₹' + totMortgage.toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '₹0';
+
+  const grid = document.getElementById('re-grid');
+  if (!properties.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">🏠</div>
+      <div class="empty-title">No properties added</div>
+      <div class="empty-desc">Add your residential, commercial properties and land holdings</div>
+      <button class="btn btn-primary" onclick="openModal()">+ Add First Property</button>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = properties.map(p => {
+    const tc = TYPE_COLORS[p.property_type] || TYPE_COLORS.Other;
+    const icon = TYPE_ICONS[p.property_type] || '🏗';
+    const purchase = parseFloat(p.purchase_price) || 0;
+    const current  = parseFloat(p.current_value) || purchase;
+    const own = (parseFloat(p.ownership_percent) || 100) / 100;
+    const appr = (current - purchase) * own;
+    const apprPct = purchase > 0 ? ((current - purchase) / purchase * 100) : 0;
+    const location = [p.city, p.country].filter(Boolean).join(', ');
+    const puDate = p.purchase_date ? new Date(p.purchase_date).toLocaleDateString('en-GB', { month:'short', year:'numeric' }) : null;
+
+    return `<div class="re-card">
+      <div class="re-card-banner" style="background:${tc.banner}"></div>
+      <div class="re-card-body">
+        <div class="re-card-header">
+          <div>
+            <span class="re-type-badge" style="background:${tc.bg};color:${tc.color}">${icon} ${p.property_type}</span>
+          </div>
+          <div class="re-card-actions">
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="editProperty('${p.id}')">✏</button>
+            <button class="btn btn-danger btn-sm btn-icon" onclick="deleteProperty('${p.id}')">🗑</button>
+          </div>
+        </div>
+        <div class="re-name">${p.property_name}</div>
+        <div class="re-location">📍 ${location || '—'}${p.area_sqft ? ` · ${Number(p.area_sqft).toLocaleString()} sq ft` : ''}</div>
+
+        <div class="re-values">
+          <div class="re-val-box">
+            <div class="re-val-label">Purchase Price</div>
+            <div class="re-val-num">${fmtCur(purchase, p.currency)}</div>
+          </div>
+          <div class="re-val-box">
+            <div class="re-val-label">Current Value</div>
+            <div class="re-val-num" style="color:${tc.color}">${fmtCur(current, p.currency)}</div>
+          </div>
+        </div>
+
+        <div class="re-appreciation">
+          <div class="re-appr-label">Appreciation${p.ownership_percent < 100 ? ` (${p.ownership_percent}% share)` : ''}</div>
+          <div class="re-appr-val" style="color:${appr >= 0 ? 'var(--green)' : 'var(--red)'}">
+            ${appr >= 0 ? '+' : ''}${fmtCur(appr, p.currency)}
+            <span style="font-size:0.72rem;font-weight:400;margin-left:0.25rem">(${apprPct >= 0 ? '+' : ''}${apprPct.toFixed(1)}%)</span>
+          </div>
+        </div>
+
+        <div class="re-footer">
+          <div>${puDate ? `Purchased ${puDate}` : (p.registration_number || '—')}</div>
+          ${p.has_mortgage
+            ? `<span class="mortgage-badge">🏦 Loan: ${fmtCur(p.mortgage_outstanding, p.currency)}</span>`
+            : '<span style="color:var(--green);font-size:0.72rem">✓ No mortgage</span>'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openModal(prop = null) {
+  editingId = prop?.id || null;
+  document.getElementById('modal-title').textContent = prop ? 'Edit Property' : 'Add Property';
+  document.getElementById('re-name').value         = prop?.property_name || '';
+  document.getElementById('re-type').value         = prop?.property_type || 'Residential';
+  document.getElementById('re-currency').value     = prop?.currency || 'INR';
+  document.getElementById('re-address').value      = prop?.address || '';
+  document.getElementById('re-city').value         = prop?.city || '';
+  document.getElementById('re-country').value      = prop?.country || 'India';
+  document.getElementById('re-area').value         = prop?.area_sqft || '';
+  document.getElementById('re-ownership').value    = prop?.ownership_percent || 100;
+  document.getElementById('re-purchase').value     = prop?.purchase_price || '';
+  document.getElementById('re-current').value      = prop?.current_value || '';
+  document.getElementById('re-date').value         = prop?.purchase_date || '';
+  document.getElementById('re-regno').value        = prop?.registration_number || '';
+  document.getElementById('re-notes').value        = prop?.notes || '';
+  const hasMort = !!prop?.has_mortgage;
+  document.getElementById('re-has-mortgage').checked = hasMort;
+  toggleMortgage(hasMort);
+  if (hasMort) {
+    document.getElementById('re-mort-outstanding').value = prop?.mortgage_outstanding || '';
+    document.getElementById('re-mort-emi').value         = prop?.mortgage_emi || '';
+    document.getElementById('re-mort-bank').value        = prop?.mortgage_bank || '';
+    document.getElementById('re-mort-end').value         = prop?.mortgage_end_date || '';
+  }
+  document.getElementById('re-error').style.display = 'none';
+  document.getElementById('re-modal').classList.add('open');
+}
+
+function toggleMortgage(show) {
+  const el = document.getElementById('mortgage-fields');
+  el.style.display = show ? 'grid' : 'none';
+}
+
+function closeModal() { document.getElementById('re-modal').classList.remove('open'); editingId = null; }
+function editProperty(id) { openModal(properties.find(p => p.id === id)); }
+
+async function saveProperty() {
+  const name     = document.getElementById('re-name').value.trim();
+  const purchase = parseFloat(document.getElementById('re-purchase').value);
+  const errEl    = document.getElementById('re-error');
+  errEl.style.display = 'none';
+  if (!name) { errEl.textContent = 'Property name is required'; errEl.style.display = 'block'; return; }
+  if (!purchase || purchase <= 0) { errEl.textContent = 'Purchase price is required'; errEl.style.display = 'block'; return; }
+
+  setLoading('re-save-btn', true, 'Saving…');
+  try {
+    const hasMort = document.getElementById('re-has-mortgage').checked;
+    const payload = {
+      user_id:              currentUser,
+      property_name:        name,
+      property_type:        document.getElementById('re-type').value,
+      currency:             document.getElementById('re-currency').value,
+      address:              document.getElementById('re-address').value.trim() || null,
+      city:                 document.getElementById('re-city').value.trim() || null,
+      country:              document.getElementById('re-country').value.trim() || 'India',
+      area_sqft:            parseFloat(document.getElementById('re-area').value) || null,
+      ownership_percent:    parseFloat(document.getElementById('re-ownership').value) || 100,
+      purchase_price:       purchase,
+      current_value:        parseFloat(document.getElementById('re-current').value) || purchase,
+      purchase_date:        document.getElementById('re-date').value || null,
+      registration_number:  document.getElementById('re-regno').value.trim() || null,
+      has_mortgage:         hasMort,
+      mortgage_outstanding: hasMort ? (parseFloat(document.getElementById('re-mort-outstanding').value) || 0) : 0,
+      mortgage_emi:         hasMort ? (parseFloat(document.getElementById('re-mort-emi').value) || 0) : 0,
+      mortgage_bank:        hasMort ? (document.getElementById('re-mort-bank').value.trim() || null) : null,
+      mortgage_end_date:    hasMort ? (document.getElementById('re-mort-end').value || null) : null,
+      notes:                document.getElementById('re-notes').value.trim() || null,
+    };
+
+    if (editingId) {
+      const { error } = await sb.from('real_estate_assets').update(payload).eq('id', editingId);
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from('real_estate_assets').insert(payload);
+      if (error) throw error;
+    }
+
+    showToast(editingId ? 'Property updated' : 'Property added', 'success');
+    closeModal();
+    await load();
+  } catch(e) {
+    errEl.textContent = e.message || 'Failed to save';
+    errEl.style.display = 'block';
+  } finally {
+    setLoading('re-save-btn', false, 'Save Property');
+  }
+}
+
+async function deleteProperty(id) {
+  const p = properties.find(x => x.id === id);
+  if (!confirm(`Delete "${p?.property_name}"?`)) return;
+  await sb.from('real_estate_assets').update({ is_active: false }).eq('id', id);
+  showToast('Property removed', 'success');
+  await load();
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar()   { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+init();
+</script>
+</body>
+</html>

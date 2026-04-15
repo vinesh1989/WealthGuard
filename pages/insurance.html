@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Insurance — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .policy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+
+    .policy-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.25rem;
+      transition: border-color 0.2s, transform 0.15s; position: relative;
+    }
+    .policy-card:hover { border-color: rgba(96,165,250,0.3); transform: translateY(-1px); }
+
+    .policy-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem; }
+    .policy-type-icon {
+      width: 44px; height: 44px; border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0;
+    }
+    .policy-card-actions { display: flex; gap: 0.35rem; opacity: 0; transition: opacity 0.15s; }
+    .policy-card:hover .policy-card-actions { opacity: 1; }
+
+    .policy-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .policy-insurer { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+
+    .policy-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .policy-stat { background: var(--bg-surface); border-radius: var(--radius-sm); padding: 0.6rem 0.75rem; }
+    .policy-stat-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .policy-stat-val { font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin-top: 0.15rem; }
+
+    .policy-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+    .policy-footer-item { font-size: 0.75rem; color: var(--text-muted); }
+    .policy-footer-item span { color: var(--text-secondary); font-weight: 500; }
+
+    .nominee-tag { display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); color: #34d399; border-radius: 20px; padding: 0.2rem 0.65rem; font-size: 0.72rem; font-weight: 500; }
+
+    .summary-bar { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+
+    .expiring-warn { background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.2); border-radius: var(--radius-md); padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.82rem; color: #f87171; display: none; }
+
+    .type-colors {
+      Life: { bg: 'rgba(96,165,250,0.1)', color: '#60a5fa' },
+      Health: { bg: 'rgba(52,211,153,0.1)', color: '#34d399' },
+      Term: { bg: 'rgba(212,175,55,0.1)', color: 'var(--gold)' },
+      Vehicle: { bg: 'rgba(167,139,250,0.1)', color: '#a78bfa' },
+      Property: { bg: 'rgba(251,191,36,0.1)', color: '#fbbf24' },
+      ULIP: { bg: 'rgba(249,115,22,0.1)', color: '#f97316' },
+      Other: { bg: 'rgba(107,114,128,0.1)', color: '#9ca3af' }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+
+      <span class="nav-section-label">Portfolio</span>
+      <a href="insurance.html" class="nav-item active"><span class="nav-icon">🛡</span> Insurance</a>
+      <a href="realestate.html" class="nav-item"><span class="nav-icon">🏠</span> Real Estate</a>
+
+      <span class="nav-section-label">Planning</span>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+
+      <span class="nav-section-label">Reports</span>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user"><div class="user-avatar" id="user-initial">R</div><div><div class="user-name" id="user-name">Loading...</div><div class="user-role">investor</div></div></div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()"><span class="nav-icon">↩</span> Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div><div class="page-title">Insurance</div><div class="page-subtitle">Life, health, vehicle & property policies</div></div>
+      </div>
+      <div class="topbar-actions">
+        <button class="notif-btn" onclick="window.location.href='notifications.html'">🔔</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal()">+ Add Policy</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+
+      <!-- Summary -->
+      <div class="summary-bar">
+        <div class="stat-card"><div class="card-title">Total Policies</div><div class="card-value display-num" id="sum-total">—</div><div class="card-meta">Active</div></div>
+        <div class="stat-card"><div class="card-title">Total Sum Assured</div><div class="card-value display-num" id="sum-assured">—</div><div class="card-meta">All policies</div></div>
+        <div class="stat-card"><div class="card-title">Annual Premium</div><div class="card-value display-num" id="sum-premium">—</div><div class="card-meta">Total outflow</div></div>
+        <div class="stat-card"><div class="card-title">Expiring Soon</div><div class="card-value display-num" style="color:#fbbf24" id="sum-expiring">—</div><div class="card-meta">Within 60 days</div></div>
+      </div>
+
+      <!-- Expiry warning -->
+      <div class="expiring-warn" id="expiry-warn">⚠ You have policies expiring within 60 days. Review and renew them to maintain coverage.</div>
+
+      <!-- Policy grid -->
+      <div class="policy-grid" id="policy-grid">
+        <div class="loading-state" style="grid-column:1/-1">Loading policies…</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-backdrop" id="policy-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-title">Add Insurance Policy</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Policy Name *</label>
+          <input type="text" class="form-input" id="p-name" placeholder="e.g. LIC Jeevan Anand — Self">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Policy Type *</label>
+          <select class="form-input form-select" id="p-type">
+            <option value="Life">Life Insurance</option>
+            <option value="Term">Term Insurance</option>
+            <option value="Health">Health / Mediclaim</option>
+            <option value="Vehicle">Vehicle Insurance</option>
+            <option value="Property">Property Insurance</option>
+            <option value="ULIP">ULIP</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Insurer / Company *</label>
+          <input type="text" class="form-input" id="p-insurer" placeholder="e.g. LIC, HDFC Ergo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Policy Number</label>
+          <input type="text" class="form-input" id="p-number" placeholder="e.g. 123456789">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Currency</label>
+          <select class="form-input form-select" id="p-currency">
+            <option value="INR">INR — Indian Rupee</option>
+            <option value="USD">USD — US Dollar</option>
+            <option value="AED">AED — UAE Dirham</option>
+            <option value="EUR">EUR — Euro</option>
+            <option value="GBP">GBP — British Pound</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sum Assured *</label>
+          <input type="number" class="form-input" id="p-sum" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Premium Amount</label>
+          <input type="number" class="form-input" id="p-premium" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Premium Frequency</label>
+          <select class="form-input form-select" id="p-freq">
+            <option value="Annual">Annual</option>
+            <option value="Semi-Annual">Semi-Annual</option>
+            <option value="Quarterly">Quarterly</option>
+            <option value="Monthly">Monthly</option>
+            <option value="Single">Single Premium</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input type="date" class="form-input" id="p-start">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Maturity / Expiry Date</label>
+          <input type="date" class="form-input" id="p-maturity">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nominee Name</label>
+          <input type="text" class="form-input" id="p-nominee" placeholder="e.g. Priya Sharma">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nominee Relation</label>
+          <input type="text" class="form-input" id="p-relation" placeholder="e.g. Spouse, Child">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Notes</label>
+          <textarea class="form-input form-textarea" id="p-notes" rows="2" placeholder="Additional details, rider information, etc."></textarea>
+        </div>
+      </div>
+      <div id="p-error" style="color:#f87171;font-size:0.82rem;display:none;margin-top:0.25rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="save-btn" onclick="savePolicy()">Save Policy</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+let policies = [];
+let currentUser = null;
+let editingId = null;
+
+const TYPE_ICONS = { Life:'🫀', Term:'🛡', Health:'🏥', Vehicle:'🚗', Property:'🏠', ULIP:'📈', Other:'📋' };
+const TYPE_COLORS = {
+  Life:     { bg:'rgba(96,165,250,0.1)',   color:'#60a5fa'  },
+  Term:     { bg:'rgba(212,175,55,0.1)',   color:'#d4af37'  },
+  Health:   { bg:'rgba(52,211,153,0.1)',   color:'#34d399'  },
+  Vehicle:  { bg:'rgba(167,139,250,0.1)', color:'#a78bfa'  },
+  Property: { bg:'rgba(251,191,36,0.1)',  color:'#fbbf24'  },
+  ULIP:     { bg:'rgba(249,115,22,0.1)',  color:'#f97316'  },
+  Other:    { bg:'rgba(107,114,128,0.1)', color:'#9ca3af'  },
+};
+
+const FREQ_MULTIPLIER = { Annual:1, 'Semi-Annual':2, Quarterly:4, Monthly:12, Single:0 };
+
+async function init() {
+  const session = await requireAuth();
+  if (!session) return;
+  currentUser = session.user.id;
+  const profile = await Profile.get(session.user.id);
+  document.getElementById('user-name').textContent = profile?.full_name || session.user.email;
+  document.getElementById('user-initial').textContent = (profile?.full_name || session.user.email || 'U')[0].toUpperCase();
+  await load();
+}
+
+async function load() {
+  const { data } = await sb.from('insurance_policies').select('*').eq('user_id', currentUser).eq('is_active', true).order('created_at', { ascending: false });
+  policies = data || [];
+  render();
+}
+
+function render() {
+  const now = new Date();
+  const soon = new Date(now.getTime() + 60 * 86400000);
+
+  let totalSA = 0, totalPrem = 0, expiring = 0;
+  policies.forEach(p => {
+    totalSA += parseFloat(p.sum_assured) || 0;
+    const freq = FREQ_MULTIPLIER[p.premium_frequency] || 1;
+    totalPrem += (parseFloat(p.premium_amount) || 0) * freq;
+    if (p.maturity_date) {
+      const mat = new Date(p.maturity_date);
+      if (mat > now && mat <= soon) expiring++;
+    }
+  });
+
+  document.getElementById('sum-total').textContent   = policies.length;
+  document.getElementById('sum-assured').textContent  = '₹' + totalSA.toLocaleString('en-IN', { minimumFractionDigits: 0 });
+  document.getElementById('sum-premium').textContent  = '₹' + totalPrem.toLocaleString('en-IN', { minimumFractionDigits: 0 }) + '/yr';
+  document.getElementById('sum-expiring').textContent = expiring;
+  const warn = document.getElementById('expiry-warn');
+  warn.style.display = expiring > 0 ? 'block' : 'none';
+
+  const grid = document.getElementById('policy-grid');
+  if (!policies.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">🛡</div>
+      <div class="empty-title">No insurance policies</div>
+      <div class="empty-desc">Add your life, health, vehicle and property policies to track coverage and nominees</div>
+      <button class="btn btn-primary" onclick="openModal()">+ Add First Policy</button>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = policies.map(p => {
+    const tc      = TYPE_COLORS[p.policy_type] || TYPE_COLORS.Other;
+    const icon    = TYPE_ICONS[p.policy_type] || '📋';
+    const freq    = FREQ_MULTIPLIER[p.premium_frequency] || 1;
+    const annPrem = (parseFloat(p.premium_amount) || 0) * freq;
+    const sym     = p.currency === 'INR' ? '₹' : (p.currency === 'USD' ? '$' : p.currency + ' ');
+    const fmt     = v => sym + (parseFloat(v) || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 });
+
+    let matLabel = '—', matWarn = '';
+    if (p.maturity_date) {
+      const mat = new Date(p.maturity_date);
+      matLabel = mat.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+      if (mat <= soon && mat >= now) matWarn = 'color:#fbbf24;font-weight:600';
+    }
+
+    return `<div class="policy-card">
+      <div class="policy-card-header">
+        <div class="policy-type-icon" style="background:${tc.bg}">
+          <span style="font-size:1.4rem">${icon}</span>
+        </div>
+        <div class="policy-card-actions">
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="editPolicy('${p.id}')" title="Edit">✏</button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="deletePolicy('${p.id}')" title="Delete">🗑</button>
+        </div>
+      </div>
+      <div class="policy-name">${p.policy_name}</div>
+      <div class="policy-insurer">
+        <span class="badge badge-muted" style="background:${tc.bg};color:${tc.color};border:none">${p.policy_type}</span>
+        <span style="margin-left:0.4rem">${p.insurer}</span>
+      </div>
+      <div class="policy-stats">
+        <div class="policy-stat">
+          <div class="policy-stat-label">Sum Assured</div>
+          <div class="policy-stat-val" style="color:${tc.color}">${fmt(p.sum_assured)}</div>
+        </div>
+        <div class="policy-stat">
+          <div class="policy-stat-label">Annual Premium</div>
+          <div class="policy-stat-val">${fmt(annPrem)}</div>
+        </div>
+      </div>
+      <div class="policy-footer">
+        <div class="policy-footer-item">
+          Policy No: <span>${p.policy_number || '—'}</span>
+        </div>
+        <div class="policy-footer-item" style="${matWarn}">
+          Expires: <span style="${matWarn}">${matLabel}</span>
+        </div>
+      </div>
+      ${p.nominee_name ? `<div style="margin-top:0.6rem"><span class="nominee-tag">👤 ${p.nominee_name}${p.nominee_relation ? ` (${p.nominee_relation})` : ''}</span></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openModal(policy = null) {
+  editingId = policy?.id || null;
+  document.getElementById('modal-title').textContent = policy ? 'Edit Policy' : 'Add Insurance Policy';
+  document.getElementById('p-name').value      = policy?.policy_name || '';
+  document.getElementById('p-type').value      = policy?.policy_type || 'Life';
+  document.getElementById('p-insurer').value   = policy?.insurer || '';
+  document.getElementById('p-number').value    = policy?.policy_number || '';
+  document.getElementById('p-currency').value  = policy?.currency || 'INR';
+  document.getElementById('p-sum').value       = policy?.sum_assured || '';
+  document.getElementById('p-premium').value   = policy?.premium_amount || '';
+  document.getElementById('p-freq').value      = policy?.premium_frequency || 'Annual';
+  document.getElementById('p-start').value     = policy?.start_date || '';
+  document.getElementById('p-maturity').value  = policy?.maturity_date || '';
+  document.getElementById('p-nominee').value   = policy?.nominee_name || '';
+  document.getElementById('p-relation').value  = policy?.nominee_relation || '';
+  document.getElementById('p-notes').value     = policy?.notes || '';
+  document.getElementById('p-error').style.display = 'none';
+  document.getElementById('policy-modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('policy-modal').classList.remove('open'); editingId = null; }
+
+function editPolicy(id) { openModal(policies.find(p => p.id === id)); }
+
+async function savePolicy() {
+  const name    = document.getElementById('p-name').value.trim();
+  const insurer = document.getElementById('p-insurer').value.trim();
+  const sum     = parseFloat(document.getElementById('p-sum').value);
+  const errEl   = document.getElementById('p-error');
+  errEl.style.display = 'none';
+
+  if (!name) { errEl.textContent = 'Policy name is required'; errEl.style.display = 'block'; return; }
+  if (!insurer) { errEl.textContent = 'Insurer name is required'; errEl.style.display = 'block'; return; }
+  if (!sum || sum <= 0) { errEl.textContent = 'Sum assured must be greater than 0'; errEl.style.display = 'block'; return; }
+
+  setLoading('save-btn', true, 'Saving…');
+  try {
+    const payload = {
+      user_id:           currentUser,
+      policy_name:       name,
+      policy_type:       document.getElementById('p-type').value,
+      insurer,
+      policy_number:     document.getElementById('p-number').value.trim() || null,
+      currency:          document.getElementById('p-currency').value,
+      sum_assured:       sum,
+      premium_amount:    parseFloat(document.getElementById('p-premium').value) || 0,
+      premium_frequency: document.getElementById('p-freq').value,
+      start_date:        document.getElementById('p-start').value || null,
+      maturity_date:     document.getElementById('p-maturity').value || null,
+      nominee_name:      document.getElementById('p-nominee').value.trim() || null,
+      nominee_relation:  document.getElementById('p-relation').value.trim() || null,
+      notes:             document.getElementById('p-notes').value.trim() || null,
+    };
+
+    if (editingId) {
+      const { error } = await sb.from('insurance_policies').update(payload).eq('id', editingId);
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from('insurance_policies').insert(payload);
+      if (error) throw error;
+    }
+
+    showToast(editingId ? 'Policy updated' : 'Policy added', 'success');
+    closeModal();
+    await load();
+  } catch(e) {
+    errEl.textContent = e.message || 'Failed to save';
+    errEl.style.display = 'block';
+  } finally {
+    setLoading('save-btn', false, 'Save Policy');
+  }
+}
+
+async function deletePolicy(id) {
+  const p = policies.find(x => x.id === id);
+  if (!confirm(`Delete "${p?.policy_name}"? This cannot be undone.`)) return;
+  await sb.from('insurance_policies').update({ is_active: false }).eq('id', id);
+  showToast('Policy removed', 'success');
+  await load();
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar()   { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+init();
+</script>
+</body>
+</html>
