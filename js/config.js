@@ -6,9 +6,14 @@
 // Get them from: https://app.supabase.com → Project Settings → API
 // ============================================================
 
+// ============================================================
+// WealthGuard - Supabase Configuration
+// js/supabase.js
+// ============================================================
+
 const WEALTHGUARD_CONFIG = {
-  SUPABASE_URL:      'YOUR_SUPABASE_URL',       // e.g. https://abcxyz.supabase.co
-  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY',  // starts with eyJ...
+  SUPABASE_URL:      'https://itxvrspchjcnhpaadmax.supabase.co',       // e.g. https://abcxyz.supabase.co
+  SUPABASE_ANON_KEY: 'sb_publishable_AsJxo599veBgPcioHWyjyA_YSDDPjFy',  // starts with eyJ...
 
   // Stripe (optional — only needed if using Stripe payments)
   // Replace YOUR_PROJECT_REF in subscription.html with your Supabase project ref
