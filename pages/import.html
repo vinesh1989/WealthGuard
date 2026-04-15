@@ -214,9 +214,9 @@ const SOURCE_HINTS = {
   excel: '📊 <strong>Excel:</strong> Export your spreadsheet as CSV first, or upload .xlsx directly'
 };
 
-const ZERODHA_MAP = { 'symbol': 'investment_name', 'trade date': 'purchase_date', 'quantity': 'quantity', 'price': 'unit_price', 'trade type': null };
-const IBKR_MAP = { 'symbol': 'investment_name', 'date/time': 'purchase_date', 'quantity': 'quantity', 't. price': 'unit_price', 'proceeds': 'amount_invested' };
-const FIELD_OPTIONS = ['investment_name','amount_invested','current_value','currency','purchase_date','quantity','unit_price','category','ticker_symbol','skip'];
+const ZERODHA_MAP = { 'symbol': 'name', 'trade date': 'date', 'quantity': 'quantity', 'price': 'unit_price', 'trade type': null };
+const IBKR_MAP = { 'symbol': 'name', 'date/time': 'date', 'quantity': 'quantity', 't. price': 'unit_price', 'proceeds': 'amount_invested' };
+const FIELD_OPTIONS = ['name','amount_invested','current_value','currency','date','quantity','unit_price','category','ticker_symbol','skip'];
 
 async function init() {
   const session = await requireAuth();
@@ -231,7 +231,7 @@ async function init() {
   const { data: assets } = await Assets.getAll(currentUserId);
   const sel = document.getElementById('import-asset');
   (assets || []).forEach(a => {
-    sel.innerHTML += `<option value="${a.id}">${a.platform_name} (${a.asset_type})</option>`;
+    sel.innerHTML += `<option value="${a.id}">${a.platform} (${a.asset_type})</option>`;
   });
 
   await loadImportHistory();
@@ -289,11 +289,11 @@ function getAutoMap() {
     if (source === 'zerodha' && ZERODHA_MAP[h] !== undefined) map[h] = ZERODHA_MAP[h] || 'skip';
     else if (source === 'ibkr' && IBKR_MAP[h] !== undefined) map[h] = IBKR_MAP[h] || 'skip';
     else {
-      if (h.includes('name') || h.includes('symbol') || h.includes('stock')) map[h] = 'investment_name';
+      if (h.includes('name') || h.includes('symbol') || h.includes('stock')) map[h] = 'name';
       else if (h.includes('invest') || h.includes('cost') || h.includes('paid')) map[h] = 'amount_invested';
       else if (h.includes('current') || h.includes('value') || h.includes('market')) map[h] = 'current_value';
       else if (h.includes('currency') || h === 'cur') map[h] = 'currency';
-      else if (h.includes('date')) map[h] = 'purchase_date';
+      else if (h.includes('date')) map[h] = 'date';
       else if (h.includes('qty') || h.includes('quantity')) map[h] = 'quantity';
       else map[h] = 'skip';
     }
@@ -330,8 +330,8 @@ async function importData() {
 
   const assetId = document.getElementById('import-asset').value;
 
-  // Need at least investment_name
-  const hasName = Object.values(mappings).includes('investment_name');
+  // Need at least name
+  const hasName = Object.values(mappings).includes('name');
   if (!hasName) {
     showToast('Please map at least the Investment Name column', 'error');
     setLoading(btn, false);
@@ -347,14 +347,14 @@ async function importData() {
     inv.amount_invested = parseFloat(inv.amount_invested) || 0;
     inv.current_value = parseFloat(inv.current_value) || inv.amount_invested;
     return inv;
-  }).filter(i => i.investment_name);
+  }).filter(i => i.name);
 
   if (!assetId) {
     // Auto-create an asset
     const { data: newAsset, error: ae } = await Assets.create({
       user_id: currentUserId,
       asset_type: 'Stocks',
-      platform_name: currentSource.charAt(0).toUpperCase() + currentSource.slice(1),
+      platform: currentSource.charAt(0).toUpperCase() + currentSource.slice(1),
       currency: 'USD',
       country: 'Auto-imported'
     });

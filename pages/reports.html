@@ -212,9 +212,9 @@ function generateReport() {
     return `
       <tr>
         <td style="color: var(--text-muted);">${i + 1}</td>
-        <td class="td-name">${inv.investment_name}</td>
+        <td class="td-name">${inv.name}</td>
         <td><span class="badge badge-muted">${inv.assets?.asset_type || '—'}</span></td>
-        <td>${inv.assets?.platform_name || '—'}</td>
+        <td>${inv.assets?.platform || '—'}</td>
         <td>${inv.currency}</td>
         <td class="td-mono">${formatCurrency(inv.amount_invested, inv.currency)}</td>
         <td class="td-mono" style="font-weight: 600; color: var(--text-primary);">${formatCurrency(inv.current_value, inv.currency)}</td>
@@ -280,10 +280,10 @@ async function exportPDF() {
       if (y > 180) { doc.addPage(); y = 20; }
       const glPct = inv.amount_invested > 0 ? ((inv.current_value - inv.amount_invested) / inv.amount_invested * 100) : 0;
       doc.setTextColor(240, 242, 245);
-      doc.text(inv.investment_name.substring(0, 28), 14, y);
+      doc.text(inv.name.substring(0, 28), 14, y);
       doc.setTextColor(136, 146, 164);
       doc.text(inv.assets?.asset_type || '—', 80, y);
-      doc.text((inv.assets?.platform_name || '—').substring(0, 16), 110, y);
+      doc.text((inv.assets?.platform || '—').substring(0, 16), 110, y);
       doc.text(inv.currency, 150, y);
       doc.text(formatCurrency(inv.amount_invested, inv.currency), 170, y);
       doc.text(formatCurrency(inv.current_value, inv.currency), 210, y);
@@ -316,8 +316,8 @@ function exportCSV() {
     ...rows.map(inv => {
       const gl = inv.current_value - inv.amount_invested;
       const glPct = inv.amount_invested > 0 ? (gl / inv.amount_invested * 100).toFixed(2) : 0;
-      return [inv.investment_name, inv.assets?.asset_type, inv.assets?.platform_name, inv.currency,
-        inv.amount_invested, inv.current_value, gl.toFixed(2), glPct, inv.purchase_date || ''].join(',');
+      return [inv.name, inv.assets?.asset_type, inv.assets?.platform, inv.currency,
+        inv.amount_invested, inv.current_value, gl.toFixed(2), glPct, inv.date || ''].join(',');
     })
   ];
 

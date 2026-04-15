@@ -239,7 +239,7 @@ function renderAssets(assets) {
         <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation(); deleteAsset('${a.id}')" title="Delete">🗑</button>
       </div>
       <div class="asset-type-icon">${ASSET_EMOJI[a.asset_type] || '📦'}</div>
-      <div class="asset-platform">${a.platform_name}</div>
+      <div class="asset-platform">${a.platform}</div>
       <div class="asset-type">${a.asset_type} · ${a.country}</div>
       <div class="asset-meta">
         <div class="asset-meta-item">
@@ -265,7 +265,7 @@ function openAssetModal(asset = null) {
   document.getElementById('asset-modal-title').textContent = asset ? 'Edit Asset' : 'Add Asset Account';
   document.getElementById('asset-id').value = asset?.id || '';
   document.getElementById('a-type').value = asset?.asset_type || '';
-  document.getElementById('a-platform').value = asset?.platform_name || '';
+  document.getElementById('a-platform').value = asset?.platform || '';
   document.getElementById('a-account').value = asset?.account_number || '';
   document.getElementById('a-currency').value = asset?.currency || 'USD';
   document.getElementById('a-country').value = asset?.country || 'United Arab Emirates';
@@ -293,7 +293,7 @@ document.getElementById('asset-form').addEventListener('submit', async (e) => {
   const payload = {
     user_id: currentUserId,
     asset_type: document.getElementById('a-type').value,
-    platform_name: document.getElementById('a-platform').value.trim(),
+    platform: document.getElementById('a-platform').value.trim(),
     account_number: document.getElementById('a-account').value.trim() || null,
     currency: document.getElementById('a-currency').value,
     country: document.getElementById('a-country').value.trim(),

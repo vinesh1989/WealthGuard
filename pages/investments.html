@@ -229,7 +229,7 @@ async function loadData() {
   allAssets = assets || [];
 
   // Populate platform filter
-  const platforms = [...new Set(allAssets.map(a => a.platform_name))];
+  const platforms = [...new Set(allAssets.map(a => a.platform))];
   const pf = document.getElementById('f-platform');
   pf.innerHTML = '<option value="">All Platforms</option>' +
     platforms.map(p => `<option>${p}</option>`).join('');
@@ -237,7 +237,7 @@ async function loadData() {
   // Populate asset dropdown
   const assetSel = document.getElementById('inv-asset');
   assetSel.innerHTML = '<option value="">Select an asset account…</option>' +
-    allAssets.map(a => `<option value="${a.id}">${a.platform_name} · ${a.asset_type} (${a.currency})</option>`).join('');
+    allAssets.map(a => `<option value="${a.id}">${a.platform} · ${a.asset_type} (${a.currency})</option>`).join('');
 
   // Compute totals
   let totalInv = 0, totalCur = 0;
@@ -271,15 +271,15 @@ function renderTable(investments) {
     const glPct = inv.amount_invested > 0 ? (gl / inv.amount_invested * 100) : 0;
     return `
     <tr>
-      <td class="td-name">${inv.investment_name}${inv.ticker_symbol ? `<br><span style="font-size:0.72rem; color:var(--text-muted); font-family:var(--font-mono)">${inv.ticker_symbol}</span>` : ''}</td>
+      <td class="td-name">${inv.name}${inv.ticker_symbol ? `<br><span style="font-size:0.72rem; color:var(--text-muted); font-family:var(--font-mono)">${inv.ticker_symbol}</span>` : ''}</td>
       <td><span class="badge badge-muted">${inv.assets?.asset_type || '—'}</span></td>
-      <td>${inv.assets?.platform_name || '—'}</td>
+      <td>${inv.assets?.platform || '—'}</td>
       <td><span class="badge badge-gold">${inv.currency}</span></td>
       <td class="td-mono">${formatCurrency(inv.amount_invested, inv.currency)}</td>
       <td class="td-mono" style="color: var(--text-primary); font-weight: 600;">${formatCurrency(inv.current_value, inv.currency)}</td>
       <td class="td-mono ${gl >= 0 ? 'gain' : 'loss'}">${gl >= 0 ? '+' : ''}${formatCurrency(gl, inv.currency)}</td>
       <td class="${glPct >= 0 ? 'gain' : 'loss'}" style="font-weight: 600;">${formatPercent(glPct)}</td>
-      <td style="color: var(--text-muted); font-size: 0.8rem;">${inv.purchase_date ? new Date(inv.purchase_date).toLocaleDateString('en-GB') : '—'}</td>
+      <td style="color: var(--text-muted); font-size: 0.8rem;">${inv.date ? new Date(inv.date).toLocaleDateString('en-GB') : '—'}</td>
       <td>
         <div style="display:flex; gap:0.4rem;">
           <button class="btn btn-ghost btn-sm btn-icon" onclick="editInvestment('${inv.id}')" title="Edit">✏</button>
@@ -297,10 +297,10 @@ function filterTable() {
   const fPlat = document.getElementById('f-platform').value;
 
   const filtered = allInvestments.filter(inv => {
-    if (search && !inv.investment_name.toLowerCase().includes(search)) return false;
+    if (search && !inv.name.toLowerCase().includes(search)) return false;
     if (fType && inv.assets?.asset_type !== fType) return false;
     if (fCur && inv.currency !== fCur) return false;
-    if (fPlat && inv.assets?.platform_name !== fPlat) return false;
+    if (fPlat && inv.assets?.platform !== fPlat) return false;
     return true;
   });
 
@@ -320,11 +320,11 @@ function openInvModal(inv = null) {
   document.getElementById('inv-modal-title').textContent = inv ? 'Edit Investment' : 'Add Investment';
   document.getElementById('inv-id').value = inv?.id || '';
   document.getElementById('inv-asset').value = inv?.asset_id || '';
-  document.getElementById('inv-name').value = inv?.investment_name || '';
+  document.getElementById('inv-name').value = inv?.name || '';
   document.getElementById('inv-invested').value = inv?.amount_invested || '';
   document.getElementById('inv-current').value = inv?.current_value || '';
   document.getElementById('inv-currency').value = inv?.currency || 'USD';
-  document.getElementById('inv-date').value = inv?.purchase_date || '';
+  document.getElementById('inv-date').value = inv?.date || '';
   document.getElementById('inv-category').value = inv?.category || '';
   document.getElementById('inv-ticker').value = inv?.ticker_symbol || '';
   document.getElementById('inv-notes').value = inv?.notes || '';
@@ -351,11 +351,11 @@ document.getElementById('inv-form').addEventListener('submit', async (e) => {
   const payload = {
     asset_id: document.getElementById('inv-asset').value,
     user_id: currentUserId,
-    investment_name: document.getElementById('inv-name').value.trim(),
+    name: document.getElementById('inv-name').value.trim(),
     amount_invested: parseFloat(document.getElementById('inv-invested').value),
     current_value: parseFloat(document.getElementById('inv-current').value),
     currency: document.getElementById('inv-currency').value,
-    purchase_date: document.getElementById('inv-date').value || null,
+    date: document.getElementById('inv-date').value || null,
     category: document.getElementById('inv-category').value || null,
     ticker_symbol: document.getElementById('inv-ticker').value || null,
     notes: document.getElementById('inv-notes').value || null

@@ -454,12 +454,12 @@ async function loadDashboard(userId, baseCurrency) {
   if (perf && perf.length > 0) {
     const top = perf[0];
     const worst = perf[perf.length - 1];
-    document.getElementById('top-name').textContent = top.investment_name;
-    document.getElementById('top-platform').textContent = `${top.asset_type} · ${top.platform_name}`;
+    document.getElementById('top-name').textContent = top.name;
+    document.getElementById('top-platform').textContent = `${top.asset_type} · ${top.platform}`;
     document.getElementById('top-return').textContent = formatPercent(top.return_pct);
 
-    document.getElementById('worst-name').textContent = worst.investment_name;
-    document.getElementById('worst-platform').textContent = `${worst.asset_type} · ${worst.platform_name}`;
+    document.getElementById('worst-name').textContent = worst.name;
+    document.getElementById('worst-platform').textContent = `${worst.asset_type} · ${worst.platform}`;
     document.getElementById('worst-return').textContent = formatPercent(worst.return_pct);
   }
 
@@ -486,8 +486,8 @@ async function loadDashboard(userId, baseCurrency) {
         ${getAssetEmoji(inv.assets?.asset_type)}
       </div>
       <div class="activity-info">
-        <div class="activity-name">${inv.investment_name}</div>
-        <div class="activity-date">${inv.assets?.platform_name} · ${inv.assets?.asset_type}</div>
+        <div class="activity-name">${inv.name}</div>
+        <div class="activity-date">${inv.assets?.platform} · ${inv.assets?.asset_type}</div>
       </div>
       <div class="activity-amount">
         <div style="color: var(--text-primary); font-weight: 600;">${formatCurrency(inv.current_value, inv.currency)}</div>
