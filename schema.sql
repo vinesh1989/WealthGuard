@@ -7,6 +7,16 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+
+-- ============================================================
+-- SAFETY GUARD: Drop old trigger before any table is created.
+-- This prevents "relation does not exist" if re-running after
+-- a partial or failed previous run.
+-- ============================================================
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS update_updated_at() CASCADE;
+
 -- ============================================================
 -- ENUMS
 -- ============================================================
