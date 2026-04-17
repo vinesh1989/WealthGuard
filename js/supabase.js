@@ -716,12 +716,38 @@ function formatCurrency(amount, currency = 'INR') {
   const symbols = { USD: '$', AED: 'AED ', INR: '₹', EUR: '€', GBP: '£' };
   const symbol  = symbols[currency] || (currency + ' ');
   const num     = parseFloat(amount) || 0;
-  // INR uses Indian numbering (lakhs/crores), others use en-US
   const locale  = currency === 'INR' ? 'en-IN' : 'en-US';
   return symbol + new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(num);
+}
+
+// Compact number format for hero/stat cards — avoids overflowing on mobile.
+// INR: ₹1.55L, ₹14.49L, ₹1.25Cr
+// USD/AED/EUR/GBP: $1.2K, $1.5M, $1.2B
+function formatCompact(amount, currency = 'INR') {
+  const symbols = { USD: '$', AED: 'AED ', INR: '₹', EUR: '€', GBP: '£' };
+  const symbol  = symbols[currency] || (currency + ' ');
+  const num     = Math.abs(parseFloat(amount) || 0);
+  const sign    = (parseFloat(amount) || 0) < 0 ? '-' : '';
+
+  let val, suffix;
+  if (currency === 'INR') {
+    if      (num >= 1_00_00_000) { val = num / 1_00_00_000; suffix = 'Cr'; }
+    else if (num >= 1_00_000)    { val = num / 1_00_000;    suffix = 'L';  }
+    else if (num >= 1_000)       { val = num / 1_000;        suffix = 'K';  }
+    else                         { val = num;                suffix = '';   }
+  } else {
+    if      (num >= 1_000_000_000) { val = num / 1_000_000_000; suffix = 'B'; }
+    else if (num >= 1_000_000)     { val = num / 1_000_000;     suffix = 'M'; }
+    else if (num >= 1_000)         { val = num / 1_000;          suffix = 'K'; }
+    else                           { val = num;                  suffix = '';  }
+  }
+
+  // Use 2 decimal places for small suffixes, 1 for larger to save space
+  const decimals = suffix === '' ? 2 : (val >= 100 ? 1 : 2);
+  return sign + symbol + val.toFixed(decimals) + suffix;
 }
 
 // Format percentage
