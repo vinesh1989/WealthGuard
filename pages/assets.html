@@ -339,11 +339,25 @@ function renderOverview() {
   Object.values(classMap).forEach(v => { totInv += v.invested; totCur += v.current; });
   const totGL = totCur - totInv;
 
-  document.getElementById('ov-invested').textContent  = formatCurrency(totInv, 'USD');
-  document.getElementById('ov-current').textContent   = formatCurrency(totCur, 'USD');
+  // Primary currency = currency with most current value
+  const _byCur = {};
+  allInvestments.forEach(inv => {
+    const cur = inv.currency;
+    if (!_byCur[cur]) _byCur[cur] = { invested: 0, current: 0 };
+    _byCur[cur].invested += parseFloat(inv.amount_invested) || 0;
+    _byCur[cur].current  += parseFloat(inv.current_value)   || 0;
+  });
+  const _primCur = Object.entries(_byCur).sort(([,a],[,b]) => b.current - a.current)[0]?.[0] || 'INR';
+  const _prim    = _byCur[_primCur] || { invested: 0, current: 0 };
+  const _multi   = Object.keys(_byCur).length > 1;
+  const _sfx     = _multi ? ' +' : '';
+
+  document.getElementById('ov-invested').textContent  = formatCurrency(_prim.invested, _primCur) + _sfx;
+  document.getElementById('ov-current').textContent   = formatCurrency(_prim.current,  _primCur) + _sfx;
   const glEl = document.getElementById('ov-gl');
-  glEl.textContent  = (totGL >= 0 ? '+' : '') + formatCurrency(totGL, 'USD');
-  glEl.style.color  = totGL >= 0 ? 'var(--green)' : 'var(--red)';
+  const _gl = _prim.current - _prim.invested;
+  glEl.textContent  = (_gl >= 0 ? '+' : '') + formatCurrency(_gl, _primCur) + _sfx;
+  glEl.style.color  = _gl >= 0 ? 'var(--green)' : 'var(--red)';
   document.getElementById('ov-accounts').textContent = allAssets.length;
 
   // Donut chart — by current value
@@ -374,7 +388,12 @@ function renderOverview() {
       <span class="legend-label">${c.label}</span>
       <span class="legend-value">${total > 0 ? ((vals[i]/total)*100).toFixed(1) : 0}%</span>
     </div>`).join('');
-  document.getElementById('alloc-total').textContent = formatCurrency(totCur, 'USD');
+  // Use primary currency for alloc badge
+  const _allocByCur2 = {};
+  allInvestments.forEach(i => { const cur=i.currency; if(!_allocByCur2[cur]) _allocByCur2[cur]=0; _allocByCur2[cur]+= parseFloat(i.current_value)||0; });
+  const _allocPrimCur = Object.entries(_allocByCur2).sort(([,a],[,b])=>b-a)[0]?.[0] || 'INR';
+  const _allocPrimVal = _allocByCur2[_allocPrimCur] || 0;
+  document.getElementById('alloc-total').textContent = formatCurrency(_allocPrimVal, _allocPrimCur) + (Object.keys(_allocByCur2).length > 1 ? ' +' : '');
 
   // Exposure bars
   const barsEl = document.getElementById('exposure-bars');

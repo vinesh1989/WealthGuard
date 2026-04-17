@@ -280,12 +280,31 @@ function render() {
   });
   const totAppr = totVal - totPurchase;
 
+  // Primary currency = currency of most properties by value
+  const _reByCur = {};
+  properties.forEach(p => {
+    const cur = p.currency || 'INR';
+    const cv = parseFloat(p.current_value) || parseFloat(p.purchase_price) || 0;
+    const pp = parseFloat(p.purchase_price) || 0;
+    const own = (parseFloat(p.ownership_percent) || 100) / 100;
+    if (!_reByCur[cur]) _reByCur[cur] = { value: 0, purchase: 0, mortgage: 0 };
+    _reByCur[cur].value    += cv * own;
+    _reByCur[cur].purchase += pp * own;
+    if (p.has_mortgage) _reByCur[cur].mortgage += parseFloat(p.mortgage_outstanding) || 0;
+  });
+  const _rePrimCur = Object.entries(_reByCur).sort(([,a],[,b]) => b.value - a.value)[0]?.[0] || 'INR';
+  const _reVals    = _reByCur[_rePrimCur] || { value: 0, purchase: 0, mortgage: 0 };
+  const _reMulti   = Object.keys(_reByCur).length > 1 ? ' +' : '';
+  const _reAppr    = _reVals.value - _reVals.purchase;
+
   document.getElementById('re-count').textContent   = properties.length;
-  document.getElementById('re-value').textContent   = '₹' + totVal.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  document.getElementById('re-value').textContent   = formatCurrency(_reVals.value, _rePrimCur) + _reMulti;
   const apEl = document.getElementById('re-appr');
-  apEl.textContent = (totAppr >= 0 ? '+' : '') + '₹' + totAppr.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-  apEl.style.color = totAppr >= 0 ? 'var(--green)' : 'var(--red)';
-  document.getElementById('re-mortgage').textContent = totMortgage > 0 ? '₹' + totMortgage.toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '₹0';
+  apEl.textContent = (_reAppr >= 0 ? '+' : '') + formatCurrency(_reAppr, _rePrimCur) + _reMulti;
+  apEl.style.color = _reAppr >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('re-mortgage').textContent = _reVals.mortgage > 0
+    ? formatCurrency(_reVals.mortgage, _rePrimCur) + _reMulti
+    : '₹0';
 
   const grid = document.getElementById('re-grid');
   if (!properties.length) {

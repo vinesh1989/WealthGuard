@@ -166,9 +166,9 @@
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Display Currency <span style="color:var(--gold);font-size:0.7rem">(converts all values)</span></label>
             <select id="r-display-currency" class="form-control" onchange="generateReport()">
-              <option value="USD">USD — US Dollar</option>
-              <option value="AED">AED — UAE Dirham</option>
               <option value="INR">INR — Indian Rupee</option>
+              <option value="AED">AED — UAE Dirham</option>
+              <option value="USD">USD — US Dollar</option>
               <option value="EUR">EUR — Euro</option>
               <option value="GBP">GBP — British Pound</option>
             </select>
@@ -345,13 +345,7 @@ function convert(amount, from, to) {
 }
 
 function getRate(from, to) {
-  if (from === to) return 1;
-  const direct = rates.find(r => r.from_currency === from && r.to_currency === to);
-  if (direct) return direct.rate;
-  const toUSD  = rates.find(r => r.from_currency === from && r.to_currency === 'USD');
-  const fromUSD = rates.find(r => r.from_currency === 'USD' && r.to_currency === to);
-  if (toUSD && fromUSD) return toUSD.rate * fromUSD.rate;
-  return null;
+  return ExchangeRates.getRate(from, to, rates);
 }
 
 // ── Generate report ───────────────────────────────────────────

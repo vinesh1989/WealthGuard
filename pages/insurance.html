@@ -276,8 +276,20 @@ function render() {
   });
 
   document.getElementById('sum-total').textContent   = policies.length;
-  document.getElementById('sum-assured').textContent  = '₹' + totalSA.toLocaleString('en-IN', { minimumFractionDigits: 0 });
-  document.getElementById('sum-premium').textContent  = '₹' + totalPrem.toLocaleString('en-IN', { minimumFractionDigits: 0 }) + '/yr';
+  // Use primary currency
+  const _insByCur = {};
+  policies.forEach(p => {
+    const cur = p.currency || 'INR';
+    const freq = ({ Annual:1,'Semi-Annual':2,Quarterly:4,Monthly:12,Single:0 })[p.premium_frequency] || 1;
+    if (!_insByCur[cur]) _insByCur[cur] = { sa: 0, prem: 0 };
+    _insByCur[cur].sa   += parseFloat(p.sum_assured)    || 0;
+    _insByCur[cur].prem += (parseFloat(p.premium_amount) || 0) * freq;
+  });
+  const _insPrimCur = Object.entries(_insByCur).sort(([,a],[,b]) => b.sa - a.sa)[0]?.[0] || 'INR';
+  const _insVals    = _insByCur[_insPrimCur] || { sa: 0, prem: 0 };
+  const _insMulti   = Object.keys(_insByCur).length > 1 ? ' +' : '';
+  document.getElementById('sum-assured').textContent = formatCurrency(_insVals.sa, _insPrimCur) + _insMulti;
+  document.getElementById('sum-premium').textContent = formatCurrency(_insVals.prem, _insPrimCur) + _insMulti + '/yr';
   document.getElementById('sum-expiring').textContent = expiring;
   const warn = document.getElementById('expiry-warn');
   warn.style.display = expiring > 0 ? 'block' : 'none';
@@ -298,8 +310,7 @@ function render() {
     const icon    = TYPE_ICONS[p.policy_type] || '📋';
     const freq    = FREQ_MULTIPLIER[p.premium_frequency] || 1;
     const annPrem = (parseFloat(p.premium_amount) || 0) * freq;
-    const sym     = p.currency === 'INR' ? '₹' : (p.currency === 'USD' ? '$' : p.currency + ' ');
-    const fmt     = v => sym + (parseFloat(v) || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 });
+    const fmt     = v => formatCurrency(v, p.currency || 'INR');
 
     let matLabel = '—', matWarn = '';
     if (p.maturity_date) {

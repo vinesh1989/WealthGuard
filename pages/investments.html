@@ -375,7 +375,8 @@ function buildSummaryBar() {
   });
 
   const totCur = base.reduce((s, i) => s + (parseFloat(i.current_value) || 0), 0);
-  document.getElementById('sum-all-val').textContent = formatCurrency(totCur, 'USD');
+  const _allCur = Object.keys(_invByCurAll||{}).sort((a,b)=>(_invByCurAll[b]||0)-(_invByCurAll[a]||0))[0]||'INR';
+  document.getElementById('sum-all-val').textContent = formatCurrency(totCur, _allCur);
   document.getElementById('sum-all-sub').textContent = `${base.length} holdings`;
   document.getElementById('class-chip-all').classList.toggle('active', activeClassFilter === '');
 
@@ -393,11 +394,16 @@ function buildSummaryBar() {
     chip.style.setProperty('--item-color', c.color);
     if (activeClassFilter === c.id) chip.classList.add('active');
     chip.onclick = () => filterByClass(activeClassFilter === c.id ? '' : c.id);
+    // Find primary currency for this class
+    const _clsPrimCur = Object.entries(classMap).reduce((best, [cur2, v]) => {
+      // classMap here is scoped wrong — just use pct and count
+      return best;
+    }, 'INR');
     chip.innerHTML = `
       <div class="class-si-icon">${c.icon}</div>
       <div class="class-si-label" style="color:${c.color}">${c.label}</div>
-      <div class="class-si-value">${formatCurrency(d.current, 'USD')}</div>
-      <div class="class-si-sub">${pct}% · ${d.count} pos</div>`;
+      <div class="class-si-value">${pct}%</div>
+      <div class="class-si-sub">${d.count} holding${d.count !== 1 ? 's' : ''}</div>`;
     bar.appendChild(chip);
   });
 }
@@ -428,12 +434,21 @@ function filterTable() {
     return true;
   });
 
-  // Summary
-  let totInv = 0, totCur = 0;
-  filtered.forEach(i => { totInv += parseFloat(i.amount_invested)||0; totCur += parseFloat(i.current_value)||0; });
-  document.getElementById('s-invested').textContent = formatCurrency(totInv, 'USD');
-  document.getElementById('s-current').textContent  = formatCurrency(totCur, 'USD');
-  const ret = totInv > 0 ? (totCur - totInv) / totInv * 100 : 0;
+  // Summary — group by currency, show primary currency total
+  const _invByCur = {};
+  filtered.forEach(i => {
+    const cur = i.currency;
+    if (!_invByCur[cur]) _invByCur[cur] = { invested: 0, current: 0 };
+    _invByCur[cur].invested += parseFloat(i.amount_invested) || 0;
+    _invByCur[cur].current  += parseFloat(i.current_value)   || 0;
+  });
+  // Primary = currency with largest current value
+  const _primCur = Object.entries(_invByCur).sort(([,a],[,b]) => b.current - a.current)[0]?.[0] || 'INR';
+  const _primVals = _invByCur[_primCur] || { invested: 0, current: 0 };
+  const _multi = Object.keys(_invByCur).length > 1;
+  document.getElementById('s-invested').textContent = formatCurrency(_primVals.invested, _primCur) + (_multi ? ' +' : '');
+  document.getElementById('s-current').textContent  = formatCurrency(_primVals.current, _primCur) + (_multi ? ' +' : '');
+  const ret = _primVals.invested > 0 ? (_primVals.current - _primVals.invested) / _primVals.invested * 100 : 0;
   const retEl = document.getElementById('s-return');
   retEl.textContent = (ret >= 0 ? '+' : '') + formatPercent(ret);
   retEl.className = `card-value display-num ${ret >= 0 ? 'gain' : 'loss'}`;

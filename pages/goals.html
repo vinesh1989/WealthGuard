@@ -112,8 +112,8 @@
         <div class="form-group">
           <label class="form-label">Currency <span class="form-required">*</span></label>
           <select id="g-currency" class="form-control">
-            <option value="USD">USD</option><option value="AED">AED</option>
-            <option value="INR">INR</option><option value="EUR">EUR</option>
+            <option value="INR">INR</option><option value="AED">AED</option>
+            <option value="USD">USD</option><option value="EUR">EUR</option>
           </select>
         </div>
         <div class="form-group">
@@ -210,7 +210,7 @@ function openGoalModal(g = null) {
   document.getElementById('g-target').value = g?.target_amount || '';
   document.getElementById('g-current').value = g?.current_amount || '';
   // currency now in amount group
-  if (document.getElementById("g-currency")) document.getElementById("g-currency").value = g?.currency || "USD";
+  if (document.getElementById("g-currency")) document.getElementById("g-currency").value = g?.currency || "INR";
   document.getElementById('g-date').value = g?.target_date || '';
   document.getElementById('g-desc').value = g?.description || '';
   document.getElementById('g-error').style.display = 'none';
