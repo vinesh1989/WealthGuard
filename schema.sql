@@ -21,7 +21,14 @@ DROP FUNCTION IF EXISTS update_updated_at() CASCADE;
 -- ENUMS
 -- ============================================================
 
-CREATE TYPE asset_type AS ENUM ('MF', 'Stocks', 'Crypto', 'FD', 'Real Estate', 'Other');
+CREATE TYPE asset_type AS ENUM (
+  'Equity',
+  'Fixed Income',
+  'Cash',
+  'Precious Metals',
+  'Real Estate',
+  'Crypto'
+);
 CREATE TYPE currency_type AS ENUM ('AED', 'INR', 'USD', 'EUR', 'GBP');
 CREATE TYPE user_role AS ENUM ('investor', 'beneficiary', 'admin');
 CREATE TYPE subscription_status AS ENUM ('trial', 'active', 'expired', 'cancelled');
@@ -116,11 +123,11 @@ CREATE TABLE assets (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   name TEXT,
-  asset_type asset_type NOT NULL,
+  asset_type asset_type NOT NULL,          -- asset class (Equity, Fixed Income, etc.)
+  platform TEXT NOT NULL,                   -- broker/bank/platform name
   account_number TEXT,
-  platform TEXT,
   currency currency_type NOT NULL DEFAULT 'USD',
-  country TEXT NOT NULL DEFAULT 'United Arab Emirates',
+  country TEXT DEFAULT 'United Arab Emirates',
   notes TEXT,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -136,6 +143,8 @@ CREATE TABLE investments (
   asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
+  investment_type TEXT DEFAULT 'Total',  -- 'Total' or 'Individual' (stock level)
+  exchange TEXT,                          -- e.g. NSE, BSE, NASDAQ (for Individual)
   category TEXT,
   amount_invested DECIMAL(15,4) NOT NULL DEFAULT 0,
   current_value DECIMAL(15,4) NOT NULL DEFAULT 0,
