@@ -314,17 +314,62 @@ const ExchangeRates = {
     _exchangeRates = null;
   },
 
-  convert(amount, from, to, rates) {
-    if (from === to) return amount;
-    const rate = rates.find(r => r.from_currency === from && r.to_currency === to);
-    if (rate) return amount * rate.rate;
+  // Fallback rates used when the exchange_rates table has no data.
+  // Admin can override these any time via the Admin → Exchange Rates tab.
+  _fallback: {
+    'INR': { 'USD': 0.01198,  'AED': 0.04401, 'EUR': 0.01101, 'GBP': 0.00942 },
+    'USD': { 'INR': 83.46,    'AED': 3.6725,  'EUR': 0.9190,  'GBP': 0.7862  },
+    'AED': { 'INR': 22.72,    'USD': 0.2723,  'EUR': 0.2503,  'GBP': 0.2141  },
+    'EUR': { 'INR': 90.82,    'USD': 1.0882,  'AED': 3.9966,  'GBP': 0.8554  },
+    'GBP': { 'INR': 106.17,   'USD': 1.2721,  'AED': 4.6721,  'EUR': 1.1690  },
+  },
 
-    // Try via USD
-    const toUSD = rates.find(r => r.from_currency === from && r.to_currency === 'USD');
-    const fromUSD = rates.find(r => r.from_currency === 'USD' && r.to_currency === to);
-    if (toUSD && fromUSD) return amount * toUSD.rate * fromUSD.rate;
-    return amount;
-  }
+  // Returns the numeric rate from->to, or null if genuinely unknown.
+  getRate(from, to, rates) {
+    if (from === to) return 1;
+
+    // 1. Direct
+    const direct = (rates || []).find(r => r.from_currency === from && r.to_currency === to);
+    if (direct) return parseFloat(direct.rate);
+
+    // 2. Inverse of stored reverse rate (e.g. USD→INR stored, need INR→USD)
+    const inverse = (rates || []).find(r => r.from_currency === to && r.to_currency === from);
+    if (inverse && parseFloat(inverse.rate) > 0) return 1 / parseFloat(inverse.rate);
+
+    // 3. Try pivot via each major currency
+    const PIVOTS = ['USD', 'INR', 'AED', 'EUR', 'GBP'];
+    for (const pivot of PIVOTS) {
+      if (pivot === from || pivot === to) continue;
+      const leg1 = (rates || []).find(r => r.from_currency === from && r.to_currency === pivot);
+      const leg2 = (rates || []).find(r => r.from_currency === pivot && r.to_currency === to);
+      if (leg1 && leg2) return parseFloat(leg1.rate) * parseFloat(leg2.rate);
+      // Also try inverse legs
+      const leg1i = (rates || []).find(r => r.from_currency === pivot && r.to_currency === from);
+      const leg2i = (rates || []).find(r => r.from_currency === to   && r.to_currency === pivot);
+      if (leg1i && leg2i && parseFloat(leg1i.rate) > 0 && parseFloat(leg2i.rate) > 0) {
+        return (1 / parseFloat(leg1i.rate)) * (1 / parseFloat(leg2i.rate));
+      }
+    }
+
+    // 4. Fallback hardcoded rates (admin can override via Admin panel)
+    const fb = ExchangeRates._fallback[from]?.[to];
+    if (fb) return fb;
+
+    return null; // genuinely unknown
+  },
+
+  convert(amount, from, to, rates) {
+    if (from === to) return parseFloat(amount) || 0;
+    const rate = ExchangeRates.getRate(from, to, rates);
+    if (rate !== null) return (parseFloat(amount) || 0) * rate;
+    console.warn(`[WealthGuard] No exchange rate found: ${from} → ${to}. Returning original amount.`);
+    return parseFloat(amount) || 0;
+  },
+
+  // Returns true if a rate (or fallback) exists for this pair
+  hasRate(from, to, rates) {
+    return from === to || ExchangeRates.getRate(from, to, rates) !== null;
+  },
 };
 
 // ============================================================
