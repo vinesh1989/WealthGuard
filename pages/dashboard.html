@@ -189,24 +189,41 @@
     /* ── Per-currency breakdown cards ───────────── */
     .currency-breakdown {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 0.6rem;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 0.75rem;
       margin-top: 1.25rem;
     }
     .currency-chip {
-      background: rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.03);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 0.75rem 0.9rem;
-      transition: border-color 0.15s;
+      padding: 0.9rem 1rem;
+      transition: border-color 0.15s, background 0.15s;
     }
-    .currency-chip.highlight { border-color: rgba(212,175,55,0.3); background: rgba(212,175,55,0.04); }
-    .currency-chip-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
-    .currency-chip-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
-    .currency-chip-flag { font-size: 0.9rem; }
-    .currency-chip-val { font-family: var(--font-mono); font-size: 0.92rem; font-weight: 600; color: var(--text-primary); }
-    .currency-chip-converted { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem; font-family: var(--font-mono); }
-    .currency-chip-gl { font-size: 0.72rem; margin-top: 0.15rem; font-family: var(--font-mono); }
+    .currency-chip.highlight {
+      border-color: rgba(212,175,55,0.35);
+      background: rgba(212,175,55,0.04);
+    }
+    .currency-chip-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.6rem;
+    }
+    .currency-chip-label {
+      font-size: 0.8rem; color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;
+    }
+    .currency-chip-val {
+      font-family: var(--font-mono); font-size: 0.95rem;
+      font-weight: 600; color: var(--text-primary);
+    }
+    .currency-chip-gl {
+      font-size: 0.74rem; margin-top: 0.2rem;
+      font-family: var(--font-mono);
+    }
+    .currency-chip-converted {
+      font-size: 0.7rem; color: var(--text-muted);
+      margin-top: 0.2rem; font-family: var(--font-mono);
+    }
     .approval-info { flex:1; min-width:0; }
     .approval-name { font-size:0.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .approval-email { font-size:0.72rem; color:var(--text-muted); }
@@ -293,27 +310,46 @@
 
       <!-- Net Worth Hero -->
       <div class="net-worth-card">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.25rem">
-          <div class="net-worth-label">Total Portfolio Value</div>
-          <!-- Currency switcher pills -->
-          <div class="currency-switcher" id="currency-switcher">
-            <button class="cur-pill" data-cur="INR" onclick="switchDisplayCurrency('INR')">🇮🇳 INR</button>
-            <button class="cur-pill" data-cur="AED" onclick="switchDisplayCurrency('AED')">🇦🇪 AED</button>
-            <button class="cur-pill" data-cur="USD" onclick="switchDisplayCurrency('USD')">🇺🇸 USD</button>
-            <button class="cur-pill" data-cur="EUR" onclick="switchDisplayCurrency('EUR')">🇪🇺 EUR</button>
-            <button class="cur-pill" data-cur="GBP" onclick="switchDisplayCurrency('GBP')">🇬🇧 GBP</button>
+        <!-- Top row: label + convert toggle -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem">
+          <div>
+            <div class="net-worth-label" id="hero-label">Portfolio Value by Currency</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.15rem" id="hero-sublabel">Showing original investment currencies</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.4rem">
+            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:600">Convert all to:</span>
+            <div class="currency-switcher" id="currency-switcher">
+              <button class="cur-pill" data-cur="" onclick="switchDisplayCurrency('')">None</button>
+              <button class="cur-pill" data-cur="INR" onclick="switchDisplayCurrency('INR')">🇮🇳 INR</button>
+              <button class="cur-pill" data-cur="AED" onclick="switchDisplayCurrency('AED')">🇦🇪 AED</button>
+              <button class="cur-pill" data-cur="USD" onclick="switchDisplayCurrency('USD')">🇺🇸 USD</button>
+              <button class="cur-pill" data-cur="EUR" onclick="switchDisplayCurrency('EUR')">🇪🇺 EUR</button>
+              <button class="cur-pill" data-cur="GBP" onclick="switchDisplayCurrency('GBP')">🇬🇧 GBP</button>
+            </div>
           </div>
         </div>
-        <div class="net-worth-value" id="net-worth">—</div>
-        <div class="net-worth-change">
-          <span id="total-gain" class="gain" style="font-size:0.875rem;font-weight:600"></span>
-          <span style="font-size:0.8rem;color:var(--text-muted)" id="invest-count">0 investments</span>
+
+        <!-- Main value display -->
+        <!-- Converted mode: single big number -->
+        <div id="hero-converted" style="display:none">
+          <div class="net-worth-value" id="net-worth">—</div>
+          <div class="net-worth-change" style="margin-bottom:0.75rem">
+            <span id="total-gain" class="gain" style="font-size:0.875rem;font-weight:600"></span>
+            <span style="font-size:0.8rem;color:var(--text-muted)" id="invest-count">0 investments</span>
+          </div>
         </div>
-        <!-- Per-currency breakdown -->
+        <!-- Native mode: invest count only -->
+        <div id="hero-native" style="display:block">
+          <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.1rem" id="invest-count-native">0 investments</div>
+          <div id="total-gain-native" style="font-size:0.875rem;font-weight:600;margin-bottom:0.75rem"></div>
+        </div>
+
+        <!-- Per-currency breakdown cards (always shown) -->
         <div class="currency-breakdown" id="currency-breakdown"></div>
-        <!-- Rate source note -->
+
+        <!-- Rate source note (only in converted mode) -->
         <div id="rate-source-note" style="margin-top:0.75rem;font-size:0.7rem;color:var(--text-muted);display:none">
-          ⚠ Using estimated rates. <a href="admin.html" style="color:var(--gold)">Set live rates in Admin →</a>
+          ⚠ Using estimated exchange rates. <a href="admin.html" style="color:var(--gold)">Set live rates in Admin →</a>
         </div>
       </div>
 
@@ -342,13 +378,13 @@
         <div class="stat-card">
           <div class="stat-card-icon icon-gold">📈</div>
           <div class="card-title">Total Invested</div>
-          <div class="card-value display-num" id="stat-invested">$0</div>
+          <div class="card-value display-num" id="stat-invested">—</div>
           <div class="card-meta">Across all assets</div>
         </div>
         <div class="stat-card">
           <div class="stat-card-icon icon-green">💰</div>
           <div class="card-title">Current Value</div>
-          <div class="card-value display-num" id="stat-current">$0</div>
+          <div class="card-value display-num" id="stat-current">—</div>
           <div class="card-meta">Mark-to-market</div>
         </div>
         <div class="stat-card">
@@ -463,15 +499,15 @@ const ASSET_COLORS = Object.fromEntries(ASSET_CLASSES.map(c => [c.id, c.color]))
 const CLASS_MAP    = Object.fromEntries(ASSET_CLASSES.map(c => [c.id, c]));
 
 // ── Global state ─────────────────────────────────────────────
-let chartInstance = null;
-let _rates        = [];
-let _currencyMap  = {};   // raw per-currency totals (original amounts)
-let _assetClassMap = {};  // per-asset-class totals in each currency
+let chartInstance   = null;
+let _rates          = [];
+let _currencyMap    = {};  // { INR: {invested, current}, AED: {...}, ... }
+let _assetClassMap  = {};  // { Equity: { INR: val, USD: val }, ... }
 let _allInvestments = [];
-let _displayCurrency = 'INR'; // default — overridden once profile loads
+let _displayCurrency = '';  // '' = no conversion (show native); or 'INR'/'AED'/'USD' etc.
 
-const CUR_FLAGS = { INR:'🇮🇳', USD:'🇺🇸', AED:'🇦🇪', EUR:'🇪🇺', GBP:'🇬🇧' };
-const CUR_SYMBOLS = { INR:'₹', USD:'$', AED:'AED ', EUR:'€', GBP:'£' };
+const CUR_FLAGS   = { INR:'🇮🇳', USD:'🇺🇸', AED:'🇦🇪', EUR:'🇪🇺', GBP:'🇬🇧' };
+const CUR_SYMBOLS = { INR:'₹',   USD:'$',   AED:'AED ', EUR:'€', GBP:'£' };
 
 // ── Init ─────────────────────────────────────────────────────
 async function init() {
@@ -510,9 +546,9 @@ async function init() {
     loadAdminStats();
   }
 
-  // Set default display currency from profile (fallback INR for NRI users)
-  _displayCurrency = profile.base_currency || 'INR';
-  highlightCurrencyPill(_displayCurrency);
+  // Start in native mode (no conversion) — user can pick a conversion currency
+  _displayCurrency = '';
+  highlightCurrencyPill('');
 
   await loadDashboard(session.user.id);
 }
@@ -558,10 +594,15 @@ async function loadDashboard(userId) {
     _assetClassMap[ac][cur] += cur_;
   });
 
-  // Static fields that don't depend on display currency
+  // Static fields that don't change with currency
   document.getElementById('stat-assets').textContent  = (assets || []).length;
   document.getElementById('stat-goals').textContent   = (goals  || []).filter(g => !g.is_achieved).length;
-  document.getElementById('invest-count').textContent = `${_allInvestments.length} investment${_allInvestments.length !== 1 ? 's' : ''}`;
+  // invest-count exists in converted hero; invest-count-native in native hero — update both
+  const invCountStr = `${_allInvestments.length} investment${_allInvestments.length !== 1 ? 's' : ''}`;
+  const icEl = document.getElementById('invest-count');
+  if (icEl) icEl.textContent = invCountStr;
+  const icNEl = document.getElementById('invest-count-native');
+  if (icNEl) icNEl.textContent = invCountStr;
 
   // Performers (always show % return — currency-independent)
   if (perf && perf.length > 0) {
@@ -582,59 +623,111 @@ async function loadDashboard(userId) {
   renderCurrencyView(_displayCurrency);
 }
 
-// ── Re-render everything for selected display currency ────────
+// ── Main render: called on load and whenever currency pill changes ──
 function renderCurrencyView(dispCur) {
   _displayCurrency = dispCur;
   highlightCurrencyPill(dispCur);
 
-  // Check if any pair needs a fallback rate (not in DB)
-  let usingFallback = false;
-  Object.keys(_currencyMap).forEach(cur => {
-    if (cur !== dispCur) {
-      const dbRate = _rates.find(r => r.from_currency === cur && r.to_currency === dispCur)
-                  || _rates.find(r => r.from_currency === dispCur && r.to_currency === cur);
-      if (!dbRate) usingFallback = true;
-    }
-  });
-  const noteEl = document.getElementById('rate-source-note');
-  if (noteEl) noteEl.style.display = usingFallback ? 'block' : 'none';
+  const isConverted = dispCur !== '';
 
-  // Convert all to display currency using stored rates
-  let totalInvested = 0, totalCurrent = 0;
-  const assetTypeMap = {};
+  // Show/hide hero sections
+  document.getElementById('hero-converted').style.display = isConverted ? 'block' : 'none';
+  document.getElementById('hero-native').style.display    = isConverted ? 'none'  : 'block';
+  document.getElementById('rate-source-note').style.display = 'none';
 
-  Object.entries(_currencyMap).forEach(([cur, vals]) => {
-    totalInvested += ExchangeRates.convert(vals.invested, cur, dispCur, _rates);
-    totalCurrent  += ExchangeRates.convert(vals.current,  cur, dispCur, _rates);
-  });
+  const heroLabel    = document.getElementById('hero-label');
+  const heroSublabel = document.getElementById('hero-sublabel');
 
-  // Asset class map for pie (convert each class's per-currency amounts)
-  Object.entries(_assetClassMap).forEach(([ac, byCur]) => {
-    assetTypeMap[ac] = 0;
-    Object.entries(byCur).forEach(([cur, val]) => {
-      assetTypeMap[ac] += ExchangeRates.convert(val, cur, dispCur, _rates);
+  if (isConverted) {
+    // ── CONVERTED MODE ──────────────────────────────────────
+    heroLabel.textContent    = `Portfolio Value in ${dispCur}`;
+    heroSublabel.textContent = `All holdings converted to ${dispCur}`;
+
+    // Check for fallback usage
+    let usingFallback = false;
+    Object.keys(_currencyMap).forEach(cur => {
+      if (cur !== dispCur) {
+        const dbRate = _rates.find(r => r.from_currency === cur && r.to_currency === dispCur)
+                    || _rates.find(r => r.from_currency === dispCur && r.to_currency === cur);
+        if (!dbRate) usingFallback = true;
+      }
     });
-  });
+    if (usingFallback) document.getElementById('rate-source-note').style.display = 'block';
 
-  const totalGain = totalCurrent - totalInvested;
-  const gainPct   = totalInvested > 0 ? (totalGain / totalInvested * 100) : 0;
-  const sym       = CUR_SYMBOLS[dispCur] || dispCur + ' ';
+    let totalInvested = 0, totalCurrent = 0;
+    const assetTypeMap = {};
 
-  // Hero
-  document.getElementById('net-worth').textContent      = formatCurrency(totalCurrent, dispCur);
-  document.getElementById('stat-invested').textContent  = formatCurrency(totalInvested, dispCur);
-  document.getElementById('stat-current').textContent   = formatCurrency(totalCurrent, dispCur);
-  document.getElementById('alloc-total-badge').textContent = formatCurrency(totalCurrent, dispCur);
+    Object.entries(_currencyMap).forEach(([cur, vals]) => {
+      totalInvested += ExchangeRates.convert(vals.invested, cur, dispCur, _rates);
+      totalCurrent  += ExchangeRates.convert(vals.current,  cur, dispCur, _rates);
+    });
 
-  const gainEl = document.getElementById('total-gain');
-  gainEl.textContent = `${totalGain >= 0 ? '+' : ''}${formatCurrency(totalGain, dispCur)} (${formatPercent(gainPct)})`;
-  gainEl.className = totalGain >= 0 ? 'gain' : 'loss';
+    Object.entries(_assetClassMap).forEach(([ac, byCur]) => {
+      assetTypeMap[ac] = 0;
+      Object.entries(byCur).forEach(([cur, val]) => {
+        assetTypeMap[ac] += ExchangeRates.convert(val, cur, dispCur, _rates);
+      });
+    });
 
-  // Per-currency breakdown cards
+    const totalGain = totalCurrent - totalInvested;
+    const gainPct   = totalInvested > 0 ? (totalGain / totalInvested * 100) : 0;
+
+    document.getElementById('net-worth').textContent          = formatCurrency(totalCurrent, dispCur);
+    document.getElementById('stat-invested').textContent      = formatCurrency(totalInvested, dispCur);
+    document.getElementById('stat-current').textContent       = formatCurrency(totalCurrent, dispCur);
+    document.getElementById('alloc-total-badge').textContent  = formatCurrency(totalCurrent, dispCur);
+
+    const gainEl = document.getElementById('total-gain');
+    gainEl.textContent = `${totalGain >= 0 ? '+' : ''}${formatCurrency(totalGain, dispCur)} (${formatPercent(gainPct)})`;
+    gainEl.className = totalGain >= 0 ? 'gain' : 'loss';
+
+    renderAllocationChart(assetTypeMap, dispCur);
+
+  } else {
+    // ── NATIVE MODE (no conversion) ─────────────────────────
+    // Default: show individual currency totals, no single combined number
+    heroLabel.textContent    = 'Portfolio Value by Currency';
+    heroSublabel.textContent = 'Showing amounts in original investment currencies';
+
+    // Stat cards: show each currency's total side by side (or the primary currency)
+    // Find the primary currency (most investments)
+    const primaryCur = Object.entries(_currencyMap)
+      .sort(([,a],[,b]) => b.current - a.current)[0]?.[0] || 'INR';
+
+    // Show primary currency total in stat cards with note
+    const primVals = _currencyMap[primaryCur] || { invested: 0, current: 0 };
+    document.getElementById('stat-invested').textContent = formatCurrency(primVals.invested, primaryCur);
+    document.getElementById('stat-current').textContent  = formatCurrency(primVals.current,  primaryCur);
+    document.getElementById('alloc-total-badge').textContent = formatCurrency(primVals.current, primaryCur);
+
+    // Native gain/loss for primary currency
+    const natGain    = primVals.current - primVals.invested;
+    const natGainPct = primVals.invested > 0 ? (natGain / primVals.invested * 100) : 0;
+    const gainNEl = document.getElementById('total-gain-native');
+    const invCntN = document.getElementById('invest-count-native');
+    gainNEl.textContent = `${natGain >= 0 ? '+' : ''}${formatCurrency(natGain, primaryCur)} (${formatPercent(natGainPct)})`;
+    gainNEl.className   = natGain >= 0 ? 'gain' : 'loss';
+    invCntN.textContent = `${_allInvestments.length} investment${_allInvestments.length !== 1 ? 's' : ''}`;
+
+    // Pie chart using primary currency values (no conversion)
+    const assetTypeMap = {};
+    Object.entries(_assetClassMap).forEach(([ac, byCur]) => {
+      // Only include primary currency in native chart, or sum if single currency
+      if (Object.keys(_currencyMap).length === 1) {
+        assetTypeMap[ac] = Object.values(byCur)[0] || 0;
+      } else {
+        // Multi-currency: convert to primary for the chart only
+        assetTypeMap[ac] = 0;
+        Object.entries(byCur).forEach(([cur, val]) => {
+          assetTypeMap[ac] += ExchangeRates.convert(val, cur, primaryCur, _rates);
+        });
+      }
+    });
+    renderAllocationChart(assetTypeMap, primaryCur);
+  }
+
+  // Currency breakdown cards always render (native amounts + conversion if applicable)
   renderCurrencyBreakdown(dispCur);
-
-  // Pie chart
-  renderAllocationChart(assetTypeMap, dispCur);
 }
 
 // ── Currency switcher ─────────────────────────────────────────
@@ -650,32 +743,55 @@ function highlightCurrencyPill(cur) {
 
 // ── Per-currency breakdown cards ──────────────────────────────
 function renderCurrencyBreakdown(dispCur) {
-  const bkEl = document.getElementById('currency-breakdown');
+  const bkEl   = document.getElementById('currency-breakdown');
   const entries = Object.entries(_currencyMap);
 
   if (!entries.length) {
-    bkEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;grid-column:1/-1">No investments yet</div>';
+    bkEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;grid-column:1/-1">No investments yet. <a href="investments.html#add" style="color:var(--gold)">Add your first →</a></div>';
     return;
   }
 
   bkEl.innerHTML = entries.map(([cur, vals]) => {
-    const gl      = vals.current - vals.invested;
-    const glPct   = vals.invested > 0 ? (gl / vals.invested * 100) : 0;
-    const isSame  = cur === dispCur;
-    const convCur = isSame ? null : ExchangeRates.convert(vals.current, cur, dispCur, _rates);
-    const flag    = CUR_FLAGS[cur] || '🌐';
-    const isHighlight = !isSame && convCur > 0;
+    const gl    = vals.current - vals.invested;
+    const glPct = vals.invested > 0 ? (gl / vals.invested * 100) : 0;
+    const flag  = CUR_FLAGS[cur] || '🌐';
+    const isActive = cur === dispCur;
 
-    return `<div class="currency-chip ${isHighlight ? 'highlight' : ''}">
+    // Always show original native amounts
+    // Optionally show conversion if a display currency is selected
+    const showConv = dispCur !== '' && cur !== dispCur;
+    const convInv  = showConv ? ExchangeRates.convert(vals.invested, cur, dispCur, _rates) : null;
+    const convCur_ = showConv ? ExchangeRates.convert(vals.current,  cur, dispCur, _rates) : null;
+    const convGL   = showConv ? (convCur_ - convInv) : null;
+
+    return `<div class="currency-chip${isActive ? ' highlight' : ''}">
       <div class="currency-chip-header">
-        <span class="currency-chip-label">${cur}</span>
-        <span class="currency-chip-flag">${flag}</span>
+        <span class="currency-chip-label">${flag} ${cur}</span>
+        <span class="badge badge-muted" style="font-size:0.62rem">${Object.keys(_currencyMap).length > 1 ? '·' : 'primary'}</span>
       </div>
-      <div class="currency-chip-val">${formatCurrency(vals.current, cur)}</div>
+
+      <!-- Native amounts (always shown) -->
+      <div style="margin-bottom:0.35rem">
+        <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.1rem">Invested</div>
+        <div class="currency-chip-val">${formatCurrency(vals.invested, cur)}</div>
+      </div>
+      <div style="margin-bottom:0.35rem">
+        <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.1rem">Current Value</div>
+        <div class="currency-chip-val" style="color:${gl >= 0 ? 'var(--green)' : 'var(--red)'}">${formatCurrency(vals.current, cur)}</div>
+      </div>
       <div class="currency-chip-gl ${gl >= 0 ? 'gain' : 'loss'}">
-        ${gl >= 0 ? '+' : ''}${formatCurrency(gl, cur)} (${glPct >= 0 ? '+' : ''}${glPct.toFixed(1)}%)
+        ${gl >= 0 ? '+' : ''}${formatCurrency(gl, cur)}
+        <span style="font-size:0.65rem;opacity:0.8">(${glPct >= 0 ? '+' : ''}${glPct.toFixed(1)}%)</span>
       </div>
-      ${!isSame && convCur !== null ? `<div class="currency-chip-converted">≈ ${formatCurrency(convCur, dispCur)}</div>` : ''}
+
+      ${showConv ? `
+      <!-- Converted amounts -->
+      <div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid rgba(255,255,255,0.06)">
+        <div style="font-size:0.62rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--gold);margin-bottom:0.3rem">≈ in ${dispCur}</div>
+        <div style="font-size:0.68rem;color:var(--text-muted)">Invested: <span style="color:var(--text-secondary);font-family:var(--font-mono)">${formatCurrency(convInv, dispCur)}</span></div>
+        <div style="font-size:0.75rem;font-weight:600;font-family:var(--font-mono);color:var(--text-primary);margin-top:0.15rem">${formatCurrency(convCur_, dispCur)}</div>
+        <div style="font-size:0.68rem;font-family:var(--font-mono)" class="${convGL >= 0 ? 'gain' : 'loss'}">${convGL >= 0 ? '+' : ''}${formatCurrency(convGL, dispCur)}</div>
+      </div>` : ''}
     </div>`;
   }).join('');
 }
