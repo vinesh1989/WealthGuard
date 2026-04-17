@@ -389,14 +389,16 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
 <script>
-const ASSET_COLORS = {
-  'MF': '#d4af37',
-  'Stocks': '#60a5fa',
-  'Crypto': '#a78bfa',
-  'FD': '#34d399',
-  'Real Estate': '#f97316',
-  'Other': '#6b7280'
-};
+const ASSET_CLASSES = [
+  { id: 'Equity',          label: 'Equity',          icon: '📈', color: '#60a5fa' },
+  { id: 'Fixed Income',    label: 'Fixed Income',     icon: '🏛', color: '#34d399' },
+  { id: 'Cash',            label: 'Cash',             icon: '💵', color: '#fbbf24' },
+  { id: 'Precious Metals', label: 'Precious Metals',  icon: '🥇', color: '#f59e0b' },
+  { id: 'Real Estate',     label: 'Real Estate',      icon: '🏠', color: '#f97316' },
+  { id: 'Crypto',          label: 'Crypto',           icon: '₿',  color: '#a78bfa' },
+];
+const ASSET_COLORS = Object.fromEntries(ASSET_CLASSES.map(c => [c.id, c.color]));
+const CLASS_MAP    = Object.fromEntries(ASSET_CLASSES.map(c => [c.id, c]));
 
 let chartInstance = null;
 
@@ -506,11 +508,11 @@ async function loadDashboard(userId, baseCurrency) {
     const top = perf[0];
     const worst = perf[perf.length - 1];
     document.getElementById('top-name').textContent = top.name;
-    document.getElementById('top-platform').textContent = `${top.asset_type} · ${top.platform}`;
+    document.getElementById('top-platform').textContent = `${CLASS_MAP[top.asset_type]?.icon || ''} ${top.asset_type} · ${top.platform}`;
     document.getElementById('top-return').textContent = formatPercent(top.return_pct);
 
     document.getElementById('worst-name').textContent = worst.name;
-    document.getElementById('worst-platform').textContent = `${worst.asset_type} · ${worst.platform}`;
+    document.getElementById('worst-platform').textContent = `${CLASS_MAP[worst.asset_type]?.icon || ''} ${worst.asset_type} · ${worst.platform}`;
     document.getElementById('worst-return').textContent = formatPercent(worst.return_pct);
   }
 
@@ -533,7 +535,7 @@ async function loadDashboard(userId, baseCurrency) {
     const glPct = inv.amount_invested > 0 ? (gl / inv.amount_invested * 100) : 0;
     return `
     <div class="activity-item">
-      <div class="activity-icon icon-${inv.assets?.asset_type === 'Stocks' ? 'blue' : inv.assets?.asset_type === 'Crypto' ? 'purple' : 'gold'}" style="background: var(--gold-muted);">
+      <div class="activity-icon" style="background:${CLASS_MAP[inv.assets?.asset_type]?.color+'20' || 'var(--gold-muted)'};color:${CLASS_MAP[inv.assets?.asset_type]?.color || 'var(--gold)'}">
         ${getAssetEmoji(inv.assets?.asset_type)}
       </div>
       <div class="activity-info">
@@ -596,8 +598,7 @@ function renderAllocationChart(assetTypeMap) {
 }
 
 function getAssetEmoji(type) {
-  const map = { MF: '🏦', Stocks: '📈', Crypto: '₿', FD: '🏛', 'Real Estate': '🏠', Other: '📦' };
-  return map[type] || '💼';
+  return CLASS_MAP[type]?.icon || '💼';
 }
 
 // Admin dashboard stats

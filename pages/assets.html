@@ -3,111 +3,121 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Assets — WealthGuard</title>
+  <title>Asset Classes — WealthGuard</title>
   <link rel="stylesheet" href="../css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <style>
-    .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+    /* ── Asset class selector tiles ─────────────────────────── */
+    .class-tiles {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+      margin-bottom: 0.25rem;
+    }
+    .class-tile {
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 0.6rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: var(--bg-surface);
+    }
+    .class-tile:hover { border-color: rgba(255,255,255,0.2); background: var(--bg-card); }
+    .class-tile.selected { border-color: var(--tile-color, var(--gold)); background: color-mix(in srgb, var(--tile-color, var(--gold)) 12%, transparent); }
+    .class-tile-icon { font-size: 1.4rem; margin-bottom: 0.25rem; }
+    .class-tile-label { font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); line-height: 1.3; }
+    .class-tile.selected .class-tile-label { color: var(--tile-color, var(--gold)); }
+
+    /* ── Asset cards ─────────────────────────────────────────── */
+    .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
 
     .asset-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 1.25rem;
+      overflow: hidden;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
       cursor: pointer;
-      transition: all var(--transition);
       position: relative;
     }
+    .asset-card:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,0.3); }
 
-    .asset-card:hover {
-      border-color: rgba(212,175,55,0.3);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-gold);
+    .asset-card-banner { height: 4px; }
+
+    .asset-card-body { padding: 1.25rem; }
+
+    .asset-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.85rem; }
+    .asset-class-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: 20px;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em;
     }
+    .asset-card-actions { display: flex; gap: 0.3rem; opacity: 0; transition: opacity 0.15s; }
+    .asset-card:hover .asset-card-actions { opacity: 1; }
 
-    .asset-type-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: var(--gold-muted);
-      display: grid;
-      place-items: center;
-      font-size: 1.25rem;
-      margin-bottom: 0.9rem;
-    }
+    .asset-platform-name { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.15rem; }
+    .asset-meta-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.9rem; }
+    .asset-meta-chip { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.25rem; }
 
-    .asset-platform { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem; }
-    .asset-type { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.9rem; }
+    .asset-values { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; border-top: 1px solid var(--border); margin: 0 -1.25rem; padding: 0.85rem 1.25rem 0; }
+    .asset-val-item { text-align: center; }
+    .asset-val-item:not(:last-child) { border-right: 1px solid var(--border); }
+    .asset-val-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem; }
+    .asset-val-num { font-family: var(--font-mono); font-size: 0.88rem; font-weight: 600; }
 
-    .asset-meta {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
-    }
+    .asset-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.04); }
+    .asset-inv-link { font-size: 0.75rem; color: var(--gold); display: flex; align-items: center; gap: 0.3rem; }
 
-    .asset-meta-item { }
-    .asset-meta-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    .asset-meta-value { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-top: 0.1rem; }
+    /* ── Summary + chart section ─────────────────────────────── */
+    .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.5rem; align-items: start; }
 
-    .asset-actions {
-      position: absolute;
-      top: 0.9rem;
-      right: 0.9rem;
-      display: flex;
-      gap: 0.3rem;
-      opacity: 0;
-      transition: opacity var(--transition);
-    }
+    .exposure-bars { display: flex; flex-direction: column; gap: 0.65rem; }
+    .exposure-row { display: grid; grid-template-columns: 120px 1fr 70px; gap: 0.75rem; align-items: center; }
+    .exposure-label { font-size: 0.78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .exposure-bar-wrap { background: rgba(255,255,255,0.05); border-radius: 4px; height: 8px; overflow: hidden; }
+    .exposure-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+    .exposure-pct { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 600; text-align: right; }
 
-    .asset-card:hover .asset-actions { opacity: 1; }
-    .asset-inv-count {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      font-size: 0.75rem;
-      color: var(--gold);
-      background: var(--gold-muted);
-      padding: 3px 8px;
-      border-radius: 4px;
-      margin-top: 0.75rem;
+    .chart-wrap { position: relative; width: 180px; height: 180px; margin: 0 auto; }
+
+    .summary-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
+
+    @media (max-width: 700px) {
+      .overview-grid { grid-template-columns: 1fr; }
+      .class-tiles { grid-template-columns: repeat(3, 1fr); }
+      .asset-values { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">🛡</div>
-      <span class="sidebar-logo-text">WealthGuard</span>
-    </div>
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
     <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
       <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
-      <a href="assets.html" class="nav-item active"><span class="nav-icon">🏦</span> Assets</a>
+      <a href="assets.html" class="nav-item active"><span class="nav-icon">🏦</span> Asset Classes</a>
       <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
       <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
       <span class="nav-section-label">Portfolio</span>
       <a href="insurance.html" class="nav-item"><span class="nav-icon">🛡</span> Insurance</a>
       <a href="realestate.html" class="nav-item"><span class="nav-icon">🏠</span> Real Estate</a>
-
       <span class="nav-section-label">Planning</span>
       <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
       <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
       <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <span class="nav-section-label">Reports</span>
       <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
       <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <span class="nav-section-label">Account</span>
       <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
       <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
     </nav>
     <div class="sidebar-bottom">
-      <div class="sidebar-user">
-        <div class="user-avatar" id="user-initial">R</div>
-        <div>
-          <div class="user-name" id="user-name">Loading...</div>
-          <div class="user-role" id="user-role">investor</div>
-        </div>
-      </div>
-      <button class="nav-item btn-ghost" style="width:100%; margin-top:4px;" onclick="Auth.signOut()">
-        <span class="nav-icon">↩</span> Sign Out
-      </button>
+      <div class="sidebar-user"><div class="user-avatar" id="user-initial">R</div><div><div class="user-name" id="user-name">Loading...</div><div class="user-role" id="user-role">investor</div></div></div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()"><span class="nav-icon">↩</span> Sign Out</button>
     </div>
   </aside>
   <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -117,94 +127,170 @@
       <div class="topbar-left">
         <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
         <div>
-          <div class="page-title">Assets</div>
-          <div class="page-subtitle">Your account containers</div>
+          <div class="page-title">Asset Classes</div>
+          <div class="page-subtitle">Accounts, platforms &amp; allocation</div>
         </div>
       </div>
       <div class="topbar-actions">
-        <button class="btn btn-primary btn-sm" onclick="openAssetModal()">+ Add Asset</button>
+        <button class="notif-btn" onclick="window.location.href='notifications.html'">🔔</button>
+        <button class="btn btn-primary btn-sm" onclick="openAssetModal()">+ Add Account</button>
       </div>
     </div>
 
     <div class="page-content page-enter">
-      <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;">
-        Assets are account containers (e.g., your Zerodha account, IBKR account). Add investments under each asset.
-      </p>
 
-      <div class="asset-grid" id="asset-grid">
-        <div class="skeleton" style="height: 200px; border-radius: 18px;"></div>
-        <div class="skeleton" style="height: 200px; border-radius: 18px;"></div>
-        <div class="skeleton" style="height: 200px; border-radius: 18px;"></div>
+      <!-- Overview: chart + exposure bars -->
+      <div class="overview-grid" id="overview-section" style="display:none">
+        <!-- Allocation donut -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Asset Class Allocation</div>
+            <span class="badge badge-muted" id="alloc-total">—</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
+            <div class="chart-wrap">
+              <canvas id="allocChart" width="180" height="180"></canvas>
+            </div>
+            <div class="legend-list" id="alloc-legend" style="flex:1;min-width:140px"></div>
+          </div>
+        </div>
+
+        <!-- Exposure bars + summary stats -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Exposure by Class</div>
+          </div>
+          <div class="summary-stats">
+            <div class="stat-card" style="padding:0.75rem">
+              <div class="card-title" style="font-size:0.7rem">Total Invested</div>
+              <div class="card-value display-num" style="font-size:1.1rem" id="ov-invested">—</div>
+            </div>
+            <div class="stat-card" style="padding:0.75rem">
+              <div class="card-title" style="font-size:0.7rem">Current Value</div>
+              <div class="card-value display-num" style="font-size:1.1rem" id="ov-current">—</div>
+            </div>
+            <div class="stat-card" style="padding:0.75rem">
+              <div class="card-title" style="font-size:0.7rem">Gain / Loss</div>
+              <div class="card-value display-num" style="font-size:1.1rem" id="ov-gl">—</div>
+            </div>
+            <div class="stat-card" style="padding:0.75rem">
+              <div class="card-title" style="font-size:0.7rem">Accounts</div>
+              <div class="card-value display-num" style="font-size:1.1rem" id="ov-accounts">—</div>
+            </div>
+          </div>
+          <div class="exposure-bars" id="exposure-bars"></div>
+        </div>
       </div>
+
+      <!-- Asset cards -->
+      <div class="asset-grid" id="asset-grid">
+        <div class="skeleton" style="height:220px;border-radius:18px"></div>
+        <div class="skeleton" style="height:220px;border-radius:18px"></div>
+        <div class="skeleton" style="height:220px;border-radius:18px"></div>
+      </div>
+
     </div>
   </div>
 </div>
 
 <!-- ADD/EDIT ASSET MODAL -->
 <div class="modal-backdrop" id="asset-modal">
-  <div class="modal">
+  <div class="modal" style="max-width:540px">
     <div class="modal-header">
-      <div class="modal-title" id="asset-modal-title">Add Asset Account</div>
+      <div class="modal-title" id="asset-modal-title">Add Account</div>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
-    <form id="asset-form">
-      <input type="hidden" id="asset-id">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Asset Type <span class="form-required">*</span></label>
-          <select id="a-type" class="form-control">
-            <option value="">Select type…</option>
-            <option>MF</option><option>Stocks</option><option>Crypto</option>
-            <option>FD</option><option>Real Estate</option><option>Other</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Platform / App <span class="form-required">*</span></label>
-          <input type="text" id="a-platform" class="form-control" placeholder="e.g. Zerodha, IBKR" required>
-        </div>
-      </div>
+    <div class="modal-body">
+
+      <!-- Asset Class tiles -->
       <div class="form-group">
-        <label class="form-label">Account Number <span class="form-label-optional">(optional)</span></label>
-        <input type="text" id="a-account" class="form-control" placeholder="Optional — stored securely">
+        <label class="form-label">Asset Class <span class="form-required">*</span></label>
+        <div class="class-tiles" id="class-tiles">
+          <!-- rendered by JS -->
+        </div>
+        <input type="hidden" id="a-type">
+        <div class="form-error" id="a-type-error" style="display:none">Please select an asset class</div>
       </div>
-      <div class="form-row">
+
+      <!-- Platform -->
+      <div class="form-group">
+        <label class="form-label">Platform / Broker / Bank <span class="form-required">*</span></label>
+        <input type="text" id="a-platform" class="form-control" placeholder="e.g. Zerodha, IBKR, HDFC Bank, eToro" autocomplete="off" list="platform-suggestions">
+        <datalist id="platform-suggestions">
+          <option value="Zerodha"><option value="IBKR"><option value="eToro">
+          <option value="Groww"><option value="Angel One"><option value="Upstox">
+          <option value="HDFC Bank"><option value="ICICI Bank"><option value="SBI">
+          <option value="Coinbase"><option value="Binance"><option value="WazirX">
+          <option value="MFCentral"><option value="CAMS"><option value="Kuvera">
+        </datalist>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
         <div class="form-group">
           <label class="form-label">Currency <span class="form-required">*</span></label>
           <select id="a-currency" class="form-control">
-            <option value="USD">USD</option>
-            <option value="AED">AED</option>
-            <option value="INR">INR</option>
-            <option value="EUR">EUR</option>
-            <option value="GBP">GBP</option>
+            <option value="INR">🇮🇳 INR — Rupee</option>
+            <option value="USD">🇺🇸 USD — Dollar</option>
+            <option value="AED">🇦🇪 AED — Dirham</option>
+            <option value="EUR">🇪🇺 EUR — Euro</option>
+            <option value="GBP">🇬🇧 GBP — Pound</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Country / Location <span class="form-required">*</span></label>
-          <input type="text" id="a-country" class="form-control" placeholder="e.g. India, UAE" required>
+          <label class="form-label">Country</label>
+          <input type="text" id="a-country" class="form-control" placeholder="e.g. India, UAE">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Account Number <span class="form-label-optional">(optional)</span></label>
+          <input type="text" id="a-account" class="form-control" placeholder="Stored securely — last 4 digits shown">
         </div>
       </div>
+
       <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea id="a-notes" class="form-control" rows="2" placeholder="Optional notes…"></textarea>
+        <label class="form-label">Account Name / Label <span class="form-label-optional">(optional)</span></label>
+        <input type="text" id="a-name" class="form-control" placeholder="e.g. My Zerodha Equity Account">
+        <div class="form-hint">A friendly label for this account (auto-generated if blank)</div>
       </div>
-      <div id="a-form-error" class="form-error" style="display:none; margin-bottom: 0.5rem;"></div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="a-submit-btn">Save Asset</button>
+
+      <div class="form-group">
+        <label class="form-label">Notes <span class="form-label-optional">(optional)</span></label>
+        <textarea id="a-notes" class="form-control" rows="2" placeholder="Any additional details…"></textarea>
       </div>
-    </form>
+
+      <div id="a-form-error" class="form-error" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" id="a-submit-btn" onclick="saveAsset()">Save Account</button>
+    </div>
   </div>
 </div>
 
+<div id="toast" class="toast"></div>
 <script src="../js/config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
 <script>
-const ASSET_EMOJI = { MF: '🏦', Stocks: '📈', Crypto: '₿', FD: '🏛', 'Real Estate': '🏠', Other: '📦' };
+// ── Asset class definitions ───────────────────────────────────
+const ASSET_CLASSES = [
+  { id: 'Equity',         label: 'Equity',            icon: '📈', color: '#60a5fa', desc: 'Stocks, MFs, ETFs' },
+  { id: 'Fixed Income',   label: 'Fixed Income',       icon: '🏛', color: '#34d399', desc: 'Bonds, FDs, PPF'  },
+  { id: 'Cash',           label: 'Cash / Equivalent',  icon: '💵', color: '#fbbf24', desc: 'Bank, savings'    },
+  { id: 'Precious Metals',label: 'Precious Metals',    icon: '🥇', color: '#f59e0b', desc: 'Gold, Silver'     },
+  { id: 'Real Estate',    label: 'Real Estate',        icon: '🏠', color: '#f97316', desc: 'Property, REITs'  },
+  { id: 'Crypto',         label: 'Crypto',             icon: '₿',  color: '#a78bfa', desc: 'Bitcoin, Altcoins'},
+];
+
+const CLASS_MAP = Object.fromEntries(ASSET_CLASSES.map(c => [c.id, c]));
+
 let allAssets = [];
+let allInvestments = [];
+let chartInstance = null;
 let currentUserId = null;
 let editingId = null;
+let selectedClass = null;
 
+// ── Init ─────────────────────────────────────────────────────
 async function init() {
   const session = await requireAuth();
   if (!session) return;
@@ -213,95 +299,255 @@ async function init() {
   document.getElementById('user-name').textContent = profile?.full_name || session.user.email;
   document.getElementById('user-initial').textContent = (profile?.full_name || session.user.email || 'U')[0].toUpperCase();
   document.getElementById('user-role').textContent = profile?.role || 'investor';
+
+  renderClassTiles();
   if (window.location.hash === '#add') openAssetModal();
-  await loadAssets();
+  await loadAll();
 }
 
-async function loadAssets() {
-  const { data } = await Assets.getAll(currentUserId);
-  allAssets = data || [];
-  renderAssets(allAssets);
+async function loadAll() {
+  const [{ data: assets }, { data: invs }] = await Promise.all([
+    Assets.getAll(currentUserId),
+    Investments.getAll(currentUserId),
+  ]);
+  allAssets     = assets || [];
+  allInvestments = invs   || [];
+
+  if (allAssets.length > 0 || allInvestments.length > 0) {
+    document.getElementById('overview-section').style.display = 'grid';
+    renderOverview();
+  }
+  renderCards();
 }
 
-function renderAssets(assets) {
-  const grid = document.getElementById('asset-grid');
-  if (assets.length === 0) {
-    grid.innerHTML = `
-      <div class="empty-state" style="grid-column: 1/-1;">
-        <div class="empty-icon">🏦</div>
-        <div class="empty-title">No assets yet</div>
-        <div class="empty-desc">Add your first asset account to start tracking investments</div>
-        <button class="btn btn-primary" onclick="openAssetModal()">+ Add Asset</button>
+// ── Overview section ──────────────────────────────────────────
+function renderOverview() {
+  const rates = window._rates || [];
+
+  // Build per-class totals from investments
+  const classMap = {};
+  ASSET_CLASSES.forEach(c => { classMap[c.id] = { invested: 0, current: 0 }; });
+
+  allInvestments.forEach(inv => {
+    const assetClass = allAssets.find(a => a.id === inv.asset_id)?.asset_type;
+    if (!assetClass || !classMap[assetClass]) return;
+    classMap[assetClass].invested += parseFloat(inv.amount_invested) || 0;
+    classMap[assetClass].current  += parseFloat(inv.current_value)   || 0;
+  });
+
+  let totInv = 0, totCur = 0;
+  Object.values(classMap).forEach(v => { totInv += v.invested; totCur += v.current; });
+  const totGL = totCur - totInv;
+
+  document.getElementById('ov-invested').textContent  = formatCurrency(totInv, 'USD');
+  document.getElementById('ov-current').textContent   = formatCurrency(totCur, 'USD');
+  const glEl = document.getElementById('ov-gl');
+  glEl.textContent  = (totGL >= 0 ? '+' : '') + formatCurrency(totGL, 'USD');
+  glEl.style.color  = totGL >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('ov-accounts').textContent = allAssets.length;
+
+  // Donut chart — by current value
+  const chartData = ASSET_CLASSES.filter(c => classMap[c.id].current > 0);
+  const vals   = chartData.map(c => classMap[c.id].current);
+  const labels = chartData.map(c => c.label);
+  const colors = chartData.map(c => c.color);
+  const total  = vals.reduce((a, b) => a + b, 0);
+
+  if (chartInstance) chartInstance.destroy();
+  const ctx = document.getElementById('allocChart').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderColor: '#161c2a', borderWidth: 3, hoverOffset: 8 }] },
+    options: {
+      responsive: false, cutout: '72%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${((ctx.raw / total) * 100).toFixed(1)}%` } }
+      }
+    }
+  });
+
+  // Legend
+  document.getElementById('alloc-legend').innerHTML = chartData.map((c, i) => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${c.color}"></div>
+      <span class="legend-label">${c.label}</span>
+      <span class="legend-value">${total > 0 ? ((vals[i]/total)*100).toFixed(1) : 0}%</span>
+    </div>`).join('');
+  document.getElementById('alloc-total').textContent = formatCurrency(totCur, 'USD');
+
+  // Exposure bars
+  const barsEl = document.getElementById('exposure-bars');
+  barsEl.innerHTML = ASSET_CLASSES.filter(c => classMap[c.id].current > 0 || classMap[c.id].invested > 0)
+    .map(c => {
+      const pct = total > 0 ? (classMap[c.id].current / total * 100) : 0;
+      const gl  = classMap[c.id].current - classMap[c.id].invested;
+      return `<div class="exposure-row">
+        <div class="exposure-label">
+          <span>${c.icon}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis">${c.label}</span>
+        </div>
+        <div class="exposure-bar-wrap">
+          <div class="exposure-bar-fill" style="width:${pct}%;background:${c.color}"></div>
+        </div>
+        <div style="text-align:right">
+          <div class="exposure-pct" style="color:${c.color}">${pct.toFixed(1)}%</div>
+          <div style="font-size:0.65rem;color:${gl>=0?'var(--green)':'var(--red)'}">
+            ${gl>=0?'+':''}${formatCurrency(gl,'USD')}
+          </div>
+        </div>
       </div>`;
+    }).join('');
+}
+
+// ── Asset cards ───────────────────────────────────────────────
+function renderCards() {
+  const grid = document.getElementById('asset-grid');
+  if (!allAssets.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">🏦</div>
+      <div class="empty-title">No accounts added yet</div>
+      <div class="empty-desc">Add your brokerage accounts, bank accounts and wallets to start tracking investments</div>
+      <button class="btn btn-primary" onclick="openAssetModal()">+ Add First Account</button>
+    </div>`;
     return;
   }
 
-  grid.innerHTML = assets.map(a => `
-    <div class="asset-card" onclick="goToInvestments('${a.id}')">
-      <div class="asset-actions">
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="event.stopPropagation(); editAsset('${a.id}')" title="Edit">✏</button>
-        <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation(); deleteAsset('${a.id}')" title="Delete">🗑</button>
-      </div>
-      <div class="asset-type-icon">${ASSET_EMOJI[a.asset_type] || '📦'}</div>
-      <div class="asset-platform">${a.platform}</div>
-      <div class="asset-type">${a.asset_type} · ${a.country}</div>
-      <div class="asset-meta">
-        <div class="asset-meta-item">
-          <div class="asset-meta-label">Currency</div>
-          <div class="asset-meta-value">${a.currency}</div>
+  grid.innerHTML = allAssets.map(a => {
+    const cls     = CLASS_MAP[a.asset_type] || ASSET_CLASSES[0];
+    const invs    = allInvestments.filter(i => i.asset_id === a.id);
+    const invested = invs.reduce((s, i) => s + (parseFloat(i.amount_invested)||0), 0);
+    const current  = invs.reduce((s, i) => s + (parseFloat(i.current_value)||0), 0);
+    const gl       = current - invested;
+    const glPct    = invested > 0 ? (gl / invested * 100) : 0;
+    const sym      = { INR:'₹', USD:'$', AED:'AED ', EUR:'€', GBP:'£' }[a.currency] || '';
+    const fmt      = v => sym + Math.abs(v).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+
+    return `<div class="asset-card" onclick="goToInvestments('${a.id}')">
+      <div class="asset-card-banner" style="background:${cls.color}"></div>
+      <div class="asset-card-body">
+        <div class="asset-card-header">
+          <span class="asset-class-badge" style="background:${cls.color}18;color:${cls.color}">
+            ${cls.icon} ${a.asset_type}
+          </span>
+          <div class="asset-card-actions">
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="event.stopPropagation();editAsset('${a.id}')" title="Edit">✏</button>
+            <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deleteAsset('${a.id}')" title="Delete">🗑</button>
+          </div>
         </div>
-        <div class="asset-meta-item">
-          <div class="asset-meta-label">Account #</div>
-          <div class="asset-meta-value">${a.account_number ? '••••' + a.account_number.slice(-4) : '—'}</div>
+
+        <div class="asset-platform-name">${a.name || a.platform}</div>
+        <div class="asset-meta-row">
+          <span class="asset-meta-chip">🏦 ${a.platform}</span>
+          <span class="asset-meta-chip">•</span>
+          <span class="asset-meta-chip">🌐 ${a.currency}</span>
+          ${a.country ? `<span class="asset-meta-chip">• 📍 ${a.country}</span>` : ''}
+          ${a.account_number ? `<span class="asset-meta-chip">• ••${a.account_number.slice(-4)}</span>` : ''}
+        </div>
+
+        <div class="asset-values">
+          <div class="asset-val-item">
+            <div class="asset-val-label">Invested</div>
+            <div class="asset-val-num" style="color:var(--text-muted)">${fmt(invested)}</div>
+          </div>
+          <div class="asset-val-item">
+            <div class="asset-val-label">Current</div>
+            <div class="asset-val-num" style="color:${cls.color}">${fmt(current)}</div>
+          </div>
+          <div class="asset-val-item">
+            <div class="asset-val-label">Return</div>
+            <div class="asset-val-num" style="color:${glPct>=0?'var(--green)':'var(--red)'}">
+              ${glPct>=0?'+':''}${glPct.toFixed(1)}%
+            </div>
+          </div>
+        </div>
+
+        <div class="asset-footer">
+          <span style="font-size:0.72rem;color:var(--text-muted)">${invs.length} holding${invs.length!==1?'s':''}</span>
+          <span class="asset-inv-link">View investments →</span>
         </div>
       </div>
-      <div class="asset-inv-count">📊 View Investments →</div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function goToInvestments(assetId) {
   window.location.href = `investments.html?asset=${assetId}`;
 }
 
+// ── Class tiles ───────────────────────────────────────────────
+function renderClassTiles() {
+  document.getElementById('class-tiles').innerHTML = ASSET_CLASSES.map(c => `
+    <div class="class-tile" id="tile-${c.id.replace(/\s/g,'-')}"
+         style="--tile-color:${c.color}"
+         onclick="selectClass('${c.id}')">
+      <div class="class-tile-icon">${c.icon}</div>
+      <div class="class-tile-label">${c.label}</div>
+    </div>`).join('');
+}
+
+function selectClass(id) {
+  selectedClass = id;
+  document.getElementById('a-type').value = id;
+  document.querySelectorAll('.class-tile').forEach(t => t.classList.remove('selected'));
+  const tile = document.getElementById(`tile-${id.replace(/\s/g,'-')}`);
+  if (tile) tile.classList.add('selected');
+  document.getElementById('a-type-error').style.display = 'none';
+}
+
+// ── Modal ─────────────────────────────────────────────────────
 function openAssetModal(asset = null) {
   editingId = asset?.id || null;
-  document.getElementById('asset-modal-title').textContent = asset ? 'Edit Asset' : 'Add Asset Account';
-  document.getElementById('asset-id').value = asset?.id || '';
-  document.getElementById('a-type').value = asset?.asset_type || '';
-  document.getElementById('a-platform').value = asset?.platform || '';
-  document.getElementById('a-account').value = asset?.account_number || '';
-  document.getElementById('a-currency').value = asset?.currency || 'USD';
-  document.getElementById('a-country').value = asset?.country || 'United Arab Emirates';
-  document.getElementById('a-notes').value = asset?.notes || '';
+  selectedClass = asset?.asset_type || null;
+  document.getElementById('asset-modal-title').textContent = asset ? 'Edit Account' : 'Add Account';
+  document.getElementById('a-type').value      = asset?.asset_type || '';
+  document.getElementById('a-name').value      = asset?.name || '';
+  document.getElementById('a-platform').value  = asset?.platform || '';
+  document.getElementById('a-account').value   = asset?.account_number || '';
+  document.getElementById('a-currency').value  = asset?.currency || 'INR';
+  document.getElementById('a-country').value   = asset?.country || '';
+  document.getElementById('a-notes').value     = asset?.notes || '';
   document.getElementById('a-form-error').style.display = 'none';
+  document.getElementById('a-type-error').style.display = 'none';
+
+  // Highlight selected tile
+  renderClassTiles();
+  if (asset?.asset_type) selectClass(asset.asset_type);
+
   document.getElementById('asset-modal').classList.add('open');
 }
 
-function editAsset(id) {
-  const a = allAssets.find(x => x.id === id);
-  if (a) openAssetModal(a);
-}
+function editAsset(id) { openAssetModal(allAssets.find(x => x.id === id)); }
+function closeModal()   { document.getElementById('asset-modal').classList.remove('open'); editingId = null; selectedClass = null; }
 
-function closeModal() {
-  document.getElementById('asset-modal').classList.remove('open');
-}
-
-document.getElementById('asset-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('a-submit-btn');
-  const errEl = document.getElementById('a-form-error');
+async function saveAsset() {
+  const errEl  = document.getElementById('a-form-error');
   errEl.style.display = 'none';
-  setLoading(btn, true);
 
+  const assetType = document.getElementById('a-type').value;
+  const platform  = document.getElementById('a-platform').value.trim();
+
+  if (!assetType) {
+    document.getElementById('a-type-error').style.display = 'flex';
+    return;
+  }
+  if (!platform) {
+    errEl.textContent = 'Platform / broker name is required';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  setLoading('a-submit-btn', true, 'Saving…');
+  const customName = document.getElementById('a-name').value.trim();
   const payload = {
-    user_id: currentUserId,
-    asset_type: document.getElementById('a-type').value,
-    platform: document.getElementById('a-platform').value.trim(),
+    user_id:        currentUserId,
+    asset_type:     assetType,
+    name:           customName || `${platform} — ${assetType}`,
+    platform,
     account_number: document.getElementById('a-account').value.trim() || null,
-    currency: document.getElementById('a-currency').value,
-    country: document.getElementById('a-country').value.trim(),
-    notes: document.getElementById('a-notes').value.trim() || null
+    currency:       document.getElementById('a-currency').value,
+    country:        document.getElementById('a-country').value.trim() || null,
+    notes:          document.getElementById('a-notes').value.trim() || null,
   };
 
   let error;
@@ -314,33 +560,33 @@ document.getElementById('asset-form').addEventListener('submit', async (e) => {
   if (error) {
     errEl.textContent = error.message;
     errEl.style.display = 'block';
-    setLoading(btn, false);
+    setLoading('a-submit-btn', false, 'Save Account');
     return;
   }
 
-  showToast(editingId ? 'Asset updated!' : 'Asset created!', 'success');
+  showToast(editingId ? 'Account updated' : 'Account added', 'success');
   closeModal();
-  setLoading(btn, false);
-  await loadAssets();
-});
+  setLoading('a-submit-btn', false, 'Save Account');
+  await loadAll();
+}
 
 async function deleteAsset(id) {
-  if (!confirm('Delete this asset and all its investments? This cannot be undone.')) return;
+  const a = allAssets.find(x => x.id === id);
+  if (!confirm(`Delete "${a?.name || a?.platform}" and all its investments? This cannot be undone.`)) return;
   const { error } = await Assets.delete(id);
   if (error) { showToast(error.message, 'error'); return; }
-  showToast('Asset deleted', 'success');
-  await loadAssets();
+  showToast('Account deleted', 'success');
+  await loadAll();
 }
 
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('overlay').classList.toggle('open');
-}
-function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('overlay').classList.remove('open');
-}
+// Load exchange rates for overview
+(async () => {
+  const { data } = await sb.from('exchange_rates').select('*');
+  window._rates = data || [];
+})();
 
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar()   { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 init();
 </script>
 </body>

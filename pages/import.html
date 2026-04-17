@@ -557,7 +557,7 @@ async function importMFCentral() {
       const { data: newAsset, error: ae } = await Assets.create({
         user_id:    currentUserId,
         name:       'MFCentral — Mutual Funds',
-        asset_type: 'MF',
+        asset_type: 'Equity',
         platform:   'MFCentral',
         currency:   'INR',
         country:    'India',
@@ -711,7 +711,7 @@ async function importData() {
     // Auto-create an asset
     const { data: newAsset, error: ae } = await Assets.create({
       user_id: currentUserId,
-      asset_type: 'Stocks',
+      asset_type: 'Equity',
       platform: currentSource.charAt(0).toUpperCase() + currentSource.slice(1),
       currency: 'USD',
       country: 'Auto-imported'
