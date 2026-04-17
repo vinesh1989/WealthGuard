@@ -158,6 +158,55 @@
     .approval-row { display:flex; align-items:center; gap:0.75rem; padding:0.7rem 0; border-bottom:1px solid rgba(255,255,255,0.04); }
     .approval-row:last-child { border-bottom:none; }
     .approval-avatar { width:32px; height:32px; border-radius:50%; background:rgba(251,191,36,0.1); color:#fbbf24; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.85rem; flex-shrink:0; }
+
+    /* ── Currency switcher ───────────────────────── */
+    .currency-switcher {
+      display: flex;
+      gap: 0.35rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .cur-pill {
+      padding: 0.3rem 0.85rem;
+      border-radius: 20px;
+      border: 1.5px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .cur-pill:hover { border-color: rgba(212,175,55,0.4); color: var(--text-secondary); }
+    .cur-pill.active {
+      background: rgba(212,175,55,0.15);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    /* ── Per-currency breakdown cards ───────────── */
+    .currency-breakdown {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.6rem;
+      margin-top: 1.25rem;
+    }
+    .currency-chip {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 0.9rem;
+      transition: border-color 0.15s;
+    }
+    .currency-chip.highlight { border-color: rgba(212,175,55,0.3); background: rgba(212,175,55,0.04); }
+    .currency-chip-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
+    .currency-chip-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+    .currency-chip-flag { font-size: 0.9rem; }
+    .currency-chip-val { font-family: var(--font-mono); font-size: 0.92rem; font-weight: 600; color: var(--text-primary); }
+    .currency-chip-converted { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem; font-family: var(--font-mono); }
+    .currency-chip-gl { font-size: 0.72rem; margin-top: 0.15rem; font-family: var(--font-mono); }
     .approval-info { flex:1; min-width:0; }
     .approval-name { font-size:0.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .approval-email { font-size:0.72rem; color:var(--text-muted); }
@@ -244,15 +293,22 @@
 
       <!-- Net Worth Hero -->
       <div class="net-worth-card">
-        <div class="net-worth-label">Total Net Worth</div>
-        <div class="net-worth-value" id="net-worth">$0.00</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.25rem">
+          <div class="net-worth-label">Total Portfolio Value</div>
+          <!-- Currency switcher pills -->
+          <div class="currency-switcher" id="currency-switcher">
+            <button class="cur-pill" data-cur="INR" onclick="switchDisplayCurrency('INR')">INR</button>
+            <button class="cur-pill" data-cur="AED" onclick="switchDisplayCurrency('AED')">AED</button>
+            <button class="cur-pill" data-cur="USD" onclick="switchDisplayCurrency('USD')">USD</button>
+          </div>
+        </div>
+        <div class="net-worth-value" id="net-worth">—</div>
         <div class="net-worth-change">
-          <span id="total-gain" class="gain" style="font-size: 0.875rem; font-weight: 600;"></span>
-          <span style="font-size: 0.8rem; color: var(--text-muted);" id="invest-count">0 investments</span>
+          <span id="total-gain" class="gain" style="font-size:0.875rem;font-weight:600"></span>
+          <span style="font-size:0.8rem;color:var(--text-muted)" id="invest-count">0 investments</span>
         </div>
-        <div class="currency-breakdown" id="currency-breakdown">
-          <div class="currency-chip"><div class="currency-chip-label">Loading...</div></div>
-        </div>
+        <!-- Per-currency breakdown -->
+        <div class="currency-breakdown" id="currency-breakdown"></div>
       </div>
 
       <!-- Quick Actions -->
@@ -400,8 +456,18 @@ const ASSET_CLASSES = [
 const ASSET_COLORS = Object.fromEntries(ASSET_CLASSES.map(c => [c.id, c.color]));
 const CLASS_MAP    = Object.fromEntries(ASSET_CLASSES.map(c => [c.id, c]));
 
+// ── Global state ─────────────────────────────────────────────
 let chartInstance = null;
+let _rates        = [];
+let _currencyMap  = {};   // raw per-currency totals (original amounts)
+let _assetClassMap = {};  // per-asset-class totals in each currency
+let _allInvestments = [];
+let _displayCurrency = 'INR'; // default — overridden once profile loads
 
+const CUR_FLAGS = { INR:'🇮🇳', USD:'🇺🇸', AED:'🇦🇪', EUR:'🇪🇺', GBP:'🇬🇧' };
+const CUR_SYMBOLS = { INR:'₹', USD:'$', AED:'AED ', EUR:'€', GBP:'£' };
+
+// ── Init ─────────────────────────────────────────────────────
 async function init() {
   const session = await requireAuth();
   if (!session) return;
@@ -409,16 +475,15 @@ async function init() {
   const profile = await Profile.get(session.user.id);
   if (!profile) return;
 
-  // Update UI
-  document.getElementById('user-name').textContent = profile.full_name || profile.email || 'User';
-  document.getElementById('user-role').textContent = profile.role;
+  document.getElementById('user-name').textContent    = profile.full_name || profile.email || 'User';
+  document.getElementById('user-role').textContent    = profile.role;
   document.getElementById('user-initial').textContent = (profile.full_name||'?').charAt(0).toUpperCase();
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   document.getElementById('greeting-date').textContent = `${greeting}, ${(profile.full_name || profile.email || 'there').split(' ')[0]}`;
 
-  // Trial banner — never show for admin users
+  // Trial banner
   if (profile.subscription_status === 'trial' && profile.role !== 'admin') {
     const daysLeft = Math.ceil((new Date(profile.trial_ends_at) - new Date()) / 86400000);
     if (daysLeft > 0) {
@@ -431,7 +496,7 @@ async function init() {
   const notifs = await Notifications.getUnread(session.user.id);
   if (notifs.length > 0) document.getElementById('notif-dot').style.display = 'block';
 
-  // Admin module — show for admins only
+  // Admin module
   if (profile.role === 'admin') {
     document.getElementById('admin-module').style.display = 'block';
     document.getElementById('admin-nav-section').style.display = 'block';
@@ -439,124 +504,207 @@ async function init() {
     loadAdminStats();
   }
 
-  // Load data
-  await loadDashboard(session.user.id, profile.base_currency || 'USD');
+  // Set default display currency from profile (fallback INR for NRI users)
+  _displayCurrency = profile.base_currency || 'INR';
+  highlightCurrencyPill(_displayCurrency);
+
+  await loadDashboard(session.user.id);
 }
 
-async function loadDashboard(userId, baseCurrency) {
-  const rates = await ExchangeRates.getAll();
+// ── Load all data once, store raw ────────────────────────────
+async function loadDashboard(userId) {
+  _rates = await ExchangeRates.getAll();
 
-  // Get portfolio summary
-  const { data: summary } = await Investments.getPortfolioSummary(userId);
-  const { data: perf } = await Investments.getPerformance(userId);
-  const { data: allInvestments } = await Investments.getAll(userId);
-  const { data: assets } = await Assets.getAll(userId);
-  const { data: goals } = await Goals.getAll(userId);
+  const [
+    { data: summary },
+    { data: perf },
+    { data: allInvestments },
+    { data: assets },
+    { data: goals }
+  ] = await Promise.all([
+    Investments.getPortfolioSummary(userId),
+    Investments.getPerformance(userId),
+    Investments.getAll(userId),
+    Assets.getAll(userId),
+    Goals.getAll(userId),
+  ]);
 
-  // Calculate totals
+  _allInvestments = allInvestments || [];
+
+  // Build raw currency map — keep original amounts per currency
+  _currencyMap = {};
+  _assetClassMap = {};
+
+  (_allInvestments).forEach(inv => {
+    const cur  = inv.currency;
+    const ac   = inv.assets?.asset_type || 'Other';
+    const inv_ = parseFloat(inv.amount_invested) || 0;
+    const cur_ = parseFloat(inv.current_value)   || 0;
+
+    // Per currency totals
+    if (!_currencyMap[cur]) _currencyMap[cur] = { invested: 0, current: 0 };
+    _currencyMap[cur].invested += inv_;
+    _currencyMap[cur].current  += cur_;
+
+    // Per asset class (store in original currency keyed by class then currency)
+    if (!_assetClassMap[ac]) _assetClassMap[ac] = {};
+    if (!_assetClassMap[ac][cur]) _assetClassMap[ac][cur] = 0;
+    _assetClassMap[ac][cur] += cur_;
+  });
+
+  // Static fields that don't depend on display currency
+  document.getElementById('stat-assets').textContent  = (assets || []).length;
+  document.getElementById('stat-goals').textContent   = (goals  || []).filter(g => !g.is_achieved).length;
+  document.getElementById('invest-count').textContent = `${_allInvestments.length} investment${_allInvestments.length !== 1 ? 's' : ''}`;
+
+  // Performers (always show % return — currency-independent)
+  if (perf && perf.length > 0) {
+    const top   = perf[0];
+    const worst = perf[perf.length - 1];
+    document.getElementById('top-name').textContent     = top.name;
+    document.getElementById('top-platform').textContent = `${CLASS_MAP[top.asset_type]?.icon || ''} ${top.asset_type} · ${top.platform}`;
+    document.getElementById('top-return').textContent   = formatPercent(top.return_pct);
+    document.getElementById('worst-name').textContent     = worst.name;
+    document.getElementById('worst-platform').textContent = `${CLASS_MAP[worst.asset_type]?.icon || ''} ${worst.asset_type} · ${worst.platform}`;
+    document.getElementById('worst-return').textContent   = formatPercent(worst.return_pct);
+  }
+
+  // Recent investments (show in each investment's own currency)
+  renderRecentInvestments();
+
+  // Render all currency-dependent views
+  renderCurrencyView(_displayCurrency);
+}
+
+// ── Re-render everything for selected display currency ────────
+function renderCurrencyView(dispCur) {
+  _displayCurrency = dispCur;
+  highlightCurrencyPill(dispCur);
+
+  // Convert all to display currency using stored rates
   let totalInvested = 0, totalCurrent = 0;
-  const currencyMap = {};
   const assetTypeMap = {};
 
-  (summary || []).forEach(row => {
-    const invested = ExchangeRates.convert(parseFloat(row.total_invested || 0), row.currency, baseCurrency, rates);
-    const current = ExchangeRates.convert(parseFloat(row.total_current_value || 0), row.currency, baseCurrency, rates);
-    totalInvested += invested;
-    totalCurrent += current;
+  Object.entries(_currencyMap).forEach(([cur, vals]) => {
+    totalInvested += ExchangeRates.convert(vals.invested, cur, dispCur, _rates);
+    totalCurrent  += ExchangeRates.convert(vals.current,  cur, dispCur, _rates);
+  });
 
-    // Currency breakdown
-    if (!currencyMap[row.currency]) currencyMap[row.currency] = { invested: 0, current: 0 };
-    currencyMap[row.currency].invested += parseFloat(row.total_invested || 0);
-    currencyMap[row.currency].current += parseFloat(row.total_current_value || 0);
-
-    // Asset type for pie
-    const type = row.asset_type;
-    if (!assetTypeMap[type]) assetTypeMap[type] = 0;
-    assetTypeMap[type] += current;
+  // Asset class map for pie (convert each class's per-currency amounts)
+  Object.entries(_assetClassMap).forEach(([ac, byCur]) => {
+    assetTypeMap[ac] = 0;
+    Object.entries(byCur).forEach(([cur, val]) => {
+      assetTypeMap[ac] += ExchangeRates.convert(val, cur, dispCur, _rates);
+    });
   });
 
   const totalGain = totalCurrent - totalInvested;
-  const gainPct = totalInvested > 0 ? (totalGain / totalInvested * 100) : 0;
+  const gainPct   = totalInvested > 0 ? (totalGain / totalInvested * 100) : 0;
+  const sym       = CUR_SYMBOLS[dispCur] || dispCur + ' ';
 
-  // Net worth
-  document.getElementById('net-worth').textContent = formatCurrency(totalCurrent, baseCurrency);
-  document.getElementById('stat-invested').textContent = formatCurrency(totalInvested, baseCurrency);
-  document.getElementById('stat-current').textContent = formatCurrency(totalCurrent, baseCurrency);
-  document.getElementById('stat-assets').textContent = (assets || []).length;
-  document.getElementById('stat-goals').textContent = (goals || []).filter(g => !g.is_achieved).length;
-  document.getElementById('invest-count').textContent = `${(allInvestments || []).length} investments`;
+  // Hero
+  document.getElementById('net-worth').textContent      = formatCurrency(totalCurrent, dispCur);
+  document.getElementById('stat-invested').textContent  = formatCurrency(totalInvested, dispCur);
+  document.getElementById('stat-current').textContent   = formatCurrency(totalCurrent, dispCur);
+  document.getElementById('alloc-total-badge').textContent = formatCurrency(totalCurrent, dispCur);
 
   const gainEl = document.getElementById('total-gain');
-  gainEl.textContent = `${totalGain >= 0 ? '+' : ''}${formatCurrency(totalGain, baseCurrency)} (${formatPercent(gainPct)})`;
+  gainEl.textContent = `${totalGain >= 0 ? '+' : ''}${formatCurrency(totalGain, dispCur)} (${formatPercent(gainPct)})`;
   gainEl.className = totalGain >= 0 ? 'gain' : 'loss';
 
-  // Currency breakdown chips
-  const bkEl = document.getElementById('currency-breakdown');
-  bkEl.innerHTML = Object.entries(currencyMap).map(([cur, vals]) => `
-    <div class="currency-chip">
-      <div class="currency-chip-label">${cur}</div>
-      <div class="currency-chip-val">${formatCurrency(vals.current, cur)}</div>
-    </div>
-  `).join('') || '<div style="color:var(--text-muted); font-size: 0.85rem;">No investments yet</div>';
+  // Per-currency breakdown cards
+  renderCurrencyBreakdown(dispCur);
 
   // Pie chart
-  renderAllocationChart(assetTypeMap);
-  document.getElementById('alloc-total-badge').textContent = formatCurrency(totalCurrent, baseCurrency);
+  renderAllocationChart(assetTypeMap, dispCur);
+}
 
-  // Performers
-  if (perf && perf.length > 0) {
-    const top = perf[0];
-    const worst = perf[perf.length - 1];
-    document.getElementById('top-name').textContent = top.name;
-    document.getElementById('top-platform').textContent = `${CLASS_MAP[top.asset_type]?.icon || ''} ${top.asset_type} · ${top.platform}`;
-    document.getElementById('top-return').textContent = formatPercent(top.return_pct);
+// ── Currency switcher ─────────────────────────────────────────
+function switchDisplayCurrency(cur) {
+  renderCurrencyView(cur);
+}
 
-    document.getElementById('worst-name').textContent = worst.name;
-    document.getElementById('worst-platform').textContent = `${CLASS_MAP[worst.asset_type]?.icon || ''} ${worst.asset_type} · ${worst.platform}`;
-    document.getElementById('worst-return').textContent = formatPercent(worst.return_pct);
-  }
+function highlightCurrencyPill(cur) {
+  document.querySelectorAll('.cur-pill').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.cur === cur);
+  });
+}
 
-  // Recent investments
-  const recent = (allInvestments || []).slice(0, 5);
-  const recentEl = document.getElementById('recent-list');
-  if (recent.length === 0) {
-    recentEl.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📊</div>
-        <div class="empty-title">No investments yet</div>
-        <div class="empty-desc">Add your first investment to start tracking</div>
-        <a href="investments.html#add" class="btn btn-primary">Add Investment</a>
-      </div>`;
+// ── Per-currency breakdown cards ──────────────────────────────
+function renderCurrencyBreakdown(dispCur) {
+  const bkEl = document.getElementById('currency-breakdown');
+  const entries = Object.entries(_currencyMap);
+
+  if (!entries.length) {
+    bkEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;grid-column:1/-1">No investments yet</div>';
     return;
   }
 
+  bkEl.innerHTML = entries.map(([cur, vals]) => {
+    const gl      = vals.current - vals.invested;
+    const glPct   = vals.invested > 0 ? (gl / vals.invested * 100) : 0;
+    const isSame  = cur === dispCur;
+    const convCur = isSame ? null : ExchangeRates.convert(vals.current, cur, dispCur, _rates);
+    const flag    = CUR_FLAGS[cur] || '🌐';
+    const isHighlight = !isSame && convCur > 0;
+
+    return `<div class="currency-chip ${isHighlight ? 'highlight' : ''}">
+      <div class="currency-chip-header">
+        <span class="currency-chip-label">${cur}</span>
+        <span class="currency-chip-flag">${flag}</span>
+      </div>
+      <div class="currency-chip-val">${formatCurrency(vals.current, cur)}</div>
+      <div class="currency-chip-gl ${gl >= 0 ? 'gain' : 'loss'}">
+        ${gl >= 0 ? '+' : ''}${formatCurrency(gl, cur)} (${glPct >= 0 ? '+' : ''}${glPct.toFixed(1)}%)
+      </div>
+      ${!isSame && convCur !== null ? `<div class="currency-chip-converted">≈ ${formatCurrency(convCur, dispCur)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Recent investments (always in original currency) ──────────
+function renderRecentInvestments() {
+  const recent   = _allInvestments.slice(0, 5);
+  const recentEl = document.getElementById('recent-list');
+  if (!recent.length) {
+    recentEl.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📊</div>
+      <div class="empty-title">No investments yet</div>
+      <div class="empty-desc">Add your first investment to start tracking</div>
+      <a href="investments.html#add" class="btn btn-primary">Add Investment</a>
+    </div>`;
+    return;
+  }
   recentEl.innerHTML = recent.map(inv => {
-    const gl = inv.current_value - inv.amount_invested;
+    const gl    = parseFloat(inv.current_value) - parseFloat(inv.amount_invested);
     const glPct = inv.amount_invested > 0 ? (gl / inv.amount_invested * 100) : 0;
-    return `
-    <div class="activity-item">
-      <div class="activity-icon" style="background:${CLASS_MAP[inv.assets?.asset_type]?.color+'20' || 'var(--gold-muted)'};color:${CLASS_MAP[inv.assets?.asset_type]?.color || 'var(--gold)'}">
+    const cls   = CLASS_MAP[inv.assets?.asset_type];
+    return `<div class="activity-item">
+      <div class="activity-icon" style="background:${cls?.color+'20' || 'var(--gold-muted)'};color:${cls?.color || 'var(--gold)'}">
         ${getAssetEmoji(inv.assets?.asset_type)}
       </div>
       <div class="activity-info">
         <div class="activity-name">${inv.name}</div>
-        <div class="activity-date">${inv.assets?.platform} · ${inv.assets?.asset_type}</div>
+        <div class="activity-date">${inv.assets?.platform || '—'} · ${inv.currency}</div>
       </div>
       <div class="activity-amount">
-        <div style="color: var(--text-primary); font-weight: 600;">${formatCurrency(inv.current_value, inv.currency)}</div>
-        <div class="${gl >= 0 ? 'gain' : 'loss'}" style="font-size: 0.75rem;">${formatPercent(glPct)}</div>
+        <div style="color:var(--text-primary);font-weight:600">${formatCurrency(inv.current_value, inv.currency)}</div>
+        <div class="${gl >= 0 ? 'gain' : 'loss'}" style="font-size:0.75rem">${gl >= 0 ? '+' : ''}${formatPercent(glPct)}</div>
       </div>
     </div>`;
   }).join('');
 }
 
-function renderAllocationChart(assetTypeMap) {
-  const labels = Object.keys(assetTypeMap);
-  const values = Object.values(assetTypeMap);
-  const colors = labels.map(l => ASSET_COLORS[l] || '#6b7280');
-  const total = values.reduce((a, b) => a + b, 0);
+function renderAllocationChart(assetTypeMap, dispCur) {
+  const entries = Object.entries(assetTypeMap).filter(([, v]) => v > 0);
+  const labels  = entries.map(([k]) => k);
+  const values  = entries.map(([, v]) => v);
+  const colors  = labels.map(l => ASSET_COLORS[l] || '#6b7280');
+  const icons   = labels.map(l => CLASS_MAP[l]?.icon || '');
+  const total   = values.reduce((a, b) => a + b, 0);
 
   if (chartInstance) chartInstance.destroy();
+  if (!total) return;
 
   const ctx = document.getElementById('allocChart').getContext('2d');
   chartInstance = new Chart(ctx, {
@@ -568,7 +716,7 @@ function renderAllocationChart(assetTypeMap) {
         backgroundColor: colors,
         borderColor: '#161c2a',
         borderWidth: 3,
-        hoverOffset: 6
+        hoverOffset: 8,
       }]
     },
     options: {
@@ -579,22 +727,24 @@ function renderAllocationChart(assetTypeMap) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (ctx) => ` ${ctx.label}: ${((ctx.raw / total) * 100).toFixed(1)}%`
+            label: (ctx) => {
+              const pct = ((ctx.raw / total) * 100).toFixed(1);
+              return ` ${ctx.label}: ${formatCurrency(ctx.raw, dispCur)} (${pct}%)`;
+            }
           }
         }
       }
     }
   });
 
-  // Legend
+  // Legend with value in display currency
   const legendEl = document.getElementById('alloc-legend');
-  legendEl.innerHTML = labels.map((label, i) => `
+  legendEl.innerHTML = entries.map(([label, val], i) => `
     <div class="legend-item">
-      <div class="legend-dot" style="background: ${colors[i]};"></div>
-      <span class="legend-label">${label}</span>
-      <span class="legend-value">${((values[i] / total) * 100).toFixed(1)}%</span>
-    </div>
-  `).join('');
+      <div class="legend-dot" style="background:${colors[i]}"></div>
+      <span class="legend-label">${icons[i]} ${label}</span>
+      <span class="legend-value">${((val / total) * 100).toFixed(1)}%</span>
+    </div>`).join('');
 }
 
 function getAssetEmoji(type) {
