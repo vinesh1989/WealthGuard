@@ -672,13 +672,13 @@ function renderCurrencyView(dispCur) {
     const totalGain = totalCurrent - totalInvested;
     const gainPct   = totalInvested > 0 ? (totalGain / totalInvested * 100) : 0;
 
-    document.getElementById('net-worth').textContent          = formatCurrency(totalCurrent, dispCur);
-    document.getElementById('stat-invested').textContent      = formatCurrency(totalInvested, dispCur);
-    document.getElementById('stat-current').textContent       = formatCurrency(totalCurrent, dispCur);
-    document.getElementById('alloc-total-badge').textContent  = formatCurrency(totalCurrent, dispCur);
+    document.getElementById('net-worth').textContent          = formatCompact(totalCurrent, dispCur);
+    document.getElementById('stat-invested').textContent      = formatCompact(totalInvested, dispCur);
+    document.getElementById('stat-current').textContent       = formatCompact(totalCurrent, dispCur);
+    document.getElementById('alloc-total-badge').textContent  = formatCompact(totalCurrent, dispCur);
 
     const gainEl = document.getElementById('total-gain');
-    gainEl.textContent = `${totalGain >= 0 ? '+' : ''}${formatCurrency(totalGain, dispCur)} (${formatPercent(gainPct)})`;
+    gainEl.textContent = `${totalGain >= 0 ? '+' : ''}${formatCompact(totalGain, dispCur)} (${formatPercent(gainPct)})`;
     gainEl.className = totalGain >= 0 ? 'gain' : 'loss';
 
     renderAllocationChart(assetTypeMap, dispCur);
@@ -696,16 +696,16 @@ function renderCurrencyView(dispCur) {
 
     // Show primary currency total in stat cards with note
     const primVals = _currencyMap[primaryCur] || { invested: 0, current: 0 };
-    document.getElementById('stat-invested').textContent = formatCurrency(primVals.invested, primaryCur);
-    document.getElementById('stat-current').textContent  = formatCurrency(primVals.current,  primaryCur);
-    document.getElementById('alloc-total-badge').textContent = formatCurrency(primVals.current, primaryCur);
+    document.getElementById('stat-invested').textContent = formatCompact(primVals.invested, primaryCur);
+    document.getElementById('stat-current').textContent  = formatCompact(primVals.current,  primaryCur);
+    document.getElementById('alloc-total-badge').textContent = formatCompact(primVals.current, primaryCur);
 
     // Native gain/loss for primary currency
     const natGain    = primVals.current - primVals.invested;
     const natGainPct = primVals.invested > 0 ? (natGain / primVals.invested * 100) : 0;
     const gainNEl = document.getElementById('total-gain-native');
     const invCntN = document.getElementById('invest-count-native');
-    gainNEl.textContent = `${natGain >= 0 ? '+' : ''}${formatCurrency(natGain, primaryCur)} (${formatPercent(natGainPct)})`;
+    gainNEl.textContent = `${natGain >= 0 ? '+' : ''}${formatCompact(natGain, primaryCur)} (${formatPercent(natGainPct)})`;
     gainNEl.className   = natGain >= 0 ? 'gain' : 'loss';
     invCntN.textContent = `${_allInvestments.length} investment${_allInvestments.length !== 1 ? 's' : ''}`;
 

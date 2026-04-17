@@ -352,11 +352,11 @@ function renderOverview() {
   const _multi   = Object.keys(_byCur).length > 1;
   const _sfx     = _multi ? ' +' : '';
 
-  document.getElementById('ov-invested').textContent  = formatCurrency(_prim.invested, _primCur) + _sfx;
-  document.getElementById('ov-current').textContent   = formatCurrency(_prim.current,  _primCur) + _sfx;
+  document.getElementById('ov-invested').textContent  = formatCompact(_prim.invested, _primCur) + _sfx;
+  document.getElementById('ov-current').textContent   = formatCompact(_prim.current,  _primCur) + _sfx;
   const glEl = document.getElementById('ov-gl');
   const _gl = _prim.current - _prim.invested;
-  glEl.textContent  = (_gl >= 0 ? '+' : '') + formatCurrency(_gl, _primCur) + _sfx;
+  glEl.textContent  = (_gl >= 0 ? '+' : '') + formatCompact(_gl, _primCur) + _sfx;
   glEl.style.color  = _gl >= 0 ? 'var(--green)' : 'var(--red)';
   document.getElementById('ov-accounts').textContent = allAssets.length;
 
@@ -393,7 +393,7 @@ function renderOverview() {
   allInvestments.forEach(i => { const cur=i.currency; if(!_allocByCur2[cur]) _allocByCur2[cur]=0; _allocByCur2[cur]+= parseFloat(i.current_value)||0; });
   const _allocPrimCur = Object.entries(_allocByCur2).sort(([,a],[,b])=>b-a)[0]?.[0] || 'INR';
   const _allocPrimVal = _allocByCur2[_allocPrimCur] || 0;
-  document.getElementById('alloc-total').textContent = formatCurrency(_allocPrimVal, _allocPrimCur) + (Object.keys(_allocByCur2).length > 1 ? ' +' : '');
+  document.getElementById('alloc-total').textContent = formatCompact(_allocPrimVal, _allocPrimCur) + (Object.keys(_allocByCur2).length > 1 ? ' +' : '');
 
   // Exposure bars
   const barsEl = document.getElementById('exposure-bars');

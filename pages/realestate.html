@@ -298,12 +298,12 @@ function render() {
   const _reAppr    = _reVals.value - _reVals.purchase;
 
   document.getElementById('re-count').textContent   = properties.length;
-  document.getElementById('re-value').textContent   = formatCurrency(_reVals.value, _rePrimCur) + _reMulti;
+  document.getElementById('re-value').textContent   = formatCompact(_reVals.value, _rePrimCur) + _reMulti;
   const apEl = document.getElementById('re-appr');
-  apEl.textContent = (_reAppr >= 0 ? '+' : '') + formatCurrency(_reAppr, _rePrimCur) + _reMulti;
+  apEl.textContent = (_reAppr >= 0 ? '+' : '') + formatCompact(_reAppr, _rePrimCur) + _reMulti;
   apEl.style.color = _reAppr >= 0 ? 'var(--green)' : 'var(--red)';
   document.getElementById('re-mortgage').textContent = _reVals.mortgage > 0
-    ? formatCurrency(_reVals.mortgage, _rePrimCur) + _reMulti
+    ? formatCompact(_reVals.mortgage, _rePrimCur) + _reMulti
     : '₹0';
 
   const grid = document.getElementById('re-grid');

@@ -288,8 +288,8 @@ function render() {
   const _insPrimCur = Object.entries(_insByCur).sort(([,a],[,b]) => b.sa - a.sa)[0]?.[0] || 'INR';
   const _insVals    = _insByCur[_insPrimCur] || { sa: 0, prem: 0 };
   const _insMulti   = Object.keys(_insByCur).length > 1 ? ' +' : '';
-  document.getElementById('sum-assured').textContent = formatCurrency(_insVals.sa, _insPrimCur) + _insMulti;
-  document.getElementById('sum-premium').textContent = formatCurrency(_insVals.prem, _insPrimCur) + _insMulti + '/yr';
+  document.getElementById('sum-assured').textContent = formatCompact(_insVals.sa, _insPrimCur) + _insMulti;
+  document.getElementById('sum-premium').textContent = formatCompact(_insVals.prem, _insPrimCur) + _insMulti + '/yr';
   document.getElementById('sum-expiring').textContent = expiring;
   const warn = document.getElementById('expiry-warn');
   warn.style.display = expiring > 0 ? 'block' : 'none';
