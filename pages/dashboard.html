@@ -297,9 +297,11 @@
           <div class="net-worth-label">Total Portfolio Value</div>
           <!-- Currency switcher pills -->
           <div class="currency-switcher" id="currency-switcher">
-            <button class="cur-pill" data-cur="INR" onclick="switchDisplayCurrency('INR')">INR</button>
-            <button class="cur-pill" data-cur="AED" onclick="switchDisplayCurrency('AED')">AED</button>
-            <button class="cur-pill" data-cur="USD" onclick="switchDisplayCurrency('USD')">USD</button>
+            <button class="cur-pill" data-cur="INR" onclick="switchDisplayCurrency('INR')">🇮🇳 INR</button>
+            <button class="cur-pill" data-cur="AED" onclick="switchDisplayCurrency('AED')">🇦🇪 AED</button>
+            <button class="cur-pill" data-cur="USD" onclick="switchDisplayCurrency('USD')">🇺🇸 USD</button>
+            <button class="cur-pill" data-cur="EUR" onclick="switchDisplayCurrency('EUR')">🇪🇺 EUR</button>
+            <button class="cur-pill" data-cur="GBP" onclick="switchDisplayCurrency('GBP')">🇬🇧 GBP</button>
           </div>
         </div>
         <div class="net-worth-value" id="net-worth">—</div>
@@ -309,6 +311,10 @@
         </div>
         <!-- Per-currency breakdown -->
         <div class="currency-breakdown" id="currency-breakdown"></div>
+        <!-- Rate source note -->
+        <div id="rate-source-note" style="margin-top:0.75rem;font-size:0.7rem;color:var(--text-muted);display:none">
+          ⚠ Using estimated rates. <a href="admin.html" style="color:var(--gold)">Set live rates in Admin →</a>
+        </div>
       </div>
 
       <!-- Quick Actions -->
@@ -580,6 +586,18 @@ async function loadDashboard(userId) {
 function renderCurrencyView(dispCur) {
   _displayCurrency = dispCur;
   highlightCurrencyPill(dispCur);
+
+  // Check if any pair needs a fallback rate (not in DB)
+  let usingFallback = false;
+  Object.keys(_currencyMap).forEach(cur => {
+    if (cur !== dispCur) {
+      const dbRate = _rates.find(r => r.from_currency === cur && r.to_currency === dispCur)
+                  || _rates.find(r => r.from_currency === dispCur && r.to_currency === cur);
+      if (!dbRate) usingFallback = true;
+    }
+  });
+  const noteEl = document.getElementById('rate-source-note');
+  if (noteEl) noteEl.style.display = usingFallback ? 'block' : 'none';
 
   // Convert all to display currency using stored rates
   let totalInvested = 0, totalCurrent = 0;
