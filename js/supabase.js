@@ -712,10 +712,16 @@ async function requireAdmin() {
 }
 
 // Format currency
-function formatCurrency(amount, currency = 'USD') {
+function formatCurrency(amount, currency = 'INR') {
   const symbols = { USD: '$', AED: 'AED ', INR: '₹', EUR: '€', GBP: '£' };
-  const symbol = symbols[currency] || currency + ' ';
-  return symbol + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+  const symbol  = symbols[currency] || (currency + ' ');
+  const num     = parseFloat(amount) || 0;
+  // INR uses Indian numbering (lakhs/crores), others use en-US
+  const locale  = currency === 'INR' ? 'en-IN' : 'en-US';
+  return symbol + new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
 }
 
 // Format percentage
