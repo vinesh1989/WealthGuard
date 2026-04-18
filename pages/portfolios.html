@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolios — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .portfolio-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .portfolio-card {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+      position: relative;
+    }
+    .portfolio-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(0,0,0,0.3);
+    }
+    .portfolio-card.is-default { border-color: rgba(212,175,55,0.4); }
+
+    .portfolio-banner { height: 5px; }
+
+    .portfolio-card-body { padding: 1.35rem; }
+
+    .portfolio-header { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 1rem; }
+    .portfolio-icon-wrap {
+      width: 48px; height: 48px; border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; flex-shrink: 0;
+    }
+    .portfolio-name { font-weight: 700; font-size: 1rem; color: var(--text-primary); }
+    .portfolio-member { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.1rem; }
+    .portfolio-card-actions {
+      position: absolute; top: 0.9rem; right: 0.9rem;
+      display: flex; gap: 0.3rem; opacity: 0; transition: opacity 0.15s;
+    }
+    .portfolio-card:hover .portfolio-card-actions { opacity: 1; }
+
+    .portfolio-stats {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.5rem; margin-bottom: 1rem;
+    }
+    .portfolio-stat-box {
+      background: var(--bg-surface);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.75rem;
+    }
+    .portfolio-stat-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .portfolio-stat-val { font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin-top: 0.15rem; }
+
+    .portfolio-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 0.75rem; border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+    }
+
+    .default-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      background: var(--gold-muted); color: var(--gold);
+      border-radius: 20px; padding: 0.2rem 0.65rem;
+      font-size: 0.7rem; font-weight: 600;
+    }
+
+    /* Add portfolio card (+ button style) */
+    .portfolio-add-card {
+      border: 2px dashed rgba(255,255,255,0.1);
+      border-radius: var(--radius-xl);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0.65rem; padding: 2rem;
+      cursor: pointer; min-height: 180px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .portfolio-add-card:hover { border-color: rgba(212,175,55,0.4); background: var(--gold-muted); }
+    .portfolio-add-icon { font-size: 1.8rem; opacity: 0.4; }
+    .portfolio-add-label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+
+    /* Colour picker */
+    .color-swatches { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .color-swatch {
+      width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: transform 0.1s, border-color 0.1s;
+    }
+    .color-swatch:hover { transform: scale(1.1); }
+    .color-swatch.selected { border-color: white; transform: scale(1.15); }
+
+    /* Icon picker */
+    .icon-grid { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .icon-opt {
+      width: 36px; height: 36px; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border); display: flex; align-items: center;
+      justify-content: center; font-size: 1.1rem; cursor: pointer;
+      background: var(--bg-surface); transition: all 0.12s;
+    }
+    .icon-opt:hover { border-color: rgba(255,255,255,0.25); }
+    .icon-opt.selected { border-color: var(--gold); background: var(--gold-muted); }
+
+    @media (max-width: 600px) {
+      .portfolio-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="portfolios.html" class="nav-item active"><span class="nav-icon">👥</span> Portfolios</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Asset Classes</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <span class="nav-section-label">Portfolio</span>
+      <a href="insurance.html" class="nav-item"><span class="nav-icon">🛡</span> Insurance</a>
+      <a href="realestate.html" class="nav-item"><span class="nav-icon">🏠</span> Real Estate</a>
+      <span class="nav-section-label">Planning</span>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <span class="nav-section-label">Reports</span>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="backup.html" class="nav-item"><span class="nav-icon">💾</span> Backup &amp; Restore</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user"><div class="user-avatar" id="user-initial">R</div><div><div class="user-name" id="user-name">Loading...</div><div class="user-role" id="user-role">investor</div></div></div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()"><span class="nav-icon">↩</span> Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div>
+          <div class="page-title">Portfolios</div>
+          <div class="page-subtitle">Manage portfolios for yourself and family members</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="notif-btn" onclick="window.location.href='notifications.html'">🔔</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal()">+ New Portfolio</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+
+      <div class="info-box" style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.15);border-radius:var(--radius-md);padding:0.85rem 1rem;font-size:0.82rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.7">
+        💡 Create a portfolio for each family member (e.g. <em>Priya — Spouse</em>, <em>Arjun — Son</em>). Each portfolio has its own accounts and investments. View them individually or combined on the Dashboard.
+      </div>
+
+      <div class="portfolio-grid" id="portfolio-grid">
+        <div class="loading-state" style="grid-column:1/-1">Loading portfolios…</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT PORTFOLIO MODAL -->
+<div class="modal-backdrop" id="pf-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title" id="pf-modal-title">New Portfolio</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-group">
+        <label class="form-label">Portfolio Name <span class="form-required">*</span></label>
+        <input type="text" id="pf-name" class="form-control" placeholder="e.g. Priya — Spouse, Self, Joint">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Member Name <span class="form-label-optional">(shown on Dashboard)</span></label>
+        <input type="text" id="pf-member" class="form-control" placeholder="e.g. Priya, Self, Joint">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Icon</label>
+        <div class="icon-grid" id="icon-grid">
+          <!-- rendered by JS -->
+        </div>
+        <input type="hidden" id="pf-icon" value="👤">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Colour</label>
+        <div class="color-swatches" id="color-swatches">
+          <!-- rendered by JS -->
+        </div>
+        <input type="hidden" id="pf-color" value="#60a5fa">
+      </div>
+
+      <div class="form-group">
+        <div class="form-check">
+          <input type="checkbox" id="pf-default" class="form-check-input">
+          <label class="form-check-label" for="pf-default">
+            <strong>Set as default portfolio</strong>
+            <div style="font-size:0.75rem;color:var(--text-muted)">New assets and investments will be linked here by default</div>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notes <span class="form-label-optional">(optional)</span></label>
+        <textarea id="pf-notes" class="form-control" rows="2" placeholder="Any notes about this portfolio…"></textarea>
+      </div>
+
+      <div id="pf-error" class="form-error" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="pf-save-btn" onclick="savePortfolio()">Save Portfolio</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+let portfolios = [];
+let allInvestments = [];
+let allAssets = [];
+let currentUser = null;
+let editingId = null;
+
+const PALETTE = [
+  '#60a5fa','#34d399','#fbbf24','#f97316','#a78bfa',
+  '#f87171','#d4af37','#10b981','#3b82f6','#8b5cf6',
+  '#ec4899','#06b6d4',
+];
+const ICONS = ['👤','👩','👨','🧒','👧','👦','👴','👵','💑','👨‍👩‍👧','👨‍👩‍👦','🏠','💼','🌟','🎯'];
+
+// ── Init ─────────────────────────────────────────────────────
+async function init() {
+  const session = await requireAuth();
+  if (!session) return;
+  currentUser = session.user.id;
+  const profile = await Profile.get(session.user.id);
+  document.getElementById('user-name').textContent    = profile?.full_name || session.user.email;
+  document.getElementById('user-initial').textContent = (profile?.full_name || session.user.email || 'U')[0].toUpperCase();
+  document.getElementById('user-role').textContent    = profile?.role || 'investor';
+
+  // Ensure a default portfolio exists
+  await Portfolios.ensureDefault(currentUser, profile?.full_name);
+
+  renderPalette();
+  renderIconGrid();
+  await loadAll();
+}
+
+async function loadAll() {
+  const [{ data: pfs }, { data: invs }, { data: assets }] = await Promise.all([
+    Portfolios.getAll(currentUser),
+    Investments.getAll(currentUser),
+    Assets.getAll(currentUser),
+  ]);
+  portfolios    = pfs    || [];
+  allInvestments = invs  || [];
+  allAssets     = assets || [];
+  renderPortfolios();
+}
+
+// ── Render portfolio cards ────────────────────────────────────
+function renderPortfolios() {
+  const grid = document.getElementById('portfolio-grid');
+
+  const cards = portfolios.map(pf => {
+    const pfInvs   = allInvestments.filter(i => i.portfolio_id === pf.id);
+    const pfAssets = allAssets.filter(a => a.portfolio_id === pf.id);
+    const invested = pfInvs.reduce((s, i) => s + (parseFloat(i.amount_invested) || 0), 0);
+    const current  = pfInvs.reduce((s, i) => s + (parseFloat(i.current_value)   || 0), 0);
+    const gl       = current - invested;
+    const glPct    = invested > 0 ? (gl / invested * 100) : 0;
+
+    // Primary currency
+    const byCur = {};
+    pfInvs.forEach(i => { byCur[i.currency] = (byCur[i.currency] || 0) + (parseFloat(i.current_value) || 0); });
+    const primCur = Object.entries(byCur).sort(([,a],[,b]) => b - a)[0]?.[0] || 'INR';
+
+    return `<div class="portfolio-card${pf.is_default ? ' is-default' : ''}">
+      <div class="portfolio-banner" style="background:${pf.color}"></div>
+      <div class="portfolio-card-body">
+        <div class="portfolio-card-actions">
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="editPortfolio('${pf.id}')">✏</button>
+          ${!pf.is_default ? `<button class="btn btn-danger btn-sm btn-icon" onclick="deletePortfolio('${pf.id}')">🗑</button>` : ''}
+        </div>
+        <div class="portfolio-header">
+          <div class="portfolio-icon-wrap" style="background:${pf.color}20">
+            <span>${pf.icon}</span>
+          </div>
+          <div>
+            <div class="portfolio-name">${pf.name}</div>
+            <div class="portfolio-member">${pf.member_name || ''}</div>
+          </div>
+        </div>
+        <div class="portfolio-stats">
+          <div class="portfolio-stat-box">
+            <div class="portfolio-stat-label">Invested</div>
+            <div class="portfolio-stat-val">${formatCompact(invested, primCur)}</div>
+          </div>
+          <div class="portfolio-stat-box">
+            <div class="portfolio-stat-label">Current</div>
+            <div class="portfolio-stat-val" style="color:${pf.color}">${formatCompact(current, primCur)}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.78rem;margin-bottom:0.85rem">
+          <span class="${gl >= 0 ? 'gain' : 'loss'}" style="font-family:var(--font-mono);font-weight:600">
+            ${gl >= 0 ? '+' : ''}${formatCompact(gl, primCur)} (${glPct >= 0 ? '+' : ''}${glPct.toFixed(1)}%)
+          </span>
+          <span style="color:var(--text-muted)">${pfInvs.length} position${pfInvs.length !== 1 ? 's' : ''} · ${pfAssets.length} account${pfAssets.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="portfolio-footer">
+          ${pf.is_default ? '<span class="default-badge">★ Default</span>' : '<span></span>'}
+          <div style="display:flex;gap:0.4rem">
+            <a href="dashboard.html?portfolio=${pf.id}" class="btn btn-ghost btn-sm">📊 View</a>
+            <a href="investments.html?portfolio=${pf.id}" class="btn btn-outline btn-sm">+ Invest</a>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const addCard = `<div class="portfolio-add-card" onclick="openModal()">
+    <div class="portfolio-add-icon">+</div>
+    <div class="portfolio-add-label">Add Portfolio</div>
+    <div style="font-size:0.75rem;color:var(--text-muted)">For a family member or separate fund</div>
+  </div>`;
+
+  grid.innerHTML = cards + addCard;
+}
+
+// ── Colour + icon pickers ─────────────────────────────────────
+function renderPalette() {
+  document.getElementById('color-swatches').innerHTML = PALETTE.map(col => `
+    <div class="color-swatch" style="background:${col}" data-color="${col}"
+         onclick="selectColor('${col}')"></div>`).join('');
+}
+
+function renderIconGrid() {
+  document.getElementById('icon-grid').innerHTML = ICONS.map(icon => `
+    <div class="icon-opt" data-icon="${icon}" onclick="selectIcon('${icon}')">${icon}</div>`).join('');
+}
+
+function selectColor(col) {
+  document.getElementById('pf-color').value = col;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('selected', s.dataset.color === col));
+}
+
+function selectIcon(icon) {
+  document.getElementById('pf-icon').value = icon;
+  document.querySelectorAll('.icon-opt').forEach(s => s.classList.toggle('selected', s.dataset.icon === icon));
+}
+
+// ── Modal ─────────────────────────────────────────────────────
+function openModal(pf = null) {
+  editingId = pf?.id || null;
+  document.getElementById('pf-modal-title').textContent = pf ? 'Edit Portfolio' : 'New Portfolio';
+  document.getElementById('pf-name').value   = pf?.name        || '';
+  document.getElementById('pf-member').value = pf?.member_name || '';
+  document.getElementById('pf-notes').value  = pf?.notes       || '';
+  document.getElementById('pf-default').checked = pf?.is_default || false;
+  document.getElementById('pf-error').style.display = 'none';
+
+  const col  = pf?.color || '#60a5fa';
+  const icon = pf?.icon  || '👤';
+  document.getElementById('pf-color').value = col;
+  document.getElementById('pf-icon').value  = icon;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('selected', s.dataset.color === col));
+  document.querySelectorAll('.icon-opt').forEach(s => s.classList.toggle('selected', s.dataset.icon === icon));
+
+  document.getElementById('pf-modal').classList.add('open');
+}
+
+function editPortfolio(id) { openModal(portfolios.find(p => p.id === id)); }
+function closeModal() { document.getElementById('pf-modal').classList.remove('open'); editingId = null; }
+
+async function savePortfolio() {
+  const name   = document.getElementById('pf-name').value.trim();
+  const errEl  = document.getElementById('pf-error');
+  errEl.style.display = 'none';
+  if (!name) { errEl.textContent = 'Portfolio name is required'; errEl.style.display = 'flex'; return; }
+
+  setLoading('pf-save-btn', true, 'Saving…');
+  try {
+    const isDefault = document.getElementById('pf-default').checked;
+    const payload = {
+      user_id:     currentUser,
+      name,
+      member_name: document.getElementById('pf-member').value.trim() || null,
+      color:       document.getElementById('pf-color').value,
+      icon:        document.getElementById('pf-icon').value,
+      is_default:  isDefault,
+      notes:       document.getElementById('pf-notes').value.trim() || null,
+    };
+
+    if (isDefault) {
+      // Unset other defaults
+      await sb.from('portfolios').update({ is_default: false }).eq('user_id', currentUser).neq('id', editingId || '00000000-0000-0000-0000-000000000000');
+    }
+
+    if (editingId) {
+      const { error } = await Portfolios.update(editingId, payload);
+      if (error) throw error;
+    } else {
+      const { error } = await Portfolios.create(payload);
+      if (error) throw error;
+    }
+
+    showToast(editingId ? 'Portfolio updated' : 'Portfolio created', 'success');
+    closeModal();
+    await loadAll();
+  } catch(e) {
+    errEl.textContent = e.message || 'Failed to save';
+    errEl.style.display = 'flex';
+  } finally {
+    setLoading('pf-save-btn', false, 'Save Portfolio');
+  }
+}
+
+async function deletePortfolio(id) {
+  const pf = portfolios.find(p => p.id === id);
+  if (!confirm(`Delete "${pf?.name}"?\n\nInvestments and accounts in this portfolio will NOT be deleted — they'll just be unlinked and appear in the default portfolio.`)) return;
+  const { error } = await Portfolios.delete(id);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('Portfolio deleted', 'success');
+  await loadAll();
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar()   { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+init();
+</script>
+</body>
+</html>

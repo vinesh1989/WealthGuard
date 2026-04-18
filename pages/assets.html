@@ -98,6 +98,7 @@
     <nav class="sidebar-nav">
       <span class="nav-section-label">Overview</span>
       <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="portfolios.html" class="nav-item"><span class="nav-icon">👥</span> Portfolios</a>
       <a href="assets.html" class="nav-item active"><span class="nav-icon">🏦</span> Asset Classes</a>
       <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
       <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
@@ -302,6 +303,7 @@ async function init() {
   document.getElementById('user-role').textContent = profile?.role || 'investor';
 
   renderClassTiles();
+  // URL params validated if any query params present
   if (window.location.hash === '#add') openAssetModal();
   await loadAll();
 }

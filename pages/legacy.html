@@ -119,6 +119,7 @@
     <nav class="sidebar-nav">
       <span class="nav-section-label">Overview</span>
       <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="portfolios.html" class="nav-item"><span class="nav-icon">👥</span> Portfolios</a>
       <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Assets</a>
       <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
       <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
@@ -328,10 +329,10 @@ function renderAssets() {
     <thead><tr><th>Asset Type</th><th>Platform</th><th>Account No.</th><th>Currency</th><th>Country</th></tr></thead>
     <tbody>${packData.assets.map(a => `
     <tr>
-      <td>${a.asset_type}</td>
+      <td>${Validate.html(a.asset_type)}</td>
       <td>${a.platform || '—'}</td>
       <td><span style="font-family:var(--font-mono);font-size:0.82rem">${a.account_number || '—'}</span></td>
-      <td>${a.currency}</td>
+      <td>${Validate.html(a.currency)}</td>
       <td>${a.country || '—'}</td>
     </tr>`).join('')}</tbody>
   </table>`;
@@ -345,7 +346,7 @@ function renderInvestments() {
     <thead><tr><th>Investment</th><th>Platform</th><th>Category</th><th>Invested</th><th>Current Value</th></tr></thead>
     <tbody>${packData.investments.map(i => `
     <tr>
-      <td>${i.name}</td>
+      <td>${Validate.html(i.name)}</td>
       <td>${i.assets?.platform || '—'}</td>
       <td><span class="badge badge-info">${i.category || '—'}</span></td>
       <td>${formatCurrency(i.amount_invested, i.assets?.currency || 'USD')}</td>
@@ -365,7 +366,7 @@ function renderDocuments() {
     <thead><tr><th>Document</th><th>Type</th><th>Tags</th><th>Uploaded</th></tr></thead>
     <tbody>${packData.documents.map(d => `
     <tr>
-      <td>${d.name}</td>
+      <td>${Validate.html(d.name)}</td>
       <td><span class="badge badge-warning">${d.document_type || '—'}</span></td>
       <td>${(d.tags || []).map(t => `<span class="doc-chip">${t}</span>`).join('') || '—'}</td>
       <td style="font-family:var(--font-mono);font-size:0.8rem">${new Date(d.created_at).toLocaleDateString()}</td>
@@ -509,7 +510,7 @@ async function generatePDF() {
     doc.text('No documents uploaded.', 15, y); y += 8;
   } else {
     packData.documents.forEach((d, i) => {
-      addRow(`${i + 1}. ${d.name}`, d.document_type || '—');
+      addRow(`${i + 1}. ${Validate.html(d.name)}`, d.document_type || '—');
     });
   }
 

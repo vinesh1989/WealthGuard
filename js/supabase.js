@@ -101,16 +101,65 @@ const Profile = {
 };
 
 // ============================================================
+// PORTFOLIO HELPERS
+// ============================================================
+
+const Portfolios = {
+  async getAll(userId) {
+    const { data, error } = await sb.from('portfolios')
+      .select('*')
+      .eq('user_id', userId)
+      .order('is_default', { ascending: false })
+      .order('created_at');
+    return { data, error };
+  },
+
+  async create(portfolio) {
+    const { data, error } = await sb.from('portfolios').insert(portfolio).select().single();
+    return { data, error };
+  },
+
+  async update(id, updates) {
+    const { data, error } = await sb.from('portfolios').update(updates).eq('id', id).select().single();
+    return { data, error };
+  },
+
+  async delete(id) {
+    // Nullify assets and investments before deleting
+    await sb.from('assets').update({ portfolio_id: null }).eq('portfolio_id', id);
+    await sb.from('investments').update({ portfolio_id: null }).eq('portfolio_id', id);
+    const { error } = await sb.from('portfolios').delete().eq('id', id);
+    return { error };
+  },
+
+  async ensureDefault(userId, fullName) {
+    const { data: existing } = await sb.from('portfolios').select('id').eq('user_id', userId).eq('is_default', true).single();
+    if (existing) return existing;
+    const { data } = await sb.from('portfolios').insert({
+      user_id: userId,
+      name: fullName || 'My Portfolio',
+      member_name: fullName || 'Self',
+      color: '#60a5fa',
+      icon: '👤',
+      is_default: true,
+    }).select().single();
+    return data;
+  }
+};
+
+// ============================================================
 // ASSET HELPERS
 // ============================================================
 
 const Assets = {
-  async getAll(userId) {
-    const { data, error } = await sb.from('assets')
-      .select('*, investments(count)')
+  async getAll(userId, portfolioId = null) {
+    let query = sb.from('assets')
+      .select('*, investments(count), portfolios(name,color,icon,member_name)')
       .eq('user_id', userId)
       .eq('is_active', true)
       .order('created_at', { ascending: false });
+    if (portfolioId) query = query.eq('portfolio_id', portfolioId);
+    const { data, error } = await query;
     return { data, error };
   },
 
@@ -137,10 +186,11 @@ const Assets = {
 const Investments = {
   async getAll(userId, filters = {}) {
     let query = sb.from('investments')
-      .select('*, assets(asset_type, platform, currency, country)')
+      .select('*, assets(asset_type, platform, currency, country), portfolios(name,color,icon,member_name)')
       .eq('user_id', userId)
       .eq('is_active', true);
 
+    if (filters.portfolio_id) query = query.eq('portfolio_id', filters.portfolio_id);
     if (filters.asset_type) query = query.eq('assets.asset_type', filters.asset_type);
     if (filters.currency) query = query.eq('currency', filters.currency);
     if (filters.search) query = query.ilike('name', `%${filters.search}%`);
@@ -661,10 +711,93 @@ const FormUtils = {
     formFields.forEach(({ id, value = '' }) => FormUtils.setValue(id, value));
   },
 };
+
+// ============================================================
+// INPUT VALIDATION & SANITIZATION
+// ============================================================
+
+const Validate = {
+  // UUID v4 regex
+  _UUID_RE: /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+
+  // Validate that a value is a proper UUID — returns null if invalid
+  uuid(val) {
+    if (!val || typeof val !== 'string') return null;
+    const trimmed = val.trim();
+    return this._UUID_RE.test(trimmed) ? trimmed : null;
+  },
+
+  // Read a URL param as a validated UUID — returns null if missing or invalid
+  uuidParam(paramName) {
+    const raw = new URLSearchParams(window.location.search).get(paramName);
+    return this.uuid(raw);
+  },
+
+  // Sanitize a string for safe innerHTML insertion (escape HTML special chars)
+  html(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;');
+  },
+
+  // Validate a non-empty string, max length
+  string(val, maxLen = 500) {
+    if (!val || typeof val !== 'string') return null;
+    const trimmed = val.trim();
+    if (!trimmed || trimmed.length > maxLen) return null;
+    return trimmed;
+  },
+
+  // Validate a positive number
+  positiveNumber(val) {
+    const n = parseFloat(val);
+    return (!isNaN(n) && n > 0) ? n : null;
+  },
+
+  // Validate a number >= 0
+  nonNegative(val) {
+    const n = parseFloat(val);
+    return (!isNaN(n) && n >= 0) ? n : null;
+  },
+
+  // Validate email format
+  email(val) {
+    if (!val || typeof val !== 'string') return null;
+    const t = val.trim().toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t) ? t : null;
+  },
+
+  // Validate date string (YYYY-MM-DD)
+  date(val) {
+    if (!val || typeof val !== 'string') return null;
+    const t = val.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return null;
+    const d = new Date(t);
+    return isNaN(d.getTime()) ? null : t;
+  },
+
+  // Validate a value is in an allowed enum list
+  enum(val, allowed) {
+    return allowed.includes(val) ? val : null;
+  },
+
+  // Strip HTML tags from a string completely
+  stripTags(str) {
+    if (!str) return '';
+    return String(str).replace(/<[^>]*>/g, '');
+  },
+};
 async function requireAuth() {
   const session = await Auth.getSession();
   if (!session) {
-    window.location.href = '/index.html';
+    // Relative redirect works from both /pages/ and root
+    const isInPages = window.location.pathname.includes('/pages/');
+    window.location.href = isInPages ? '../index.html' : 'index.html';
     return null;
   }
 

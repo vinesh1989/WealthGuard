@@ -65,6 +65,7 @@ DROP TABLE IF EXISTS documents                 CASCADE;
 DROP TABLE IF EXISTS goals                     CASCADE;
 DROP TABLE IF EXISTS investment_history        CASCADE;
 DROP TABLE IF EXISTS investments               CASCADE;
+DROP TABLE IF EXISTS portfolios                CASCADE;
 DROP TABLE IF EXISTS assets                    CASCADE;
 
 -- Billing

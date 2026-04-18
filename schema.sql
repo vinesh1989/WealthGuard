@@ -116,6 +116,23 @@ CREATE TABLE invitations (
 );
 
 -- ============================================================
+-- PORTFOLIOS (Named sub-portfolios per investor, e.g. Self, Spouse)
+-- ============================================================
+
+CREATE TABLE portfolios (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,                         -- e.g. "Self", "Priya (Spouse)", "Joint"
+  member_name TEXT,                           -- optional display name for the member
+  color TEXT DEFAULT '#60a5fa',               -- hex colour for the UI chip
+  icon TEXT DEFAULT '👤',                     -- emoji icon
+  is_default BOOLEAN DEFAULT FALSE,           -- true = the main/default portfolio
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
 -- ASSETS (Account-level containers)
 -- ============================================================
 
@@ -128,7 +145,7 @@ CREATE TABLE assets (
   account_number TEXT,
   currency currency_type NOT NULL DEFAULT 'USD',
   country TEXT DEFAULT 'United Arab Emirates',
-  notes TEXT,
+  portfolio_id UUID REFERENCES portfolios(id) ON DELETE SET NULL,  -- optional: link to named portfolio
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -155,11 +172,14 @@ CREATE TABLE investments (
   ticker_symbol TEXT,
   isin TEXT,
   notes TEXT,
+  portfolio_id UUID REFERENCES portfolios(id) ON DELETE SET NULL,  -- denormalised for fast filtering
   import_source TEXT DEFAULT 'Manual',
   import_id TEXT,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT inv_amount_non_negative CHECK (amount_invested >= 0),
+  CONSTRAINT inv_current_non_negative CHECK (current_value >= 0)
 );
 
 -- ============================================================
@@ -412,6 +432,7 @@ WHERE i.is_active = TRUE AND a.is_active = TRUE;
 -- ============================================================
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE portfolios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE investments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
@@ -441,6 +462,8 @@ CREATE POLICY "profiles_beneficiary_read" ON profiles FOR SELECT USING (
 );
 
 -- Assets: owner + beneficiary read
+CREATE POLICY "portfolios_owner" ON portfolios FOR ALL USING (user_id = auth.uid());
+
 CREATE POLICY "assets_owner" ON assets FOR ALL USING (user_id = auth.uid());
 CREATE POLICY "assets_beneficiary_read" ON assets FOR SELECT USING (
   EXISTS (
@@ -508,6 +531,14 @@ CREATE POLICY "invitations_self_read" ON invitations FOR SELECT USING (
 CREATE POLICY "inv_history_owner" ON investment_history FOR ALL USING (
   EXISTS (SELECT 1 FROM investments WHERE id = investment_history.investment_id AND user_id = auth.uid())
 );
+
+-- Audit log: own entries only (admins get all via separate service key, not anon key)
+CREATE POLICY "audit_log_own" ON audit_log FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "audit_log_insert" ON audit_log FOR INSERT WITH CHECK (user_id = auth.uid());
+
+-- Coupons: read-only for authenticated users; write via admin service key only
+ALTER TABLE coupons ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "coupons_read" ON coupons FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- ============================================================
 -- FUNCTIONS & TRIGGERS
@@ -589,6 +620,7 @@ CREATE TRIGGER update_assets_ts BEFORE UPDATE ON assets FOR EACH ROW EXECUTE FUN
 CREATE TRIGGER update_investments_ts BEFORE UPDATE ON investments FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_goals_ts BEFORE UPDATE ON goals FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_documents_ts BEFORE UPDATE ON documents FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_portfolios_ts BEFORE UPDATE ON portfolios FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_insurance_ts BEFORE UPDATE ON insurance_policies FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_realestate_ts BEFORE UPDATE ON real_estate_assets FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
@@ -626,3 +658,6 @@ CREATE INDEX idx_audit_log_user ON audit_log(user_id, created_at);
 CREATE INDEX idx_inv_history_investment ON investment_history(investment_id, recorded_at);
 CREATE INDEX idx_insurance_user ON insurance_policies(user_id);
 CREATE INDEX idx_realestate_user ON real_estate_assets(user_id);
+CREATE INDEX idx_portfolios_user ON portfolios(user_id);
+CREATE INDEX idx_assets_portfolio ON assets(portfolio_id);
+CREATE INDEX idx_investments_portfolio ON investments(portfolio_id);

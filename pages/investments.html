@@ -58,6 +58,7 @@
     <nav class="sidebar-nav">
       <span class="nav-section-label">Overview</span>
       <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="portfolios.html" class="nav-item"><span class="nav-icon">👥</span> Portfolios</a>
       <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Asset Classes</a>
       <a href="investments.html" class="nav-item active"><span class="nav-icon">📈</span> Investments</a>
       <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
@@ -304,9 +305,9 @@ const ASSET_CLASSES = [
 ];
 const CLASS_MAP = Object.fromEntries(ASSET_CLASSES.map(c => [c.id, c]));
 
-let allInvestments = [], allAssets = [];
+let allInvestments = [], allAssets = [], allPortfolios = [];
 let currentUserId = null, editingId = null;
-let activeClassFilter = '', filterAssetId = null;
+let activeClassFilter = '', filterAssetId = null, filterPortfolioId = null;
 
 // ── Init ─────────────────────────────────────────────────────
 async function init() {
@@ -318,16 +319,21 @@ async function init() {
   document.getElementById('user-initial').textContent = (profile?.full_name || session.user.email || 'U')[0].toUpperCase();
   document.getElementById('user-role').textContent    = profile?.role || 'investor';
 
-  filterAssetId = new URLSearchParams(location.search).get('asset') || null;
+  // Validate URL params as UUIDs to prevent injection
+  filterAssetId     = Validate.uuidParam('asset');
+  filterPortfolioId = Validate.uuidParam('portfolio');
   if (window.location.hash === '#add') openInvModal();
   await loadData();
 }
 
 async function loadData() {
-  const [{ data: investments }, { data: assets }] = await Promise.all([
-    Investments.getAll(currentUserId),
-    Assets.getAll(currentUserId),
+  const pfFilter = filterPortfolioId ? { portfolio_id: filterPortfolioId } : {};
+  const [{ data: investments }, { data: assets }, { data: pfs }] = await Promise.all([
+    Investments.getAll(currentUserId, pfFilter),
+    Assets.getAll(currentUserId, filterPortfolioId),
+    Portfolios.getAll(currentUserId),
   ]);
+  allPortfolios = pfs || [];
   allInvestments = investments || [];
   allAssets      = assets      || [];
 
@@ -342,6 +348,18 @@ async function loadData() {
       const cls = CLASS_MAP[a.asset_type] || {};
       return `<option value="${a.id}" data-currency="${a.currency}">${cls.icon || ''} ${a.name || a.platform} — ${a.asset_type} (${a.currency})</option>`;
     }).join('');
+
+  // Portfolio context bar
+  if (filterPortfolioId) {
+    const pf = allPortfolios.find(p => p.id === filterPortfolioId);
+    if (pf) {
+      document.getElementById('account-context-bar').style.display = 'flex';
+      document.getElementById('ctx-icon').textContent = pf.icon || '📊';
+      document.getElementById('ctx-name').textContent = pf.name;
+      document.getElementById('ctx-meta').textContent = `Portfolio · ${pf.member_name || 'Member'}`;
+      document.getElementById('page-subtitle').textContent = `${pf.name} Portfolio`;
+    }
+  }
 
   // Account context
   if (filterAssetId) {
@@ -470,13 +488,16 @@ function renderTable(investments) {
     const invType = inv.investment_type || 'Total';
     return `<tr>
       <td>
-        <div style="font-weight:600;font-size:0.875rem">${inv.name}</div>
+        <div style="font-weight:600;font-size:0.875rem">${Validate.html(inv.name)}</div>
         ${inv.ticker_symbol ? `<div style="font-size:0.7rem;color:var(--text-muted);font-family:var(--font-mono)">${inv.ticker_symbol}${inv.exchange ? ' · '+inv.exchange : ''}</div>` : ''}
         ${inv.quantity ? `<div style="font-size:0.7rem;color:var(--text-muted)">Qty: ${parseFloat(inv.quantity).toLocaleString()}</div>` : ''}
       </td>
-      <td><span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.7rem;font-weight:700;background:${cls.color || '#888'}18;color:${cls.color || '#888'}">${cls.icon||''} ${ac}</span></td>
+      <td>
+        <span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.7rem;font-weight:700;background:${cls.color || '#888'}18;color:${cls.color || '#888'}">${cls.icon||''} ${ac}</span>
+        ${inv.portfolios ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.15rem 0.5rem;border-radius:20px;font-size:0.65rem;background:${inv.portfolios.color}15;color:${inv.portfolios.color};margin-left:0.25rem">${inv.portfolios.icon} ${inv.portfolios.name}</span>` : ''}
+      </td>
       <td style="font-size:0.82rem;color:var(--text-secondary)">${inv.assets?.platform || '—'}</td>
-      <td style="text-align:center"><span class="badge ${invType==='Individual'?'badge-individual':'badge-total'}">${invType}</span></td>
+      <td style="text-align:center"><span class="badge ${invType==='Individual'?'badge-individual':'badge-total'}">${Validate.html(invType)}</span></td>
       <td class="td-mono" style="text-align:right">${formatCurrency(inv.amount_invested, inv.currency)}</td>
       <td class="td-mono" style="text-align:right;font-weight:700;color:var(--text-primary)">${formatCurrency(inv.current_value, inv.currency)}</td>
       <td class="td-mono ${gl>=0?'gain':'loss'}" style="text-align:right">${gl>=0?'+':''}${formatCurrency(gl, inv.currency)}</td>
@@ -586,6 +607,7 @@ async function saveInvestment() {
   const payload = {
     user_id:         currentUserId,
     asset_id:        FormUtils.getString('inv-asset') || null,
+    portfolio_id:    filterPortfolioId || null,
     name,
     investment_type: invType,
     amount_invested: invested,

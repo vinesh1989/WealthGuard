@@ -85,6 +85,7 @@
     <nav class="sidebar-nav">
       <span class="nav-section-label">Overview</span>
       <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="portfolios.html" class="nav-item"><span class="nav-icon">👥</span> Portfolios</a>
       <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Asset Classes</a>
       <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
       <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
@@ -418,13 +419,22 @@ function onScopeChange(val) {
 // Get the list of user IDs to export based on current scope selection
 function getExportUserIds() {
   const scope = document.querySelector('input[name="export-scope"]:checked')?.value || 'self';
-  if (scope === 'self' || currentProfile?.role !== 'admin') return [currentUser];
+  // Non-admins always get only their own data — scope is ignored for security
+  if (currentProfile?.role !== 'admin') return [currentUser];
+  if (scope === 'self') return [currentUser];
   if (scope === 'user') {
-    const uid = document.getElementById('export-user-select')?.value;
-    if (!uid) { showToast('Select a user to export', 'error'); return null; }
-    return [uid];
+    const rawUid = document.getElementById('export-user-select')?.value;
+    const validUid = Validate.uuid(rawUid);
+    if (!validUid) { showToast('Select a valid user to export', 'error'); return null; }
+    if (!allUsers.find(u => u.id === validUid)) {
+      showToast('Selected user not found in allowed list', 'error');
+      return null;
+    }
+    return [validUid];
   }
-  if (scope === 'all') return allUsers.map(u => u.id);
+  if (scope === 'all') {
+    return allUsers.map(u => u.id).filter(id => Validate.uuid(id));
+  }
   return [currentUser];
 }
 
@@ -861,8 +871,14 @@ async function doRestore() {
           if (mode === 'skip' && existingSet.has(key)) { skip++; continue; }
 
           const payload = {};
-          t.cols.forEach(col => { if (row[col] !== undefined && row[col] !== '') payload[col] = row[col] === 'true' ? true : row[col] === 'false' ? false : row[col]; });
-          payload.user_id = currentUser;
+          t.cols.forEach(col => {
+            if (row[col] !== undefined && row[col] !== '') {
+              // Strip any injected user_id or id from imported data
+              if (col === 'user_id' || col === 'id') return;
+              payload[col] = row[col] === 'true' ? true : row[col] === 'false' ? false : Validate.stripTags(String(row[col]));
+            }
+          });
+          payload.user_id = currentUser;  // Always force to authenticated user
 
           const { data: newRow, error } = await sb.from('assets').insert(payload).select('id,name,platform').single();
           if (error) { log(`  ✕ ${row.name || row.platform}: ${error.message}`, 'log-err'); err++; }
@@ -905,7 +921,12 @@ async function doRestore() {
         // Generic restore for other tables
         for (const row of rows) {
           const payload = {};
-          t.cols.forEach(col => { if (row[col] !== undefined && row[col] !== '') payload[col] = row[col] === 'true' ? true : row[col] === 'false' ? false : row[col]; });
+          t.cols.forEach(col => {
+            if (row[col] !== undefined && row[col] !== '') {
+              if (col === 'user_id' || col === 'id') return;
+              payload[col] = row[col] === 'true' ? true : row[col] === 'false' ? false : Validate.stripTags(String(row[col]));
+            }
+          });
           payload.user_id = currentUser;
 
           const { error } = await sb.from(t.table).insert(payload);

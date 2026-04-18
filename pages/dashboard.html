@@ -159,6 +159,26 @@
     .approval-row:last-child { border-bottom:none; }
     .approval-avatar { width:32px; height:32px; border-radius:50%; background:rgba(251,191,36,0.1); color:#fbbf24; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.85rem; flex-shrink:0; }
 
+    /* Portfolio switcher */
+    .portfolio-switcher {
+      display: flex; gap: 0.35rem; flex-wrap: wrap;
+      margin-bottom: 1.25rem; align-items: center;
+    }
+    .pf-pill {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0.85rem; border-radius: 20px;
+      border: 1.5px solid var(--border); background: var(--bg-surface);
+      font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .pf-pill:hover { border-color: rgba(255,255,255,0.2); color: var(--text-secondary); }
+    .pf-pill.active {
+      background: color-mix(in srgb, var(--pf-color, var(--gold)) 15%, transparent);
+      border-color: var(--pf-color, var(--gold));
+      color: var(--pf-color, var(--gold));
+    }
+    .pf-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
     /* Chart tabs */
     .chart-tab-btn {
       background: none; border: none; color: var(--text-muted); font-family: var(--font-body);
@@ -329,6 +349,11 @@
     </div>
 
     <div class="page-content page-enter">
+      <!-- Portfolio Switcher -->
+      <div class="portfolio-switcher" id="portfolio-switcher" style="display:none">
+        <!-- rendered by JS -->
+      </div>
+
       <!-- Trial Banner -->
       <div class="trial-banner" id="trial-banner" style="display:none">
         <span class="trial-text">⏰ Your free trial ends in <strong id="trial-days">7</strong> days</span>
@@ -560,12 +585,14 @@ const CLASS_MAP    = Object.fromEntries(ASSET_CLASSES.map(c => [c.id, c]));
 let chartInstance    = null;
 let curChartInstance = null;
 let _rates           = [];
-let _currencyMap     = {};  // { INR: {invested, current}, AED: {...}, ... }
-let _assetClassMap   = {};  // { Equity: { INR: val, USD: val }, ... }
-let _matrix          = {};  // { INR: { Equity:{invested,current}, Cash:{...} }, ... }
+let _currencyMap     = {};
+let _assetClassMap   = {};
+let _matrix          = {};
 let _allInvestments  = [];
-let _displayCurrency = '';  // '' = no conversion; or 'INR'/'AED'/'USD' etc.
+let _displayCurrency = '';
 let _activeChartTab  = 'class';
+let _portfolios      = [];       // all portfolios for this user
+let _activePortfolio = 'all';    // 'all' or a portfolio UUID
 
 const CUR_FLAGS   = { INR:'🇮🇳', USD:'🇺🇸', AED:'🇦🇪', EUR:'🇪🇺', GBP:'🇬🇧' };
 const CUR_SYMBOLS = { INR:'₹',   USD:'$',   AED:'AED ', EUR:'€', GBP:'£' };
@@ -607,16 +634,70 @@ async function init() {
     loadAdminStats();
   }
 
-  // Start in native mode (no conversion) — user can pick a conversion currency
+  // Start in native mode (no conversion)
   _displayCurrency = '';
   highlightCurrencyPill('');
 
+  // Load portfolios and check URL param — validate as UUID
+  const urlPf = Validate.uuidParam('portfolio');
+  await loadPortfolios(session.user.id, urlPf);
   await loadDashboard(session.user.id);
 }
 
+// ── Load portfolios & render switcher ─────────────────────────
+async function loadPortfolios(userId, initialPfId) {
+  const { data } = await Portfolios.getAll(userId);
+  _portfolios = data || [];
+
+  const sw = document.getElementById('portfolio-switcher');
+  if (_portfolios.length <= 1 && !initialPfId) {
+    sw.style.display = 'none';
+    _activePortfolio = 'all';
+    return;
+  }
+  sw.style.display = 'flex';
+
+  // Set active portfolio from URL or default to 'all'
+  _activePortfolio = initialPfId && _portfolios.find(p => p.id === initialPfId) ? initialPfId : 'all';
+  renderPortfolioSwitcher();
+}
+
+function renderPortfolioSwitcher() {
+  const sw = document.getElementById('portfolio-switcher');
+  const allCount = _allInvestments.length;
+
+  sw.innerHTML = `
+    <span style="font-size:0.72rem;font-weight:600;color:var(--text-muted);margin-right:0.2rem">View:</span>
+    <button class="pf-pill${_activePortfolio === 'all' ? ' active' : ''}"
+            style="--pf-color:var(--gold)"
+            onclick="switchPortfolio('all')">
+      📊 All Combined
+    </button>
+    ${_portfolios.map(pf => `
+      <button class="pf-pill${_activePortfolio === pf.id ? ' active' : ''}"
+              style="--pf-color:${pf.color}"
+              onclick="switchPortfolio('${pf.id}')">
+        <span class="pf-dot" style="background:${pf.color}"></span>
+        ${pf.icon} ${pf.name}
+      </button>`).join('')}
+    <a href="portfolios.html" class="btn btn-ghost btn-sm" style="padding:0.3rem 0.65rem;font-size:0.75rem;border-radius:20px">⚙ Manage</a>`;
+}
+
+async function switchPortfolio(pfId) {
+  _activePortfolio = pfId;
+  renderPortfolioSwitcher();
+  await loadDashboard(currentUserId);
+}
+
 // ── Load all data once, store raw ────────────────────────────
+let currentUserId = null;
+
 async function loadDashboard(userId) {
+  currentUserId = userId;
   _rates = await ExchangeRates.getAll();
+
+  // Portfolio filter — if a specific portfolio is active, filter investments/assets to it
+  const pfFilter = _activePortfolio !== 'all' ? { portfolio_id: _activePortfolio } : {};
 
   const [
     { data: perf },
@@ -625,8 +706,8 @@ async function loadDashboard(userId) {
     { data: goals }
   ] = await Promise.all([
     Investments.getPerformance(userId),
-    Investments.getAll(userId),
-    Assets.getAll(userId),
+    Investments.getAll(userId, pfFilter),
+    Assets.getAll(userId, _activePortfolio !== 'all' ? _activePortfolio : null),
     Goals.getAll(userId),
   ]);
 
@@ -684,11 +765,15 @@ async function loadDashboard(userId) {
   // Static fields
   document.getElementById('stat-assets').textContent = (assets || []).length;
   document.getElementById('stat-goals').textContent  = (goals  || []).filter(g => !g.is_achieved).length;
-  const invCountStr = `${_allInvestments.length} position${_allInvestments.length !== 1 ? 's' : ''}`;
+  const activePf = _portfolios.find(p => p.id === _activePortfolio);
+  const pfLabel  = activePf ? `${activePf.icon} ${activePf.name}` : 'All Portfolios';
+  const invCountStr = `${_allInvestments.length} position${_allInvestments.length !== 1 ? 's' : ''} · ${pfLabel}`;
   ['invest-count', 'invest-count-native'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = invCountStr;
   });
+  // Update portfolio switcher labels now that we have investment counts
+  if (_portfolios.length > 0) renderPortfolioSwitcher();
 
   // Performers
   if (perf && perf.length > 0) {
