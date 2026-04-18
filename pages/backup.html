@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backup & Restore — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <style>
+    .backup-section {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .backup-section-header {
+      padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .backup-section-icon {
+      width: 38px; height: 38px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0;
+    }
+    .backup-section-body { padding: 1.25rem 1.5rem; }
+
+    .table-checklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; margin-bottom: 1.25rem; }
+    .table-check-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.55rem 0.75rem;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 0.82rem;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .table-check-item.checked { border-color: rgba(52,211,153,0.4); background: rgba(52,211,153,0.06); }
+    .table-check-item input { accent-color: var(--green); width: 15px; height: 15px; flex-shrink: 0; }
+    .table-check-label { color: var(--text-secondary); font-weight: 500; }
+    .table-check-item.checked .table-check-label { color: var(--green); }
+
+    .format-toggle {
+      display: flex; gap: 0; background: var(--bg-surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius-md); padding: 3px; width: fit-content; margin-bottom: 1.25rem;
+    }
+    .fmt-btn {
+      padding: 0.45rem 1.1rem; border: none; background: none; color: var(--text-muted);
+      font-family: var(--font-body); font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; border-radius: calc(var(--radius-md) - 3px); transition: all 0.15s;
+    }
+    .fmt-btn.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 1px 5px rgba(0,0,0,0.3); }
+    .fmt-btn.active.excel { color: #22c55e; }
+    .fmt-btn.active.json  { color: #60a5fa; }
+
+    .progress-bar-wrap { background: rgba(255,255,255,0.06); border-radius: 6px; height: 8px; overflow: hidden; margin: 0.75rem 0; }
+    .progress-bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--green), #10b981); transition: width 0.3s ease; }
+
+    .import-log {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 0.85rem 1rem;
+      font-family: var(--font-mono); font-size: 0.78rem;
+      max-height: 220px; overflow-y: auto; margin-top: 1rem;
+    }
+    .log-ok   { color: var(--green); }
+    .log-warn { color: #fbbf24; }
+    .log-err  { color: var(--red); }
+    .log-info { color: var(--text-muted); }
+
+    .warning-box {
+      background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.2);
+      border-radius: var(--radius-md); padding: 0.85rem 1rem; font-size: 0.82rem;
+      color: var(--text-secondary); margin-bottom: 1.25rem; line-height: 1.6;
+    }
+    .info-box {
+      background: rgba(96,165,250,0.06); border: 1px solid rgba(96,165,250,0.15);
+      border-radius: var(--radius-md); padding: 0.85rem 1rem; font-size: 0.82rem;
+      color: var(--text-secondary); margin-bottom: 1.25rem; line-height: 1.6;
+    }
+
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.75rem; }
+    .stat-mini { background: var(--bg-surface); border-radius: var(--radius-sm); padding: 0.65rem 0.85rem; text-align: center; }
+    .stat-mini-val { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+    .stat-mini-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Asset Classes</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <span class="nav-section-label">Portfolio</span>
+      <a href="insurance.html" class="nav-item"><span class="nav-icon">🛡</span> Insurance</a>
+      <a href="realestate.html" class="nav-item"><span class="nav-icon">🏠</span> Real Estate</a>
+      <span class="nav-section-label">Planning</span>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <span class="nav-section-label">Reports</span>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="backup.html" class="nav-item active"><span class="nav-icon">💾</span> Backup & Restore</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user"><div class="user-avatar" id="user-initial">R</div><div><div class="user-name" id="user-name">Loading...</div><div class="user-role" id="user-role">investor</div></div></div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()"><span class="nav-icon">↩</span> Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div>
+          <div class="page-title">Backup & Restore</div>
+          <div class="page-subtitle">Export all data · Import to restore</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="notif-btn" onclick="window.location.href='notifications.html'">🔔</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+
+      <!-- Current data summary -->
+      <div class="backup-section">
+        <div class="backup-section-header">
+          <div class="backup-section-icon" style="background:rgba(96,165,250,0.1);color:#60a5fa">📊</div>
+          <div>
+            <div style="font-weight:700;font-size:0.95rem">Current Data Summary</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)">What will be included in the backup</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="loadSummary()">↻ Refresh</button>
+        </div>
+        <div class="backup-section-body">
+          <div class="stat-row" id="summary-stats">
+            <div class="stat-mini"><div class="stat-mini-val" id="s-assets">—</div><div class="stat-mini-label">Accounts</div></div>
+            <div class="stat-mini"><div class="stat-mini-val" id="s-investments">—</div><div class="stat-mini-label">Investments</div></div>
+            <div class="stat-mini"><div class="stat-mini-val" id="s-insurance">—</div><div class="stat-mini-label">Policies</div></div>
+            <div class="stat-mini"><div class="stat-mini-val" id="s-realestate">—</div><div class="stat-mini-label">Properties</div></div>
+            <div class="stat-mini"><div class="stat-mini-val" id="s-goals">—</div><div class="stat-mini-label">Goals</div></div>
+            <div class="stat-mini"><div class="stat-mini-val" id="s-documents">—</div><div class="stat-mini-label">Documents</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export section -->
+      <div class="backup-section">
+        <div class="backup-section-header">
+          <div class="backup-section-icon" style="background:rgba(52,211,153,0.1);color:#34d399">⬇</div>
+          <div>
+            <div style="font-weight:700;font-size:0.95rem">Export Backup</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)">Download all your data for safekeeping</div>
+          </div>
+        </div>
+        <div class="backup-section-body">
+
+          <!-- Format picker -->
+          <div class="form-group">
+            <label class="form-label">Export Format</label>
+            <div class="format-toggle">
+              <button class="fmt-btn excel active" id="fmt-excel" onclick="setFmt('excel')">📊 Excel (.xlsx)</button>
+              <button class="fmt-btn json"  id="fmt-json"  onclick="setFmt('json')" >📋 JSON (.json)</button>
+            </div>
+          </div>
+
+          <!-- Table selection -->
+          <div class="form-group">
+            <label class="form-label">Include Tables</label>
+            <div class="table-checklist" id="export-checklist">
+              <!-- rendered by JS -->
+            </div>
+            <div style="display:flex;gap:0.5rem">
+              <button class="btn btn-ghost btn-sm" onclick="selectAll(true)">Select All</button>
+              <button class="btn btn-ghost btn-sm" onclick="selectAll(false)">Deselect All</button>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <strong>ℹ Excel format:</strong> One sheet per table. Column headers match the database schema exactly — making it easy to review and re-import. UUIDs are stripped; they will be re-generated on import.<br>
+            <strong>JSON format:</strong> Complete structured export including all fields. Ideal for automated restore. Can also be imported back with the restore tool below.
+          </div>
+
+          <!-- Progress bar (hidden until export starts) -->
+          <div id="export-progress-wrap" style="display:none">
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.35rem" id="export-progress-label">Fetching data…</div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="export-progress-bar" style="width:0%"></div></div>
+          </div>
+
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <button class="btn btn-primary" id="export-btn" onclick="doExport()">⬇ Download Backup</button>
+            <button class="btn btn-ghost btn-sm" onclick="previewExport()">👁 Preview Data</button>
+          </div>
+
+          <!-- Preview table (hidden until requested) -->
+          <div id="export-preview" style="display:none;margin-top:1.25rem">
+            <div style="font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.5rem" id="preview-title">Preview</div>
+            <div style="overflow-x:auto;max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-md)" id="preview-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import / Restore section -->
+      <div class="backup-section">
+        <div class="backup-section-header">
+          <div class="backup-section-icon" style="background:rgba(251,191,36,0.1);color:#fbbf24">⬆</div>
+          <div>
+            <div style="font-weight:700;font-size:0.95rem">Restore from Backup</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)">Import a previously exported WealthGuard backup</div>
+          </div>
+        </div>
+        <div class="backup-section-body">
+
+          <div class="warning-box">
+            ⚠ <strong>Important:</strong> Restore adds records to your existing data — it does <em>not</em> delete anything first. If you want a clean restore, go to Settings and clear existing data first, or run the reset SQL in Supabase. Duplicate investments will be skipped based on name + account matching.
+          </div>
+
+          <!-- File upload -->
+          <div class="form-group">
+            <label class="form-label">Select Backup File</label>
+            <div class="drop-zone" id="restore-drop-zone" onclick="document.getElementById('restore-file').click()" style="min-height:100px">
+              <div class="drop-zone-icon">📂</div>
+              <div class="drop-zone-text">Click or drop your backup file here</div>
+              <div class="drop-zone-sub">Accepts .xlsx or .json — WealthGuard backups only</div>
+              <input type="file" id="restore-file" accept=".xlsx,.xls,.json" style="display:none" onchange="handleRestoreFile(this.files[0])">
+            </div>
+            <div id="restore-file-info" style="display:none;margin-top:0.75rem" class="card">
+              <div style="display:flex;align-items:center;gap:0.75rem">
+                <span style="font-size:1.4rem" id="restore-file-icon">📊</span>
+                <div style="flex:1"><div style="font-weight:600" id="restore-file-name">—</div><div style="font-size:0.75rem;color:var(--text-muted)" id="restore-file-meta">—</div></div>
+                <button class="btn btn-ghost btn-sm" onclick="clearRestoreFile()">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- What to restore checkboxes (shown after file parsed) -->
+          <div id="restore-tables-section" style="display:none">
+            <div class="form-group">
+              <label class="form-label">Tables to Restore</label>
+              <div class="table-checklist" id="restore-checklist"></div>
+            </div>
+
+            <!-- Import mode -->
+            <div class="form-group">
+              <label class="form-label">Import Mode</label>
+              <div style="display:flex;flex-direction:column;gap:0.5rem">
+                <label class="form-check">
+                  <input type="radio" name="import-mode" value="skip" checked> 
+                  <div class="form-check-label"><strong>Skip duplicates</strong> — add new records only, skip if already exists</div>
+                </label>
+                <label class="form-check">
+                  <input type="radio" name="import-mode" value="upsert">
+                  <div class="form-check-label"><strong>Upsert</strong> — update existing records, insert new ones</div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Progress -->
+            <div id="restore-progress-wrap" style="display:none">
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.35rem" id="restore-progress-label">Restoring…</div>
+              <div class="progress-bar-wrap"><div class="progress-bar-fill" id="restore-progress-bar" style="width:0%;background:linear-gradient(90deg,#fbbf24,#f59e0b)"></div></div>
+            </div>
+
+            <button class="btn btn-primary" id="restore-btn" onclick="doRestore()" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#0a0d12;border:none">
+              ⬆ Restore Selected Tables
+            </button>
+          </div>
+
+          <!-- Import log -->
+          <div id="restore-log-wrap" style="display:none">
+            <div style="font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);margin-top:1.25rem;margin-bottom:0.35rem">Restore Log</div>
+            <div class="import-log" id="restore-log"></div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+let currentUser = null;
+let currentProfile = null;
+let exportFormat = 'excel';
+let parsedBackup = null;   // parsed data from uploaded backup file
+
+// ── Table definitions ─────────────────────────────────────────
+const TABLES = [
+  {
+    key: 'assets',
+    label: '🏦 Asset Accounts',
+    table: 'assets',
+    // Columns to export (in order). Columns to strip on import (re-generated server-side)
+    cols: ['name','asset_type','platform','account_number','currency','country','notes','is_active'],
+    required: ['asset_type','platform','currency'],
+  },
+  {
+    key: 'investments',
+    label: '📈 Investments',
+    table: 'investments',
+    // asset_id will be looked up by asset name+platform match on import
+    cols: ['name','investment_type','exchange','category','amount_invested','current_value','currency','date','quantity','unit_price','ticker_symbol','isin','notes','import_source','is_active'],
+    linkCol: 'asset_id',   // needs lookup from assets
+    required: ['name','amount_invested','current_value','currency'],
+    // Extra export cols for reference only
+    extraExportCols: ['_asset_name','_asset_platform','_asset_type'],
+  },
+  {
+    key: 'insurance',
+    label: '🛡 Insurance',
+    table: 'insurance_policies',
+    cols: ['policy_name','policy_type','policy_number','insurer','sum_assured','premium_amount','premium_frequency','start_date','maturity_date','nominee_name','nominee_relation','currency','notes','is_active'],
+    required: ['policy_name','insurer','sum_assured'],
+  },
+  {
+    key: 'realestate',
+    label: '🏠 Real Estate',
+    table: 'real_estate_assets',
+    cols: ['property_name','property_type','address','city','country','area_sqft','ownership_percent','purchase_price','current_value','purchase_date','registration_number','has_mortgage','mortgage_outstanding','mortgage_bank','mortgage_emi','mortgage_end_date','currency','notes','is_active'],
+    required: ['property_name','purchase_price'],
+  },
+  {
+    key: 'goals',
+    label: '🎯 Goals',
+    table: 'goals',
+    cols: ['goal_type','name','target_amount','current_amount','currency','target_date','description','is_achieved'],
+    required: ['name','target_amount','currency'],
+  },
+  {
+    key: 'documents',
+    label: '📁 Documents',
+    table: 'documents',
+    cols: ['document_type','name','notes','description','tags','is_legacy_doc'],
+    required: ['name'],
+  },
+];
+
+// ── Init ─────────────────────────────────────────────────────
+async function init() {
+  const session = await requireAuth();
+  if (!session) return;
+  currentUser = session.user.id;
+  currentProfile = await Profile.get(session.user.id);
+  document.getElementById('user-name').textContent    = currentProfile?.full_name || session.user.email;
+  document.getElementById('user-initial').textContent = (currentProfile?.full_name || session.user.email || 'U')[0].toUpperCase();
+  document.getElementById('user-role').textContent    = currentProfile?.role || 'investor';
+
+  renderExportChecklist();
+  await loadSummary();
+}
+
+// ── Summary stats ─────────────────────────────────────────────
+async function loadSummary() {
+  try {
+    const results = await Promise.all([
+      sb.from('assets').select('id', { count: 'exact', head: true }).eq('user_id', currentUser),
+      sb.from('investments').select('id', { count: 'exact', head: true }).eq('user_id', currentUser).eq('is_active', true),
+      sb.from('insurance_policies').select('id', { count: 'exact', head: true }).eq('user_id', currentUser).eq('is_active', true),
+      sb.from('real_estate_assets').select('id', { count: 'exact', head: true }).eq('user_id', currentUser).eq('is_active', true),
+      sb.from('goals').select('id', { count: 'exact', head: true }).eq('user_id', currentUser),
+      sb.from('documents').select('id', { count: 'exact', head: true }).eq('user_id', currentUser),
+    ]);
+    const ids = ['s-assets','s-investments','s-insurance','s-realestate','s-goals','s-documents'];
+    results.forEach(({count}, i) => {
+      document.getElementById(ids[i]).textContent = count ?? '—';
+    });
+  } catch(e) {
+    console.warn('Summary load error:', e);
+  }
+}
+
+// ── Checklist rendering ───────────────────────────────────────
+function renderExportChecklist() {
+  document.getElementById('export-checklist').innerHTML = TABLES.map(t => `
+    <label class="table-check-item checked" id="chk-wrap-${t.key}">
+      <input type="checkbox" id="chk-${t.key}" checked onchange="toggleCheck(this,'${t.key}')">
+      <span class="table-check-label">${t.label}</span>
+    </label>`).join('');
+}
+
+function toggleCheck(el, key) {
+  document.getElementById(`chk-wrap-${key}`).classList.toggle('checked', el.checked);
+}
+
+function selectAll(checked) {
+  TABLES.forEach(t => {
+    const el = document.getElementById(`chk-${t.key}`);
+    if (el) { el.checked = checked; document.getElementById(`chk-wrap-${t.key}`).classList.toggle('checked', checked); }
+  });
+}
+
+function getSelectedTables() {
+  return TABLES.filter(t => document.getElementById(`chk-${t.key}`)?.checked);
+}
+
+// ── Format toggle ─────────────────────────────────────────────
+function setFmt(fmt) {
+  exportFormat = fmt;
+  document.getElementById('fmt-excel').classList.toggle('active', fmt === 'excel');
+  document.getElementById('fmt-json').classList.toggle('active', fmt === 'json');
+}
+
+// ── Fetch all data for export ─────────────────────────────────
+async function fetchAllData(selected) {
+  const out = {};
+  const setProgress = (i, label) => {
+    const pct = Math.round((i / selected.length) * 100);
+    document.getElementById('export-progress-bar').style.width = pct + '%';
+    document.getElementById('export-progress-label').textContent = label;
+  };
+
+  for (let i = 0; i < selected.length; i++) {
+    const t = selected[i];
+    setProgress(i, `Fetching ${t.label}…`);
+
+    let query = sb.from(t.table).select('*').eq('user_id', currentUser);
+    if (['assets','investments','insurance_policies','real_estate_assets'].includes(t.table)) {
+      query = query.eq('is_active', true);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: true });
+    if (error) throw new Error(`Failed to fetch ${t.table}: ${error.message}`);
+
+    // For investments, attach asset metadata for reference
+    if (t.key === 'investments') {
+      const { data: assetData } = await sb.from('assets').select('id,name,platform,asset_type').eq('user_id', currentUser);
+      const assetMap = Object.fromEntries((assetData||[]).map(a => [a.id, a]));
+      out[t.key] = (data || []).map(row => ({
+        ...row,
+        _asset_name:     assetMap[row.asset_id]?.name     || assetMap[row.asset_id]?.platform || '',
+        _asset_platform: assetMap[row.asset_id]?.platform || '',
+        _asset_type:     assetMap[row.asset_id]?.asset_type || '',
+      }));
+    } else {
+      out[t.key] = data || [];
+    }
+  }
+  setProgress(selected.length, 'Done');
+  return out;
+}
+
+// ── Export ────────────────────────────────────────────────────
+async function doExport() {
+  const selected = getSelectedTables();
+  if (!selected.length) { showToast('Select at least one table to export', 'error'); return; }
+
+  setLoading('export-btn', true, 'Exporting…');
+  document.getElementById('export-progress-wrap').style.display = 'block';
+
+  try {
+    const allData = await fetchAllData(selected);
+    const timestamp = new Date().toISOString().slice(0,19).replace(/[T:]/g,'-');
+    const filename = `WealthGuard_Backup_${timestamp}`;
+
+    if (exportFormat === 'excel') {
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: README
+      const readmeData = [
+        ['WealthGuard Data Backup'],
+        [`Exported: ${new Date().toLocaleString()}`],
+        [`User: ${currentProfile?.full_name || currentProfile?.email || ''}`],
+        [''],
+        ['HOW TO RESTORE:'],
+        ['1. Go to WealthGuard → Backup & Restore → Restore from Backup'],
+        ['2. Upload this file'],
+        ['3. Select tables to restore and click Restore'],
+        [''],
+        ['IMPORTANT NOTES:'],
+        ['- UUIDs (id columns) are stripped — new ones are generated on import'],
+        ['- For investments, _asset_name and _asset_platform columns are used to match accounts'],
+        ['- Do NOT modify column headers'],
+        [''],
+        ['TABLE SUMMARY:'],
+        ...selected.map(t => [`${t.label}`, `${(allData[t.key]||[]).length} records`]),
+      ];
+      const wsR = XLSX.utils.aoa_to_sheet(readmeData);
+      wsR['!cols'] = [{ wch: 40 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, wsR, 'README');
+
+      // One sheet per table
+      selected.forEach(t => {
+        const rows = allData[t.key] || [];
+        if (!rows.length) return;
+
+        // Build headers: export cols + extra reference cols for investments
+        const headers = [...t.cols];
+        if (t.extraExportCols) headers.push(...t.extraExportCols);
+
+        const wsData = [
+          headers,
+          ...rows.map(row => headers.map(col => {
+            const v = row[col];
+            if (v === null || v === undefined) return '';
+            if (Array.isArray(v)) return v.join(', ');  // tags array
+            return v;
+          })),
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        // Style header row width
+        ws['!cols'] = headers.map(() => ({ wch: 20 }));
+        XLSX.utils.book_append_sheet(wb, ws, t.label.replace(/[^\w\s]/g,'').trim().slice(0,30));
+      });
+
+      XLSX.writeFile(wb, `${filename}.xlsx`);
+      showToast('Excel backup downloaded!', 'success');
+
+    } else {
+      // JSON export
+      const exportObj = {
+        wealthguard_backup: true,
+        version: '1.0',
+        exported_at: new Date().toISOString(),
+        user: {
+          name: currentProfile?.full_name,
+          email: currentProfile?.email,
+        },
+        tables: {},
+      };
+      selected.forEach(t => {
+        exportObj.tables[t.key] = allData[t.key] || [];
+      });
+
+      const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${filename}.json`; a.click();
+      URL.revokeObjectURL(url);
+      showToast('JSON backup downloaded!', 'success');
+    }
+  } catch(e) {
+    showToast('Export failed: ' + e.message, 'error');
+    console.error(e);
+  } finally {
+    setLoading('export-btn', false, '⬇ Download Backup');
+    document.getElementById('export-progress-wrap').style.display = 'none';
+  }
+}
+
+// ── Preview ───────────────────────────────────────────────────
+async function previewExport() {
+  const selected = getSelectedTables();
+  if (!selected.length) { showToast('Select tables first', 'error'); return; }
+
+  const first = selected[0];
+  const { data } = await sb.from(first.table).select('*').eq('user_id', currentUser).limit(5);
+  if (!data?.length) { showToast('No data to preview', 'info'); return; }
+
+  const headers = first.cols;
+  const rows = data.slice(0, 5);
+
+  const thStyle = 'padding:0.5rem 0.75rem;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);background:var(--bg-surface);border-bottom:1px solid var(--border);white-space:nowrap';
+  const tdStyle = 'padding:0.5rem 0.75rem;font-size:0.78rem;color:var(--text-secondary);border-bottom:1px solid rgba(255,255,255,0.04);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis';
+
+  document.getElementById('preview-title').textContent = `Preview: ${first.label} (first 5 rows)`;
+  document.getElementById('preview-content').innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>${headers.map(h => `<th style="${thStyle}">${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(row => `<tr>${headers.map(h => `<td style="${tdStyle}">${row[h] ?? '—'}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>`;
+  document.getElementById('export-preview').style.display = 'block';
+}
+
+// ── Restore: handle file upload ───────────────────────────────
+async function handleRestoreFile(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  document.getElementById('restore-file-icon').textContent = ext === 'xlsx' ? '📊' : '📋';
+  document.getElementById('restore-file-name').textContent = file.name;
+  document.getElementById('restore-file-meta').textContent = `${(file.size/1024).toFixed(1)} KB · ${ext.toUpperCase()} format`;
+  document.getElementById('restore-file-info').style.display = 'block';
+
+  parsedBackup = null;
+  const logWrap = document.getElementById('restore-log-wrap');
+  const logEl   = document.getElementById('restore-log');
+  logWrap.style.display = 'block';
+  logEl.innerHTML = '';
+
+  function log(msg, cls = 'log-info') {
+    logEl.innerHTML += `<div class="${cls}">${msg}</div>`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  try {
+    if (ext === 'json') {
+      const text = await file.text();
+      const obj = JSON.parse(text);
+      if (!obj.wealthguard_backup) throw new Error('Not a WealthGuard backup file (missing wealthguard_backup flag)');
+      parsedBackup = obj.tables;
+      log(`✓ JSON backup parsed — exported ${obj.exported_at ? new Date(obj.exported_at).toLocaleString() : 'unknown date'}`, 'log-ok');
+    } else {
+      const buf = await file.arrayBuffer();
+      const wb  = XLSX.read(buf, { type: 'array' });
+      parsedBackup = {};
+      TABLES.forEach(t => {
+        const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes(t.key) || n.toLowerCase().includes(t.table.replace('_policies','').replace('real_estate_','').replace('_assets','')));
+        if (!sheetName) { log(`  ⚠ Sheet for "${t.label}" not found — skipping`, 'log-warn'); return; }
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
+        parsedBackup[t.key] = rows;
+        log(`✓ Sheet "${sheetName}" — ${rows.length} rows`, 'log-ok');
+      });
+    }
+
+    // Render restore checklist
+    const available = TABLES.filter(t => parsedBackup[t.key]?.length > 0);
+    if (!available.length) { log('⚠ No restorable data found in this file', 'log-warn'); return; }
+
+    document.getElementById('restore-checklist').innerHTML = available.map(t => `
+      <label class="table-check-item checked" id="rchk-wrap-${t.key}">
+        <input type="checkbox" id="rchk-${t.key}" checked onchange="this.closest('.table-check-item').classList.toggle('checked',this.checked)">
+        <span class="table-check-label">${t.label} (${parsedBackup[t.key].length} rows)</span>
+      </label>`).join('');
+
+    document.getElementById('restore-tables-section').style.display = 'block';
+    log(`\nReady to restore. Select tables and click Restore.`, 'log-info');
+
+  } catch(e) {
+    log(`✕ Parse error: ${e.message}`, 'log-err');
+    showToast('Could not read backup file: ' + e.message, 'error');
+  }
+}
+
+function clearRestoreFile() {
+  document.getElementById('restore-file').value = '';
+  document.getElementById('restore-file-info').style.display = 'none';
+  document.getElementById('restore-tables-section').style.display = 'none';
+  document.getElementById('restore-log-wrap').style.display = 'none';
+  parsedBackup = null;
+}
+
+// ── Restore: do the import ────────────────────────────────────
+async function doRestore() {
+  if (!parsedBackup) { showToast('Load a backup file first', 'error'); return; }
+
+  const mode = document.querySelector('input[name="import-mode"]:checked')?.value || 'skip';
+  const selected = TABLES.filter(t => document.getElementById(`rchk-${t.key}`)?.checked && parsedBackup[t.key]?.length > 0);
+  if (!selected.length) { showToast('Select at least one table to restore', 'error'); return; }
+
+  setLoading('restore-btn', true, 'Restoring…');
+  document.getElementById('restore-progress-wrap').style.display = 'block';
+
+  const logEl = document.getElementById('restore-log');
+  document.getElementById('restore-log-wrap').style.display = 'block';
+
+  function log(msg, cls = 'log-info') {
+    logEl.innerHTML += `<div class="${cls}">${msg}</div>`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  log('\n── Starting restore ──────────────────────', 'log-info');
+
+  let totalInserted = 0, totalSkipped = 0, totalErrors = 0;
+
+  try {
+    // Step 1: restore assets first (investments need their IDs)
+    const assetKeyMap = {};  // old _asset_name+_asset_platform → new asset id
+
+    for (let ti = 0; ti < selected.length; ti++) {
+      const t = selected[ti];
+      const rows = parsedBackup[t.key] || [];
+      const pct  = Math.round((ti / selected.length) * 100);
+      document.getElementById('restore-progress-bar').style.width = pct + '%';
+      document.getElementById('restore-progress-label').textContent = `Restoring ${t.label}…`;
+      log(`\n▶ ${t.label} (${rows.length} rows)`, 'log-info');
+
+      let ins = 0, skip = 0, err = 0;
+
+      if (t.key === 'assets') {
+        // Restore assets and build a map from (name|platform) → new id
+        const { data: existing } = await sb.from('assets').select('id,name,platform').eq('user_id', currentUser);
+        const existingSet = new Set((existing||[]).map(a => `${(a.name||a.platform).toLowerCase()}`));
+
+        for (const row of rows) {
+          const key = (row.name || row.platform || '').toLowerCase();
+          if (mode === 'skip' && existingSet.has(key)) { skip++; continue; }
+
+          const payload = {};
+          t.cols.forEach(col => { if (row[col] !== undefined && row[col] !== '') payload[col] = row[col] === 'true' ? true : row[col] === 'false' ? false : row[col]; });
+          payload.user_id = currentUser;
+
+          const { data: newRow, error } = await sb.from('assets').insert(payload).select('id,name,platform').single();
+          if (error) { log(`  ✕ ${row.name || row.platform}: ${error.message}`, 'log-err'); err++; }
+          else {
+            assetKeyMap[`${(newRow.name || newRow.platform).toLowerCase()}`] = newRow.id;
+            ins++;
+          }
+        }
+      } else if (t.key === 'investments') {
+        // Get current assets to map names to IDs
+        const { data: assets } = await sb.from('assets').select('id,name,platform').eq('user_id', currentUser);
+        const aMap = {};
+        (assets||[]).forEach(a => { aMap[`${(a.name||a.platform).toLowerCase()}`] = a.id; });
+        // Also include newly created assets from this restore
+        Object.assign(aMap, assetKeyMap);
+
+        const { data: existing } = await sb.from('investments').select('name,asset_id').eq('user_id', currentUser);
+        const existingSet = new Set((existing||[]).map(e => `${e.name}|${e.asset_id}`));
+
+        for (const row of rows) {
+          // Resolve asset_id
+          const refKey = (row._asset_name || row._asset_platform || '').toLowerCase();
+          const resolvedAssetId = aMap[refKey] || null;
+
+          if (mode === 'skip') {
+            const dupKey = `${row.name}|${resolvedAssetId}`;
+            if (existingSet.has(dupKey)) { skip++; continue; }
+          }
+
+          const payload = {};
+          t.cols.forEach(col => { if (row[col] !== undefined && row[col] !== '') payload[col] = row[col] === 'true' ? true : row[col] === 'false' ? false : row[col]; });
+          payload.user_id = currentUser;
+          if (resolvedAssetId) payload.asset_id = resolvedAssetId;
+
+          const { error } = await sb.from('investments').insert(payload);
+          if (error) { log(`  ✕ ${row.name}: ${error.message}`, 'log-err'); err++; }
+          else ins++;
+        }
+      } else {
+        // Generic restore for other tables
+        for (const row of rows) {
+          const payload = {};
+          t.cols.forEach(col => { if (row[col] !== undefined && row[col] !== '') payload[col] = row[col] === 'true' ? true : row[col] === 'false' ? false : row[col]; });
+          payload.user_id = currentUser;
+
+          const { error } = await sb.from(t.table).insert(payload);
+          if (error) { log(`  ✕ ${row[t.cols[0]] || '?'}: ${error.message}`, 'log-err'); err++; }
+          else ins++;
+        }
+      }
+
+      log(`  ✓ Inserted: ${ins}  Skipped: ${skip}  Errors: ${err}`, ins > 0 ? 'log-ok' : 'log-warn');
+      totalInserted += ins; totalSkipped += skip; totalErrors += err;
+    }
+
+    document.getElementById('restore-progress-bar').style.width = '100%';
+    document.getElementById('restore-progress-label').textContent = 'Done';
+
+    log(`\n── Restore complete ──────────────────────`, 'log-ok');
+    log(`   Inserted: ${totalInserted}  Skipped: ${totalSkipped}  Errors: ${totalErrors}`, totalErrors > 0 ? 'log-warn' : 'log-ok');
+
+    showToast(`Restore complete — ${totalInserted} records added`, 'success');
+    await loadSummary();
+
+  } catch(e) {
+    log(`\n✕ Restore aborted: ${e.message}`, 'log-err');
+    showToast('Restore failed: ' + e.message, 'error');
+    console.error(e);
+  } finally {
+    setLoading('restore-btn', false, '⬆ Restore Selected Tables');
+  }
+}
+
+// ── Drag and drop for restore ─────────────────────────────────
+const dz = document.getElementById('restore-drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleRestoreFile(file);
+});
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar()   { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+init();
+</script>
+</body>
+</html>

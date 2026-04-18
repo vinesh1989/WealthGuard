@@ -159,6 +159,32 @@
     .approval-row:last-child { border-bottom:none; }
     .approval-avatar { width:32px; height:32px; border-radius:50%; background:rgba(251,191,36,0.1); color:#fbbf24; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.85rem; flex-shrink:0; }
 
+    /* Chart tabs */
+    .chart-tab-btn {
+      background: none; border: none; color: var(--text-muted); font-family: var(--font-body);
+      font-weight: 600; cursor: pointer; border-radius: calc(var(--radius-md) - 3px);
+      transition: all 0.15s;
+    }
+    .chart-tab-btn:hover { color: var(--text-secondary); }
+    .chart-tab-btn.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+
+    /* Matrix stacked bars */
+    .matrix-row { display: grid; grid-template-columns: 80px 1fr 70px; gap: 0.6rem; align-items: center; }
+    .matrix-label { font-size: 0.72rem; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+    .stacked-bar { display: flex; height: 20px; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,0.04); }
+    .stacked-segment { height: 100%; transition: width 0.5s cubic-bezier(.4,0,.2,1); position: relative; cursor: pointer; }
+    .stacked-segment:hover { filter: brightness(1.2); }
+    .matrix-total { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-align: right; }
+
+    /* Exposure table */
+    .exp-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .exp-table th { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); text-align: right; }
+    .exp-table th:first-child { text-align: left; }
+    .exp-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.03); font-family: var(--font-mono); text-align: right; }
+    .exp-table td:first-child { text-align: left; font-family: var(--font-body); font-weight: 600; color: var(--text-primary); }
+    .exp-table tr:last-child td { border-bottom: none; font-weight: 700; color: var(--text-primary); background: rgba(255,255,255,0.02); }
+    .exp-cur-header { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); padding: 0.75rem 0.75rem 0.35rem; border-bottom: 1px solid rgba(212,175,55,0.15); }
+
     /* ── Currency switcher ───────────────────────── */
     .currency-switcher {
       display: flex;
@@ -260,6 +286,7 @@
 
       <span class="nav-section-label">Account</span>
       <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="backup.html" class="nav-item"><span class="nav-icon">💾</span> Backup &amp; Restore</a>
       <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
 
       <!-- Admin section — shown only for admin role -->
@@ -401,26 +428,57 @@
         </div>
       </div>
 
-      <!-- Charts + Performers Row -->
-      <div class="grid-2" style="margin-bottom: 1.5rem; align-items: start;">
-        <!-- Allocation Chart -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Asset Allocation</div>
-            <span class="badge badge-muted" id="alloc-total-badge">—</span>
-          </div>
+      <!-- Exposure Analytics -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <div class="card-title">Portfolio Exposure</div>
+          <span class="badge badge-muted" id="alloc-total-badge">—</span>
+        </div>
+
+        <!-- Chart tabs -->
+        <div style="display:flex;gap:0.25rem;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:3px;width:fit-content;margin-bottom:1.25rem">
+          <button class="chart-tab-btn active" id="ctab-class"   onclick="switchChartTab('class')"   style="padding:0.35rem 0.9rem;font-size:0.78rem">By Class</button>
+          <button class="chart-tab-btn"         id="ctab-cur"     onclick="switchChartTab('cur')"     style="padding:0.35rem 0.9rem;font-size:0.78rem">By Currency</button>
+          <button class="chart-tab-btn"         id="ctab-matrix" onclick="switchChartTab('matrix')" style="padding:0.35rem 0.9rem;font-size:0.78rem">Currency × Class</button>
+        </div>
+
+        <!-- Tab: By Asset Class (donut) -->
+        <div id="ctab-content-class">
           <div class="pie-chart-wrap" id="pie-wrap">
-            <canvas id="allocChart" width="160" height="160" style="max-width:160px; max-height:160px;"></canvas>
-            <div class="legend-list" id="alloc-legend">
-              <div class="skeleton" style="height: 16px; width: 80%;"></div>
-              <div class="skeleton" style="height: 16px; width: 60%;"></div>
-              <div class="skeleton" style="height: 16px; width: 70%;"></div>
-            </div>
+            <canvas id="allocChart" width="160" height="160" style="max-width:160px;max-height:160px"></canvas>
+            <div class="legend-list" id="alloc-legend"></div>
           </div>
         </div>
 
+        <!-- Tab: By Currency (donut) -->
+        <div id="ctab-content-cur" style="display:none">
+          <div class="pie-chart-wrap">
+            <canvas id="curChart" width="160" height="160" style="max-width:160px;max-height:160px"></canvas>
+            <div class="legend-list" id="cur-legend"></div>
+          </div>
+        </div>
+
+        <!-- Tab: Currency × Class (stacked bars) -->
+        <div id="ctab-content-matrix" style="display:none">
+          <div id="matrix-bars" style="display:flex;flex-direction:column;gap:0.75rem"></div>
+        </div>
+      </div>
+
+      <!-- Currency Exposure Detail -->
+      <div class="card" style="margin-bottom:1.5rem" id="exposure-detail-card">
+        <div class="card-header">
+          <div class="card-title">Exposure Detail</div>
+          <div style="font-size:0.75rem;color:var(--text-muted)">By currency and asset class</div>
+        </div>
+        <div id="exposure-table-wrap" style="overflow-x:auto"></div>
+      </div>
+
+      <!-- Performers Row -->
+      <div class="grid-2" style="margin-bottom: 1.5rem; align-items: start;">
+        <!-- placeholder left empty — performers fills both cols now -->
+        <div style="display:none"></div>
         <!-- Top / Worst Performers -->
-        <div class="card">
+        <div class="card" style="grid-column:1/-1">
           <div class="card-header">
             <div class="card-title">Performance Highlights</div>
           </div>
@@ -499,12 +557,15 @@ const ASSET_COLORS = Object.fromEntries(ASSET_CLASSES.map(c => [c.id, c.color]))
 const CLASS_MAP    = Object.fromEntries(ASSET_CLASSES.map(c => [c.id, c]));
 
 // ── Global state ─────────────────────────────────────────────
-let chartInstance   = null;
-let _rates          = [];
-let _currencyMap    = {};  // { INR: {invested, current}, AED: {...}, ... }
-let _assetClassMap  = {};  // { Equity: { INR: val, USD: val }, ... }
-let _allInvestments = [];
-let _displayCurrency = '';  // '' = no conversion (show native); or 'INR'/'AED'/'USD' etc.
+let chartInstance    = null;
+let curChartInstance = null;
+let _rates           = [];
+let _currencyMap     = {};  // { INR: {invested, current}, AED: {...}, ... }
+let _assetClassMap   = {};  // { Equity: { INR: val, USD: val }, ... }
+let _matrix          = {};  // { INR: { Equity:{invested,current}, Cash:{...} }, ... }
+let _allInvestments  = [];
+let _displayCurrency = '';  // '' = no conversion; or 'INR'/'AED'/'USD' etc.
+let _activeChartTab  = 'class';
 
 const CUR_FLAGS   = { INR:'🇮🇳', USD:'🇺🇸', AED:'🇦🇪', EUR:'🇪🇺', GBP:'🇬🇧' };
 const CUR_SYMBOLS = { INR:'₹',   USD:'$',   AED:'AED ', EUR:'€', GBP:'£' };
@@ -558,69 +619,92 @@ async function loadDashboard(userId) {
   _rates = await ExchangeRates.getAll();
 
   const [
-    { data: summary },
     { data: perf },
-    { data: allInvestments },
+    { data: allInvestmentsRaw },
     { data: assets },
     { data: goals }
   ] = await Promise.all([
-    Investments.getPortfolioSummary(userId),
     Investments.getPerformance(userId),
     Investments.getAll(userId),
     Assets.getAll(userId),
     Goals.getAll(userId),
   ]);
 
-  _allInvestments = allInvestments || [];
+  // ── Deduplicate: same asset account + same name → combine ──
+  // Key: assetId|name|currency
+  const deduped = {};
+  (allInvestmentsRaw || []).forEach(inv => {
+    const key = `${inv.asset_id}|${inv.name.trim().toLowerCase()}|${inv.currency}`;
+    if (!deduped[key]) {
+      deduped[key] = { ...inv,
+        amount_invested: parseFloat(inv.amount_invested) || 0,
+        current_value:   parseFloat(inv.current_value)   || 0,
+      };
+    } else {
+      deduped[key].amount_invested += parseFloat(inv.amount_invested) || 0;
+      deduped[key].current_value   += parseFloat(inv.current_value)   || 0;
+      // Keep most recent date
+      if (inv.date && (!deduped[key].date || inv.date > deduped[key].date))
+        deduped[key].date = inv.date;
+    }
+  });
+  _allInvestments = Object.values(deduped);
 
-  // Build raw currency map — keep original amounts per currency
-  _currencyMap = {};
+  // ── Build 3-level data structure ──────────────────────────
+  // _currencyMap:  { INR: {invested, current}, AED: {...}, ... }
+  // _assetClassMap: { Equity: { INR: val, ... }, ... }
+  // _matrix:       { INR: { Equity: {invested,current}, Cash: {...} }, AED: {...}, ... }
+  _currencyMap   = {};
   _assetClassMap = {};
+  _matrix        = {};
 
-  (_allInvestments).forEach(inv => {
-    const cur  = inv.currency;
-    const ac   = inv.assets?.asset_type || 'Other';
-    const inv_ = parseFloat(inv.amount_invested) || 0;
-    const cur_ = parseFloat(inv.current_value)   || 0;
+  _allInvestments.forEach(inv => {
+    const cur = inv.currency;
+    const ac  = inv.assets?.asset_type || 'Other';
+    const ii  = parseFloat(inv.amount_invested) || 0;
+    const cv  = parseFloat(inv.current_value)   || 0;
 
-    // Per currency totals
+    // Currency totals
     if (!_currencyMap[cur]) _currencyMap[cur] = { invested: 0, current: 0 };
-    _currencyMap[cur].invested += inv_;
-    _currencyMap[cur].current  += cur_;
+    _currencyMap[cur].invested += ii;
+    _currencyMap[cur].current  += cv;
 
-    // Per asset class (store in original currency keyed by class then currency)
+    // Asset class × currency
     if (!_assetClassMap[ac]) _assetClassMap[ac] = {};
     if (!_assetClassMap[ac][cur]) _assetClassMap[ac][cur] = 0;
-    _assetClassMap[ac][cur] += cur_;
+    _assetClassMap[ac][cur] += cv;
+
+    // Full matrix: currency → class → {invested, current}
+    if (!_matrix[cur]) _matrix[cur] = {};
+    if (!_matrix[cur][ac]) _matrix[cur][ac] = { invested: 0, current: 0 };
+    _matrix[cur][ac].invested += ii;
+    _matrix[cur][ac].current  += cv;
   });
 
-  // Static fields that don't change with currency
-  document.getElementById('stat-assets').textContent  = (assets || []).length;
-  document.getElementById('stat-goals').textContent   = (goals  || []).filter(g => !g.is_achieved).length;
-  // invest-count exists in converted hero; invest-count-native in native hero — update both
-  const invCountStr = `${_allInvestments.length} investment${_allInvestments.length !== 1 ? 's' : ''}`;
-  const icEl = document.getElementById('invest-count');
-  if (icEl) icEl.textContent = invCountStr;
-  const icNEl = document.getElementById('invest-count-native');
-  if (icNEl) icNEl.textContent = invCountStr;
+  // Static fields
+  document.getElementById('stat-assets').textContent = (assets || []).length;
+  document.getElementById('stat-goals').textContent  = (goals  || []).filter(g => !g.is_achieved).length;
+  const invCountStr = `${_allInvestments.length} position${_allInvestments.length !== 1 ? 's' : ''}`;
+  ['invest-count', 'invest-count-native'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = invCountStr;
+  });
 
-  // Performers (always show % return — currency-independent)
+  // Performers
   if (perf && perf.length > 0) {
     const top   = perf[0];
     const worst = perf[perf.length - 1];
-    document.getElementById('top-name').textContent     = top.name;
-    document.getElementById('top-platform').textContent = `${CLASS_MAP[top.asset_type]?.icon || ''} ${top.asset_type} · ${top.platform}`;
-    document.getElementById('top-return').textContent   = formatPercent(top.return_pct);
+    document.getElementById('top-name').textContent       = top.name;
+    document.getElementById('top-platform').textContent   = `${CLASS_MAP[top.asset_type]?.icon || ''} ${top.asset_type} · ${top.platform}`;
+    document.getElementById('top-return').textContent     = formatPercent(top.return_pct);
     document.getElementById('worst-name').textContent     = worst.name;
     document.getElementById('worst-platform').textContent = `${CLASS_MAP[worst.asset_type]?.icon || ''} ${worst.asset_type} · ${worst.platform}`;
     document.getElementById('worst-return').textContent   = formatPercent(worst.return_pct);
   }
 
-  // Recent investments (show in each investment's own currency)
   renderRecentInvestments();
-
-  // Render all currency-dependent views
   renderCurrencyView(_displayCurrency);
+  renderExposureDetail();
 }
 
 // ── Main render: called on load and whenever currency pill changes ──
@@ -728,6 +812,11 @@ function renderCurrencyView(dispCur) {
 
   // Currency breakdown cards always render (native amounts + conversion if applicable)
   renderCurrencyBreakdown(dispCur);
+
+  // Refresh exposure detail table and active chart tab
+  renderExposureDetail();
+  if (_activeChartTab === 'cur')    renderCurrencyChart();
+  if (_activeChartTab === 'matrix') renderMatrixBars();
 }
 
 // ── Currency switcher ─────────────────────────────────────────
@@ -883,6 +972,179 @@ function renderAllocationChart(assetTypeMap, dispCur) {
 
 function getAssetEmoji(type) {
   return CLASS_MAP[type]?.icon || '💼';
+}
+
+// ── Chart tab switcher ────────────────────────────────────────
+function switchChartTab(tab) {
+  _activeChartTab = tab;
+  ['class','cur','matrix'].forEach(t => {
+    document.getElementById(`ctab-content-${t}`).style.display = t === tab ? 'block' : 'none';
+    document.getElementById(`ctab-${t}`).classList.toggle('active', t === tab);
+  });
+  if (tab === 'cur')     renderCurrencyChart();
+  if (tab === 'matrix')  renderMatrixBars();
+}
+
+// ── Currency donut chart ──────────────────────────────────────
+function renderCurrencyChart() {
+  const dispCur = _displayCurrency;
+
+  // Build per-currency totals (convert if display currency set)
+  const curData = Object.entries(_currencyMap).map(([cur, v]) => {
+    const val = dispCur
+      ? ExchangeRates.convert(v.current, cur, dispCur, _rates)
+      : v.current;
+    return { label: cur, value: val, flag: CUR_FLAGS[cur] || '🌐' };
+  }).filter(d => d.value > 0);
+
+  const total  = curData.reduce((s, d) => s + d.value, 0);
+  const colors = ['#60a5fa','#34d399','#fbbf24','#f97316','#a78bfa','#f87171'];
+
+  if (curChartInstance) curChartInstance.destroy();
+  const ctx = document.getElementById('curChart').getContext('2d');
+  curChartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: curData.map(d => d.label),
+      datasets: [{ data: curData.map(d => d.value), backgroundColor: colors, borderColor: '#161c2a', borderWidth: 3, hoverOffset: 8 }]
+    },
+    options: {
+      responsive: false, cutout: '72%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${((ctx.raw/total)*100).toFixed(1)}%  ${dispCur ? formatCompact(ctx.raw, dispCur) : ''}` } }
+      }
+    }
+  });
+
+  const dispLabel = dispCur || (Object.keys(_currencyMap).join(' + '));
+  document.getElementById('cur-legend').innerHTML = curData.map((d, i) => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${colors[i % colors.length]}"></div>
+      <span class="legend-label">${d.flag} ${d.label}</span>
+      <span class="legend-value">${total > 0 ? ((d.value/total)*100).toFixed(1) : 0}%</span>
+    </div>`).join('');
+}
+
+// ── Currency × Class stacked bars ────────────────────────────
+function renderMatrixBars() {
+  const dispCur = _displayCurrency;
+  const el = document.getElementById('matrix-bars');
+
+  const currencies = Object.keys(_matrix);
+  if (!currencies.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:1rem">No data yet</div>';
+    return;
+  }
+
+  // Row per currency — bar segments per asset class
+  el.innerHTML = currencies.map(cur => {
+    const classes = _matrix[cur];
+    // Total for this currency in display currency
+    const rowTotal = Object.entries(classes).reduce((s, [ac, v]) => {
+      return s + (dispCur ? ExchangeRates.convert(v.current, cur, dispCur, _rates) : v.current);
+    }, 0);
+
+    const segments = ASSET_CLASSES.filter(ac => classes[ac.id]?.current > 0).map(ac => {
+      const raw = dispCur
+        ? ExchangeRates.convert(classes[ac.id].current, cur, dispCur, _rates)
+        : classes[ac.id].current;
+      const pct = rowTotal > 0 ? (raw / rowTotal * 100) : 0;
+      return { ...ac, raw, pct };
+    });
+
+    const flag = CUR_FLAGS[cur] || '🌐';
+    const displayTotal = dispCur
+      ? formatCompact(rowTotal, dispCur)
+      : formatCompact(rowTotal, cur);
+
+    return `<div class="matrix-row">
+      <div class="matrix-label">${flag} ${cur}</div>
+      <div class="stacked-bar">
+        ${segments.map(s => `
+          <div class="stacked-segment" style="width:${s.pct}%;background:${s.color}"
+               title="${s.label}: ${s.pct.toFixed(1)}%  ${dispCur ? formatCompact(s.raw, dispCur) : formatCompact(s.raw, cur)}">
+          </div>`).join('')}
+      </div>
+      <div class="matrix-total">${displayTotal}</div>
+    </div>
+    <div style="display:flex;gap:0.35rem;flex-wrap:wrap;margin-left:80px;margin-bottom:0.35rem">
+      ${segments.map(s => `
+        <span style="font-size:0.65rem;color:${s.color};display:flex;align-items:center;gap:0.25rem">
+          <span style="width:6px;height:6px;border-radius:50%;background:${s.color};display:inline-block"></span>
+          ${s.label} ${s.pct.toFixed(0)}%
+        </span>`).join('')}
+    </div>`;
+  }).join('');
+
+  // Matrix legend (asset classes)
+  const matrixLegend = `<div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border)">
+    ${ASSET_CLASSES.map(c => `
+      <span style="font-size:0.7rem;color:${c.color};display:flex;align-items:center;gap:0.3rem">
+        <span style="width:10px;height:4px;border-radius:2px;background:${c.color};display:inline-block"></span>
+        ${c.label}
+      </span>`).join('')}
+  </div>`;
+  el.innerHTML += matrixLegend;
+}
+
+// ── Exposure detail table ─────────────────────────────────────
+function renderExposureDetail() {
+  const wrap = document.getElementById('exposure-table-wrap');
+  if (!wrap) return;
+  const dispCur = _displayCurrency;
+
+  const currencies = Object.keys(_matrix);
+  if (!currencies.length) { wrap.innerHTML = '<div style="padding:1rem;color:var(--text-muted);font-size:0.85rem">No investments yet</div>'; return; }
+
+  // Used asset classes across all currencies
+  const usedClasses = ASSET_CLASSES.filter(ac =>
+    currencies.some(cur => _matrix[cur]?.[ac.id]?.current > 0)
+  );
+
+  let html = `<table class="exp-table">
+    <thead><tr>
+      <th>Asset Class</th>
+      ${currencies.map(cur => `<th>${CUR_FLAGS[cur]||''} ${cur} (current)</th>`).join('')}
+      ${dispCur ? `<th>≈ ${dispCur} total</th>` : '<th>% of class</th>'}
+    </tr></thead>
+    <tbody>`;
+
+  // Row per asset class
+  usedClasses.forEach(ac => {
+    const rowVals = currencies.map(cur => _matrix[cur]?.[ac.id]?.current || 0);
+    const rowConv = currencies.map((cur, i) =>
+      dispCur ? ExchangeRates.convert(rowVals[i], cur, dispCur, _rates) : rowVals[i]
+    );
+    const rowTotal = rowConv.reduce((s, v) => s + v, 0);
+    const grandTotal = currencies.reduce((s, cur) =>
+      s + (dispCur
+        ? ExchangeRates.convert(_currencyMap[cur]?.current || 0, cur, dispCur, _rates)
+        : _currencyMap[cur]?.current || 0), 0);
+    const pct = grandTotal > 0 ? (rowTotal / grandTotal * 100) : 0;
+
+    html += `<tr>
+      <td><span style="color:${ac.color}">${ac.icon}</span> ${ac.label}</td>
+      ${currencies.map((cur, i) => `<td style="color:${rowVals[i]>0?'var(--text-primary)':'var(--text-muted)'}">${
+        rowVals[i] > 0 ? formatCompact(rowVals[i], cur) : '—'
+      }</td>`).join('')}
+      <td>${dispCur ? formatCompact(rowTotal, dispCur) : pct.toFixed(1) + '%'}</td>
+    </tr>`;
+  });
+
+  // Totals row
+  const colTotals = currencies.map(cur =>
+    dispCur ? ExchangeRates.convert(_currencyMap[cur]?.current || 0, cur, dispCur, _rates) : (_currencyMap[cur]?.current || 0)
+  );
+  const grandTot = colTotals.reduce((s, v) => s + v, 0);
+
+  html += `<tr>
+    <td>Total</td>
+    ${currencies.map((cur, i) => `<td>${formatCompact(colTotals[i], dispCur || cur)}</td>`).join('')}
+    <td style="color:var(--gold)">${dispCur ? formatCompact(grandTot, dispCur) : '100%'}</td>
+  </tr></tbody></table>`;
+
+  wrap.innerHTML = html;
 }
 
 // Admin dashboard stats
