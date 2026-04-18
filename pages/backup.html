@@ -180,9 +180,40 @@
             </div>
           </div>
 
+          <!-- Admin-only: user selector (hidden for investors) -->
+          <div id="admin-export-section" style="display:none">
+            <div style="background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.2);border-radius:var(--radius-md);padding:0.85rem 1rem;margin-bottom:1.1rem;font-size:0.82rem;color:var(--text-secondary);line-height:1.6">
+              🔧 <strong style="color:var(--gold)">Admin Mode</strong> — you can export your own data or all users' data. Multi-user exports include one sheet group per user in the Excel file.
+            </div>
+            <div class="form-group">
+              <label class="form-label">Export Scope</label>
+              <div style="display:flex;flex-direction:column;gap:0.5rem" id="export-scope-radios">
+                <label class="form-check">
+                  <input type="radio" name="export-scope" value="self" checked onchange="onScopeChange(this.value)">
+                  <div class="form-check-label"><strong>My data only</strong> — export only your own investment data</div>
+                </label>
+                <label class="form-check">
+                  <input type="radio" name="export-scope" value="user" onchange="onScopeChange(this.value)">
+                  <div class="form-check-label"><strong>Specific user</strong> — export one investor's data</div>
+                </label>
+                <label class="form-check">
+                  <input type="radio" name="export-scope" value="all" onchange="onScopeChange(this.value)">
+                  <div class="form-check-label"><strong>All users</strong> — full platform export (all investors' data combined)</div>
+                </label>
+              </div>
+            </div>
+            <!-- Single user selector (shown when scope = 'user') -->
+            <div id="user-selector-wrap" style="display:none" class="form-group">
+              <label class="form-label">Select User</label>
+              <select id="export-user-select" class="form-control">
+                <option value="">Loading users…</option>
+              </select>
+            </div>
+          </div>
+
           <div class="info-box">
-            <strong>ℹ Excel format:</strong> One sheet per table. Column headers match the database schema exactly — making it easy to review and re-import. UUIDs are stripped; they will be re-generated on import.<br>
-            <strong>JSON format:</strong> Complete structured export including all fields. Ideal for automated restore. Can also be imported back with the restore tool below.
+            <strong>ℹ Excel format:</strong> One sheet per table (per user for admin exports). Column headers match the database schema exactly — easy to review and re-import. UUIDs are stripped; they will be re-generated on import.<br>
+            <strong>JSON format:</strong> Complete structured export. Ideal for automated restore.
           </div>
 
           <!-- Progress bar (hidden until export starts) -->
@@ -292,6 +323,7 @@ let currentUser = null;
 let currentProfile = null;
 let exportFormat = 'excel';
 let parsedBackup = null;   // parsed data from uploaded backup file
+let allUsers = [];         // all non-admin users (admin only)
 
 // ── Table definitions ─────────────────────────────────────────
 const TABLES = [
@@ -355,24 +387,87 @@ async function init() {
   document.getElementById('user-role').textContent    = currentProfile?.role || 'investor';
 
   renderExportChecklist();
+
+  if (currentProfile?.role === 'admin') {
+    document.getElementById('admin-export-section').style.display = 'block';
+    await loadAllUsers();
+  }
+
   await loadSummary();
+}
+
+// ── Admin: load all users ─────────────────────────────────────
+async function loadAllUsers() {
+  const { data: users } = await sb.from('profiles')
+    .select('id, full_name, email, role, access_status')
+    .order('full_name', { ascending: true });
+
+  allUsers = (users || []).filter(u => u.role !== 'admin'); // exclude other admins
+
+  const sel = document.getElementById('export-user-select');
+  sel.innerHTML = '<option value="">— Select a user —</option>' +
+    allUsers.map(u => `<option value="${u.id}">${u.full_name || u.email} (${u.email})</option>`).join('');
+  sel.addEventListener('change', () => loadSummary());
+}
+
+function onScopeChange(val) {
+  document.getElementById('user-selector-wrap').style.display = val === 'user' ? 'block' : 'none';
+  loadSummary();
+}
+
+// Get the list of user IDs to export based on current scope selection
+function getExportUserIds() {
+  const scope = document.querySelector('input[name="export-scope"]:checked')?.value || 'self';
+  if (scope === 'self' || currentProfile?.role !== 'admin') return [currentUser];
+  if (scope === 'user') {
+    const uid = document.getElementById('export-user-select')?.value;
+    if (!uid) { showToast('Select a user to export', 'error'); return null; }
+    return [uid];
+  }
+  if (scope === 'all') return allUsers.map(u => u.id);
+  return [currentUser];
 }
 
 // ── Summary stats ─────────────────────────────────────────────
 async function loadSummary() {
   try {
-    const results = await Promise.all([
-      sb.from('assets').select('id', { count: 'exact', head: true }).eq('user_id', currentUser),
-      sb.from('investments').select('id', { count: 'exact', head: true }).eq('user_id', currentUser).eq('is_active', true),
-      sb.from('insurance_policies').select('id', { count: 'exact', head: true }).eq('user_id', currentUser).eq('is_active', true),
-      sb.from('real_estate_assets').select('id', { count: 'exact', head: true }).eq('user_id', currentUser).eq('is_active', true),
-      sb.from('goals').select('id', { count: 'exact', head: true }).eq('user_id', currentUser),
-      sb.from('documents').select('id', { count: 'exact', head: true }).eq('user_id', currentUser),
+    const isAdmin = currentProfile?.role === 'admin';
+    const scope = isAdmin
+      ? (document.querySelector('input[name="export-scope"]:checked')?.value || 'self')
+      : 'self';
+
+    // Determine which user IDs to count
+    let uids;
+    if (!isAdmin || scope === 'self') {
+      uids = [currentUser];
+    } else if (scope === 'user') {
+      const uid = document.getElementById('export-user-select')?.value;
+      uids = uid ? [uid] : [currentUser];
+    } else {
+      uids = allUsers.map(u => u.id);
+    }
+
+    const counts = await Promise.all([
+      sb.from('assets').select('id', { count: 'exact', head: true }).in('user_id', uids),
+      sb.from('investments').select('id', { count: 'exact', head: true }).in('user_id', uids).eq('is_active', true),
+      sb.from('insurance_policies').select('id', { count: 'exact', head: true }).in('user_id', uids).eq('is_active', true),
+      sb.from('real_estate_assets').select('id', { count: 'exact', head: true }).in('user_id', uids).eq('is_active', true),
+      sb.from('goals').select('id', { count: 'exact', head: true }).in('user_id', uids),
+      sb.from('documents').select('id', { count: 'exact', head: true }).in('user_id', uids),
     ]);
+
     const ids = ['s-assets','s-investments','s-insurance','s-realestate','s-goals','s-documents'];
-    results.forEach(({count}, i) => {
+    counts.forEach(({count}, i) => {
       document.getElementById(ids[i]).textContent = count ?? '—';
     });
+
+    // Show scope label in summary header
+    const scopeLabel = !isAdmin ? 'Your data' :
+      scope === 'all'  ? `All ${allUsers.length} investors` :
+      scope === 'user' ? `1 investor` : 'Your data';
+    const hdr = document.querySelector('.backup-section-header div div:last-child');
+    if (hdr) hdr.textContent = `What will be included — ${scopeLabel}`;
+
   } catch(e) {
     console.warn('Summary load error:', e);
   }
@@ -410,42 +505,46 @@ function setFmt(fmt) {
 }
 
 // ── Fetch all data for export ─────────────────────────────────
-async function fetchAllData(selected) {
-  const out = {};
-  const setProgress = (i, label) => {
-    const pct = Math.round((i / selected.length) * 100);
+// Returns { userId: { tableKey: [...rows] } }
+async function fetchAllData(selected, userIds) {
+  const result = {};
+  const totalSteps = userIds.length * selected.length;
+  let step = 0;
+
+  const setProgress = (label) => {
+    step++;
+    const pct = Math.round((step / totalSteps) * 100);
     document.getElementById('export-progress-bar').style.width = pct + '%';
     document.getElementById('export-progress-label').textContent = label;
   };
 
-  for (let i = 0; i < selected.length; i++) {
-    const t = selected[i];
-    setProgress(i, `Fetching ${t.label}…`);
+  for (const uid of userIds) {
+    result[uid] = {};
+    for (const t of selected) {
+      setProgress(`Fetching ${t.label} for ${uid === currentUser ? 'you' : uid.slice(0,8)+'…'}…`);
 
-    let query = sb.from(t.table).select('*').eq('user_id', currentUser);
-    if (['assets','investments','insurance_policies','real_estate_assets'].includes(t.table)) {
-      query = query.eq('is_active', true);
-    }
+      let query = sb.from(t.table).select('*').eq('user_id', uid);
+      if (['assets','investments','insurance_policies','real_estate_assets'].includes(t.table)) {
+        query = query.eq('is_active', true);
+      }
+      const { data, error } = await query.order('created_at', { ascending: true });
+      if (error) throw new Error(`Failed to fetch ${t.table}: ${error.message}`);
 
-    const { data, error } = await query.order('created_at', { ascending: true });
-    if (error) throw new Error(`Failed to fetch ${t.table}: ${error.message}`);
-
-    // For investments, attach asset metadata for reference
-    if (t.key === 'investments') {
-      const { data: assetData } = await sb.from('assets').select('id,name,platform,asset_type').eq('user_id', currentUser);
-      const assetMap = Object.fromEntries((assetData||[]).map(a => [a.id, a]));
-      out[t.key] = (data || []).map(row => ({
-        ...row,
-        _asset_name:     assetMap[row.asset_id]?.name     || assetMap[row.asset_id]?.platform || '',
-        _asset_platform: assetMap[row.asset_id]?.platform || '',
-        _asset_type:     assetMap[row.asset_id]?.asset_type || '',
-      }));
-    } else {
-      out[t.key] = data || [];
+      if (t.key === 'investments') {
+        const { data: assetData } = await sb.from('assets').select('id,name,platform,asset_type').eq('user_id', uid);
+        const assetMap = Object.fromEntries((assetData||[]).map(a => [a.id, a]));
+        result[uid][t.key] = (data || []).map(row => ({
+          ...row,
+          _asset_name:     assetMap[row.asset_id]?.name     || assetMap[row.asset_id]?.platform || '',
+          _asset_platform: assetMap[row.asset_id]?.platform || '',
+          _asset_type:     assetMap[row.asset_id]?.asset_type || '',
+        }));
+      } else {
+        result[uid][t.key] = data || [];
+      }
     }
   }
-  setProgress(selected.length, 'Done');
-  return out;
+  return result;
 }
 
 // ── Export ────────────────────────────────────────────────────
@@ -453,67 +552,135 @@ async function doExport() {
   const selected = getSelectedTables();
   if (!selected.length) { showToast('Select at least one table to export', 'error'); return; }
 
+  const userIds = getExportUserIds();
+  if (!userIds) return; // validation failed (e.g. no user selected in admin mode)
+
   setLoading('export-btn', true, 'Exporting…');
   document.getElementById('export-progress-wrap').style.display = 'block';
 
   try {
-    const allData = await fetchAllData(selected);
+    // Fetch data for all target users
+    const allData = await fetchAllData(selected, userIds);
     const timestamp = new Date().toISOString().slice(0,19).replace(/[T:]/g,'-');
-    const filename = `WealthGuard_Backup_${timestamp}`;
+    const isMultiUser = userIds.length > 1;
+    const scopeLabel = isMultiUser ? `AllUsers_${userIds.length}` :
+      userIds[0] === currentUser ? 'MyData' :
+      (allUsers.find(u => u.id === userIds[0])?.email || 'User').split('@')[0];
+    const filename = `WealthGuard_Backup_${scopeLabel}_${timestamp}`;
+
+    // Build user info map for sheet labels
+    const userInfoMap = { [currentUser]: { name: currentProfile?.full_name || currentProfile?.email } };
+    allUsers.forEach(u => { userInfoMap[u.id] = { name: u.full_name || u.email }; });
 
     if (exportFormat === 'excel') {
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: README
+      // README sheet
       const readmeData = [
         ['WealthGuard Data Backup'],
         [`Exported: ${new Date().toLocaleString()}`],
-        [`User: ${currentProfile?.full_name || currentProfile?.email || ''}`],
+        [`Exported by: ${currentProfile?.full_name || currentProfile?.email || ''} (${currentProfile?.role})`],
+        [`Scope: ${isMultiUser ? `All ${userIds.length} investors` : 'Single user'}`],
         [''],
         ['HOW TO RESTORE:'],
         ['1. Go to WealthGuard → Backup & Restore → Restore from Backup'],
-        ['2. Upload this file'],
-        ['3. Select tables to restore and click Restore'],
+        ['2. Upload this file (each user imports their own sheet)'],
+        ['3. Select tables and click Restore'],
         [''],
         ['IMPORTANT NOTES:'],
         ['- UUIDs (id columns) are stripped — new ones are generated on import'],
         ['- For investments, _asset_name and _asset_platform columns are used to match accounts'],
         ['- Do NOT modify column headers'],
+        ['- Admin exports: each sheet is prefixed with the user name'],
         [''],
-        ['TABLE SUMMARY:'],
-        ...selected.map(t => [`${t.label}`, `${(allData[t.key]||[]).length} records`]),
+        ['USERS IN THIS EXPORT:'],
+        ...userIds.map(uid => {
+          const info = userInfoMap[uid] || { name: uid };
+          const totals = selected.map(t => `${t.label}: ${(allData[uid]?.[t.key]||[]).length}`).join(', ');
+          return [info.name, totals];
+        }),
+        [''],
+        ['TABLE SUMMARY (all users combined):'],
+        ...selected.map(t => {
+          const total = userIds.reduce((s, uid) => s + (allData[uid]?.[t.key]||[]).length, 0);
+          return [`${t.label}`, `${total} records`];
+        }),
       ];
       const wsR = XLSX.utils.aoa_to_sheet(readmeData);
-      wsR['!cols'] = [{ wch: 40 }, { wch: 20 }];
+      wsR['!cols'] = [{ wch: 45 }, { wch: 50 }];
       XLSX.utils.book_append_sheet(wb, wsR, 'README');
 
-      // One sheet per table
-      selected.forEach(t => {
-        const rows = allData[t.key] || [];
-        if (!rows.length) return;
+      // For single-user export: one sheet per table (clean, same as before)
+      // For multi-user export: one sheet per table with a _user_name column added
+      if (!isMultiUser) {
+        const uid = userIds[0];
+        selected.forEach(t => {
+          const rows = allData[uid]?.[t.key] || [];
+          if (!rows.length) return;
+          const headers = [...t.cols, ...(t.extraExportCols || [])];
+          const wsData = [
+            headers,
+            ...rows.map(row => headers.map(col => {
+              const v = row[col];
+              if (v === null || v === undefined) return '';
+              if (Array.isArray(v)) return v.join(', ');
+              return v;
+            })),
+          ];
+          const ws = XLSX.utils.aoa_to_sheet(wsData);
+          ws['!cols'] = headers.map(() => ({ wch: 20 }));
+          XLSX.utils.book_append_sheet(wb, ws, t.label.replace(/[^\w\s]/g,'').trim().slice(0,31));
+        });
+      } else {
+        // Multi-user: one sheet per table, rows from all users, prefixed with user name
+        selected.forEach(t => {
+          const headers = ['_user_name', '_user_email', ...t.cols, ...(t.extraExportCols || [])];
+          const allRows = [];
+          userIds.forEach(uid => {
+            const uInfo = userInfoMap[uid] || {};
+            const rows = allData[uid]?.[t.key] || [];
+            rows.forEach(row => {
+              allRows.push([
+                uInfo.name || uid,
+                allUsers.find(u => u.id === uid)?.email || (uid === currentUser ? currentProfile?.email : uid),
+                ...t.cols.map(col => {
+                  const v = row[col];
+                  if (v === null || v === undefined) return '';
+                  if (Array.isArray(v)) return v.join(', ');
+                  return v;
+                }),
+                ...(t.extraExportCols || []).map(col => row[col] ?? ''),
+              ]);
+            });
+          });
+          if (!allRows.length) return;
+          const wsData = [headers, ...allRows];
+          const ws = XLSX.utils.aoa_to_sheet(wsData);
+          ws['!cols'] = headers.map(() => ({ wch: 20 }));
+          XLSX.utils.book_append_sheet(wb, ws, t.label.replace(/[^\w\s]/g,'').trim().slice(0,31));
+        });
 
-        // Build headers: export cols + extra reference cols for investments
-        const headers = [...t.cols];
-        if (t.extraExportCols) headers.push(...t.extraExportCols);
-
-        const wsData = [
-          headers,
-          ...rows.map(row => headers.map(col => {
-            const v = row[col];
-            if (v === null || v === undefined) return '';
-            if (Array.isArray(v)) return v.join(', ');  // tags array
-            return v;
-          })),
+        // Extra sheet: User Summary
+        const summaryData = [
+          ['User Name', 'Email', ...selected.map(t => t.label)],
+          ...userIds.map(uid => {
+            const uInfo = userInfoMap[uid] || {};
+            return [
+              uInfo.name || uid,
+              allUsers.find(u => u.id === uid)?.email || '',
+              ...selected.map(t => (allData[uid]?.[t.key]||[]).length),
+            ];
+          }),
         ];
-
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-        // Style header row width
-        ws['!cols'] = headers.map(() => ({ wch: 20 }));
-        XLSX.utils.book_append_sheet(wb, ws, t.label.replace(/[^\w\s]/g,'').trim().slice(0,30));
-      });
+        const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+        wsSummary['!cols'] = [{ wch: 25 }, { wch: 30 }, ...selected.map(() => ({ wch: 15 }))];
+        XLSX.utils.book_append_sheet(wb, wsSummary, 'User Summary');
+      }
 
       XLSX.writeFile(wb, `${filename}.xlsx`);
-      showToast('Excel backup downloaded!', 'success');
+      const totalRecs = selected.reduce((s, t) =>
+        s + userIds.reduce((ss, uid) => ss + (allData[uid]?.[t.key]||[]).length, 0), 0);
+      showToast(`Excel backup downloaded — ${totalRecs} records across ${userIds.length} user${userIds.length !== 1 ? 's' : ''}`, 'success');
 
     } else {
       // JSON export
@@ -521,19 +688,28 @@ async function doExport() {
         wealthguard_backup: true,
         version: '1.0',
         exported_at: new Date().toISOString(),
-        user: {
-          name: currentProfile?.full_name,
-          email: currentProfile?.email,
-        },
-        tables: {},
+        exported_by: { name: currentProfile?.full_name, email: currentProfile?.email, role: currentProfile?.role },
+        is_multi_user: isMultiUser,
+        users: {},
       };
-      selected.forEach(t => {
-        exportObj.tables[t.key] = allData[t.key] || [];
+      userIds.forEach(uid => {
+        const uInfo = userInfoMap[uid] || {};
+        exportObj.users[uid] = {
+          name: uInfo.name,
+          tables: {},
+        };
+        selected.forEach(t => {
+          exportObj.users[uid].tables[t.key] = allData[uid]?.[t.key] || [];
+        });
       });
+      // For single-user JSON, also expose tables at top level for backward compatibility
+      if (!isMultiUser) {
+        exportObj.tables = exportObj.users[userIds[0]].tables;
+      }
 
       const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
       a.href = url; a.download = `${filename}.json`; a.click();
       URL.revokeObjectURL(url);
       showToast('JSON backup downloaded!', 'success');
