@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Research — WealthGuard</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    /* ── Research page layout ──────────────────────────────── */
+    .research-shell {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    /* ── Input panel ───────────────────────────────────────── */
+    .research-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      position: sticky;
+      top: 1rem;
+    }
+
+    .research-panel-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(212,175,55,0.06) 0%, transparent 100%);
+    }
+
+    .research-panel-body { padding: 1.25rem 1.5rem; }
+
+    /* Recent searches */
+    .recent-search-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.55rem 0.75rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      font-size: 0.82rem;
+    }
+    .recent-search-item:hover {
+      border-color: rgba(212,175,55,0.3);
+      background: var(--gold-muted);
+    }
+    .recent-ticker { font-family: var(--font-mono); font-weight: 700; color: var(--gold); font-size: 0.85rem; }
+    .recent-meta { color: var(--text-muted); font-size: 0.72rem; }
+
+    /* ── Result area ───────────────────────────────────────── */
+    .result-area {
+      min-height: 400px;
+    }
+
+    /* Empty / loading states */
+    .research-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 440px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      text-align: center;
+      padding: 2.5rem;
+    }
+
+    .research-empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+    .research-empty-title { font-family: var(--font-display); font-size: 1.3rem; color: var(--text-primary); margin-bottom: 0.5rem; }
+    .research-empty-desc { font-size: 0.85rem; color: var(--text-muted); max-width: 360px; line-height: 1.6; }
+
+    /* Loading state */
+    .research-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 440px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      gap: 1.25rem;
+      padding: 2rem;
+    }
+
+    .research-loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(212,175,55,0.2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .research-loading-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      text-align: left;
+      width: 100%;
+      max-width: 340px;
+    }
+
+    .loading-step {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      transition: color 0.3s;
+    }
+    .loading-step.active { color: var(--text-primary); }
+    .loading-step.done   { color: var(--green); }
+    .loading-step-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor; flex-shrink: 0;
+    }
+
+    /* ── Result iframe/container ──────────────────────────── */
+    .result-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+    }
+
+    .result-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+
+    .result-stock-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .result-ticker-chip {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 0.82rem;
+      color: var(--gold);
+      background: var(--gold-muted);
+      padding: 0.2rem 0.65rem;
+      border-radius: 20px;
+    }
+
+    .result-stock-name { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
+    .result-stock-meta { font-size: 0.72rem; color: var(--text-muted); }
+
+    /* The research HTML is rendered in a sandboxed iframe */
+    .research-iframe {
+      width: 100%;
+      border: none;
+      min-height: 600px;
+      background: white;
+    }
+
+    /* Horizon pills */
+    .horizon-pills {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+    .horizon-pill {
+      padding: 0.3rem 0.75rem;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: var(--bg-surface);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .horizon-pill:hover   { border-color: rgba(255,255,255,0.2); color: var(--text-secondary); }
+    .horizon-pill.active  { border-color: var(--gold); background: var(--gold-muted); color: var(--gold); }
+
+    /* Quick pick stocks */
+    .quick-stocks {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+    .quick-stock {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .quick-stock:hover { border-color: rgba(212,175,55,0.3); color: var(--gold); background: var(--gold-muted); }
+
+    /* Disclaimer banner */
+    .disclaimer-banner {
+      background: rgba(248,113,113,0.05);
+      border: 1px solid rgba(248,113,113,0.15);
+      border-radius: var(--radius-md);
+      padding: 0.65rem 0.9rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 760px) {
+      .research-shell { grid-template-columns: 1fr; }
+      .research-panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-icon">🛡</div><span class="sidebar-logo-text">WealthGuard</span></div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Overview</span>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">⬡</span> Dashboard</a>
+      <a href="portfolios.html" class="nav-item"><span class="nav-icon">👥</span> Portfolios</a>
+      <a href="assets.html" class="nav-item"><span class="nav-icon">🏦</span> Asset Classes</a>
+      <a href="investments.html" class="nav-item"><span class="nav-icon">📈</span> Investments</a>
+      <a href="import.html" class="nav-item"><span class="nav-icon">⬆</span> Import</a>
+      <span class="nav-section-label">Portfolio</span>
+      <a href="insurance.html" class="nav-item"><span class="nav-icon">🛡</span> Insurance</a>
+      <a href="realestate.html" class="nav-item"><span class="nav-icon">🏠</span> Real Estate</a>
+      <span class="nav-section-label">Research</span>
+      <a href="research.html" class="nav-item active"><span class="nav-icon">🔬</span> Stock Research</a>
+      <span class="nav-section-label">Planning</span>
+      <a href="goals.html" class="nav-item"><span class="nav-icon">🎯</span> Goals</a>
+      <a href="legacy.html" class="nav-item"><span class="nav-icon">📜</span> Legacy Pack</a>
+      <a href="documents.html" class="nav-item"><span class="nav-icon">📁</span> Documents</a>
+      <span class="nav-section-label">Reports</span>
+      <a href="reports.html" class="nav-item"><span class="nav-icon">📊</span> Reports</a>
+      <a href="family.html" class="nav-item"><span class="nav-icon">👥</span> Family Sharing</a>
+      <span class="nav-section-label">Account</span>
+      <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
+      <a href="backup.html" class="nav-item"><span class="nav-icon">💾</span> Backup &amp; Restore</a>
+      <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user"><div class="user-avatar" id="user-initial">R</div><div><div class="user-name" id="user-name">Loading...</div><div class="user-role" id="user-role">investor</div></div></div>
+      <button class="nav-item btn-ghost" style="width:100%;margin-top:4px;" onclick="Auth.signOut()"><span class="nav-icon">↩</span> Sign Out</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div>
+          <div class="page-title">Stock Research</div>
+          <div class="page-subtitle">Indian Fundamental Analyser — powered by Claude AI</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="notif-btn" onclick="window.location.href='notifications.html'">🔔</button>
+      </div>
+    </div>
+
+    <div class="page-content page-enter">
+      <div class="research-shell">
+
+        <!-- Left: Input panel -->
+        <div class="research-panel">
+          <div class="research-panel-header">
+            <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--text-primary);margin-bottom:0.2rem">Analyse a Stock</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)">Fundamental analysis for long-term investors</div>
+          </div>
+          <div class="research-panel-body">
+
+            <!-- Stock input -->
+            <div class="form-group">
+              <label class="form-label">Stock / Ticker <span class="form-required">*</span></label>
+              <input type="text" id="stock-input" class="form-control"
+                placeholder="e.g. TCS, RELIANCE, HDFCBANK"
+                style="text-transform:uppercase;font-family:var(--font-mono);font-weight:600;letter-spacing:0.05em"
+                onkeydown="if(event.key==='Enter') startResearch()">
+              <div style="margin-top:0.6rem">
+                <div style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem">Quick pick</div>
+                <div class="quick-stocks">
+                  <span class="quick-stock" onclick="setStock('TCS')">TCS</span>
+                  <span class="quick-stock" onclick="setStock('RELIANCE')">RELIANCE</span>
+                  <span class="quick-stock" onclick="setStock('HDFCBANK')">HDFCBANK</span>
+                  <span class="quick-stock" onclick="setStock('INFY')">INFY</span>
+                  <span class="quick-stock" onclick="setStock('ICICIBANK')">ICICIBANK</span>
+                  <span class="quick-stock" onclick="setStock('WIPRO')">WIPRO</span>
+                  <span class="quick-stock" onclick="setStock('BAJFINANCE')">BAJFINANCE</span>
+                  <span class="quick-stock" onclick="setStock('TITAN')">TITAN</span>
+                  <span class="quick-stock" onclick="setStock('ASIANPAINT')">ASIANPAINT</span>
+                  <span class="quick-stock" onclick="setStock('PIDILITIND')">PIDILITE</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Horizon -->
+            <div class="form-group">
+              <label class="form-label">Investment Horizon <span class="form-required">*</span></label>
+              <div class="horizon-pills">
+                <div class="horizon-pill" data-val="3" onclick="setHorizon(this,'3 Years')">3 Years</div>
+                <div class="horizon-pill active" data-val="5" onclick="setHorizon(this,'5 Years')">5 Years</div>
+                <div class="horizon-pill" data-val="10" onclick="setHorizon(this,'10 Years')">10 Years</div>
+                <div class="horizon-pill" data-val="15" onclick="setHorizon(this,'15 Years')">15 Years</div>
+              </div>
+              <input type="hidden" id="horizon-val" value="5 Years">
+            </div>
+
+            <button class="btn btn-primary" id="research-btn"
+              style="width:100%;margin-top:0.25rem"
+              onclick="startResearch()">
+              🔬 Run Analysis
+            </button>
+
+            <div class="disclaimer-banner">
+              ⚠ Not investment advice. Fundamental analysis only. Verify all data on NSE/BSE before investing. Past performance ≠ future results.
+            </div>
+
+            <!-- Recent searches -->
+            <div id="recent-section" style="display:none;margin-top:1.25rem">
+              <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.6rem">Recent</div>
+              <div id="recent-list" style="display:flex;flex-direction:column;gap:0.4rem"></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Right: Result area -->
+        <div class="result-area" id="result-area">
+          <!-- Initial empty state -->
+          <div class="research-empty" id="empty-state">
+            <div class="research-empty-icon">🔬</div>
+            <div class="research-empty-title">Ready to analyse</div>
+            <div class="research-empty-desc">
+              Enter any NSE or BSE ticker — or a company name — and select your investment horizon. Claude will research fundamentals live and build a full 8-tab report.
+            </div>
+            <div style="margin-top:1.5rem;display:flex;flex-direction:column;gap:0.5rem;align-items:center;font-size:0.78rem;color:var(--text-muted)">
+              <div style="display:flex;align-items:center;gap:0.5rem"><span>📊</span> Snapshot · Valuation · Growth</div>
+              <div style="display:flex;align-items:center;gap:0.5rem"><span>💪</span> Health · Returns · Peers</div>
+              <div style="display:flex;align-items:center;gap:0.5rem"><span>🎯</span> Ownership · View</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+let currentHorizon = '5 Years';
+let isRunning = false;
+let recentSearches = JSON.parse(localStorage.getItem('wg_research_recent') || '[]');
+
+// ── Init ─────────────────────────────────────────────────────
+async function init() {
+  const session = await requireAuth();
+  if (!session) return;
+  const profile = await Profile.get(session.user.id);
+  document.getElementById('user-name').textContent    = profile?.full_name || session.user.email;
+  document.getElementById('user-initial').textContent = (profile?.full_name || session.user.email || 'U')[0].toUpperCase();
+  document.getElementById('user-role').textContent    = profile?.role || 'investor';
+  renderRecent();
+
+  // Pre-fill from URL param (e.g. deep-link from investments page)
+  const ticker = Validate.string(new URLSearchParams(location.search).get('ticker') || '', 20);
+  if (ticker) {
+    document.getElementById('stock-input').value = ticker.toUpperCase();
+    startResearch();
+  }
+}
+
+// ── Horizon selector ──────────────────────────────────────────
+function setHorizon(el, val) {
+  currentHorizon = val;
+  document.getElementById('horizon-val').value = val;
+  document.querySelectorAll('.horizon-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function setStock(ticker) {
+  document.getElementById('stock-input').value = ticker;
+  document.getElementById('stock-input').focus();
+}
+
+// ── Recent searches ───────────────────────────────────────────
+function addToRecent(ticker, horizon) {
+  recentSearches = recentSearches.filter(r => r.ticker !== ticker);
+  recentSearches.unshift({ ticker, horizon, ts: Date.now() });
+  if (recentSearches.length > 6) recentSearches = recentSearches.slice(0, 6);
+  localStorage.setItem('wg_research_recent', JSON.stringify(recentSearches));
+  renderRecent();
+}
+
+function renderRecent() {
+  const sec = document.getElementById('recent-section');
+  const list = document.getElementById('recent-list');
+  if (!recentSearches.length) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  list.innerHTML = recentSearches.map(r => `
+    <div class="recent-search-item" onclick="reRunSearch('${r.ticker}','${r.horizon}')">
+      <span class="recent-ticker">${r.ticker}</span>
+      <div style="flex:1">
+        <div style="font-size:0.78rem;color:var(--text-secondary)">${r.ticker}</div>
+        <div class="recent-meta">${r.horizon} · ${new Date(r.ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>
+      </div>
+      <span style="font-size:0.7rem;color:var(--text-muted)">→</span>
+    </div>`).join('');
+}
+
+function reRunSearch(ticker, horizon) {
+  document.getElementById('stock-input').value = ticker;
+  // Restore horizon pill
+  document.querySelectorAll('.horizon-pill').forEach(p => {
+    if (p.dataset.val && horizon.startsWith(p.dataset.val)) {
+      setHorizon(p, horizon);
+    }
+  });
+  startResearch();
+}
+
+// ── Loading steps animation ───────────────────────────────────
+const LOADING_STEPS = [
+  'Identifying company and ticker…',
+  'Fetching live price and market data…',
+  'Gathering valuation metrics (P/E, P/B, EV/EBITDA)…',
+  'Analysing revenue and profit growth trends…',
+  'Checking balance sheet and cash flow health…',
+  'Evaluating ROE, ROCE and return quality…',
+  'Building forward projections…',
+  'Comparing against 3 closest peers…',
+  'Reviewing promoter and institutional holdings…',
+  'Synthesising fundamental view…',
+  'Rendering report…',
+];
+
+function showLoading(ticker) {
+  const area = document.getElementById('result-area');
+  area.innerHTML = `
+    <div class="research-loading" id="loading-state">
+      <div class="research-loading-spinner"></div>
+      <div style="text-align:center">
+        <div style="font-family:var(--font-display);font-size:1.05rem;font-weight:600;color:var(--text-primary);margin-bottom:0.25rem">
+          Analysing ${ticker}
+        </div>
+        <div style="font-size:0.78rem;color:var(--text-muted)">
+          Claude is researching live data from NSE, BSE, Screener.in and more
+        </div>
+      </div>
+      <div class="research-loading-steps" id="loading-steps">
+        ${LOADING_STEPS.map((s, i) => `
+          <div class="loading-step" id="lstep-${i}">
+            <div class="loading-step-dot"></div>
+            <span>${s}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+
+  // Animate steps with realistic pacing
+  LOADING_STEPS.forEach((_, i) => {
+    const delay = 1200 + i * 2800;  // stagger ~2.8s per step
+    setTimeout(() => {
+      const prev = document.getElementById(`lstep-${i - 1}`);
+      if (prev) { prev.classList.remove('active'); prev.classList.add('done'); }
+      const cur = document.getElementById(`lstep-${i}`);
+      if (cur) cur.classList.add('active');
+    }, delay);
+  });
+}
+
+// ── Main research function ────────────────────────────────────
+async function startResearch() {
+  if (isRunning) return;
+
+  const rawTicker = document.getElementById('stock-input').value.trim();
+  if (!rawTicker) {
+    showToast('Enter a stock ticker or company name', 'error');
+    document.getElementById('stock-input').focus();
+    return;
+  }
+  // Sanitize: letters, numbers, spaces, hyphens only — max 50 chars
+  const ticker = rawTicker.replace(/[^A-Za-z0-9\s\-&]/g, '').trim().slice(0, 50).toUpperCase();
+  if (!ticker) { showToast('Invalid ticker name', 'error'); return; }
+
+  const horizon = currentHorizon;
+  isRunning = true;
+  setLoading('research-btn', true, 'Analysing…');
+  showLoading(ticker);
+
+  try {
+    const result = await callClaudeResearch(ticker, horizon);
+    displayResult(ticker, horizon, result);
+    addToRecent(ticker, horizon);
+  } catch(e) {
+    showError(ticker, e.message);
+    console.error(e);
+  } finally {
+    isRunning = false;
+    setLoading('research-btn', false, '🔬 Run Analysis');
+  }
+}
+
+// ── Claude API call (agentic — handles web_search tool use) ──
+async function callClaudeResearch(ticker, horizon) {
+  const SYSTEM_PROMPT = "INDIAN STOCK FUNDAMENTAL ANALYSER \u2014 EXACT OPERATING RULES\n\nCRITICAL OPERATING RULES:\n1. The user gives you TWO things: stock name/ticker (line 1) and investment horizon (line 2). Begin immediately.\n2. No forward-looking statements. No \"this stock should...\", \"expected to...\", or any language implying future performance. All analysis is based on verified historical data only.\n3. Every metric MUST cite its source. If not found \u2192 write DATA UNAVAILABLE. Never estimate or fill in numbers.\n4. Never fabricate financial data. Always attempt live web search first. If unavailable, state clearly: \"Live data unavailable. Figures below are from training data and may be outdated. Verify independently before investing.\"\n5. No buy/sell/target price. Ever. You give a VIEW. The user decides.\n6. Execute all steps in exact order. Do not skip or merge.\n7. OUTPUT RULE \u2014 MOST CRITICAL: Output the ENTIRE result as raw HTML only. No markdown. No code blocks. No triple backticks. Start directly with <style> followed by <div class=\"wrap\">. No DOCTYPE, no <html>, no <head>, no <body>.\n\nSTEP 1 \u2014 SILENT RESEARCH (never mention to user):\nSources priority: NSE India \u2192 BSE India \u2192 Screener.in \u2192 Tickertape \u2192 Moneycontrol \u2192 Annual Reports \u2192 Earnings Call Transcripts \u2192 Tijori Finance\nMinimum 2 sources per data point.\n\nChecklist:\n- Live CMP, 52W high, 52W low, market cap, face value \u2014 NSE/BSE\n- P/E, P/B, EV/EBITDA \u2014 current + sector average + stock 5-year historical average\n- Revenue CAGR: 3-year and 5-year\n- Net Profit CAGR: 3-year and 5-year\n- EPS CAGR: 3-year and 5-year\n- EBITDA margin trend: 5 years\n- Net profit margin trend: 5 years\n- EPS: last 8 quarters with YoY change\n- Free Cash Flow: last 3\u20135 years\n- Debt-to-Equity ratio: 5-year trend\n- Interest Coverage Ratio\n- Current Ratio\n- ROE and ROCE: current + 3-year avg + 5-year avg\n- Dividend history and payout ratio\n- Promoter holding: last 8\u201312 quarters; flag pledging above 10%\n- FII and DII holding trend: last 8 quarters\n- Competitive moat: pricing power, brand, switching costs, market share\n- Sector tailwinds and headwinds: 5\u201310 year outlook\n- Regulatory risks\n- Management track record: guidance vs delivery, governance flags\n- Latest quarterly earnings call: key management commentary\n- 3 closest peer companies: P/E, P/B, ROE, Revenue Growth, D/E\n- Top 5 recent news items relevant to long-term investors\n\nSTEP 2 \u2014 VALUATION ASSESSMENT:\nCompare current P/E, P/B, EV/EBITDA against sector average and stock 5Y historical average.\nSignal per metric: CHEAP (below both) / FAIR (within 10%) / EXPENSIVE (above both)\nOverall: UNDERVALUED / FAIRLY VALUED / OVERVALUED / MIXED\n\nSTEP 3 \u2014 GROWTH ASSESSMENT:\nAssess revenue, net profit, EPS, and margin trends.\nClassify: ACCELERATING / STEADY / SLOWING / DECLINING\n\nSTEP 4 \u2014 FINANCIAL HEALTH ASSESSMENT:\nD/E below 1 = SAFE \u00b7 1\u20132 = MODERATE \u00b7 above 2 = LEVERAGED\nInterest Coverage above 3x = HEALTHY \u00b7 1.5\u20133x = WATCH \u00b7 below 1.5 = RISK\nCurrent Ratio above 1.5 = COMFORTABLE \u00b7 1\u20131.5 = WATCH \u00b7 below 1 = RISK\nFCF positive and growing = STRONG \u00b7 positive but flat = STABLE \u00b7 negative = CONCERN\n\nSTEP 5 \u2014 RETURN QUALITY ASSESSMENT:\nROE above 15% = GOOD \u00b7 10\u201315% = AVERAGE \u00b7 below 10% = WEAK\nROCE above 15% = GOOD \u00b7 10\u201315% = AVERAGE \u00b7 below 10% = WEAK\nAssess dividend consistency and payout sustainability.\n\nSTEP 6 \u2014 FORWARD PROJECTION (for stated horizon):\nBased on historical CAGR trends only. Build 3 scenarios:\nBear: growth slows, margins compress\nBase: maintains current trajectory\nBull: growth picks up, margins expand\nThese are projections based on historical trends \u2014 not guarantees or predictions.\n\nSTEP 7 \u2014 PEER COMPARISON:\n3 closest competitors. Compare P/E, P/B, ROE, Revenue Growth, D/E.\nClassify: LEADING / MID-PACK / LAGGING\n\nSTEP 8 \u2014 OWNERSHIP ASSESSMENT:\nPromoter trend: BUYING / STABLE / SELLING\nFII trend: INCREASING / STABLE / DECREASING\nDII trend: INCREASING / STABLE / DECREASING\nPledging: flag if above 10%\n\nSTEP 9 \u2014 FUNDAMENTAL VIEW (for stated horizon):\nCombine all steps. Produce:\n- One-sentence summary of what the fundamentals show\n- 3 strengths\n- 2 risks or watch points\n- 1 thing to track going forward\n- Overall fundamental quality: STRONG / MODERATE / WEAK\n\nSTEP 10 \u2014 DATA CONFIDENCE RATING:\nCount metrics retrieved from live named sources vs DATA UNAVAILABLE.\n9\u201310 live = HIGH \u00b7 6\u20138 = MODERATE \u00b7 below 6 = LOW \u00b7 0 = VERY LOW\n\nSTEP 11 \u2014 OUTPUT (CRITICAL RENDERING RULE):\nOutput the complete result as a single raw HTML fragment.\nNO markdown. NO code blocks. NO triple backticks.\nNO DOCTYPE, NO <html>, NO <head>, NO <body>.\nStart directly with <style> then <div class=\"wrap\">.\n\nTab structure \u2014 8 tabs in this exact order:\nTab 0: Snapshot\nTab 1: Valuation\nTab 2: Growth\nTab 3: Health\nTab 4: Returns\nTab 5: Peers\nTab 6: Ownership\nTab 7: View \u2190 DEFAULT ACTIVE TAB (add class \"on\" to panel id=\"p7\", class \"active\" to its tab button)\n\nUse EXACTLY this HTML structure and CSS (replace every [PLACEHOLDER] with real data; flag missing data as \ud83d\udea9 DATA UNAVAILABLE):\n\n<style>\n*{box-sizing:border-box;margin:0;padding:0}\n:root{--g-fill:#EAF3DE;--g-text:#27500A;--g-border:#C0DD97;--g-accent:#639922;--a-fill:#FAEEDA;--a-text:#854F0B;--a-border:#FAC775;--a-accent:#EF9F27;--r-fill:#FCEBEB;--r-text:#A32D2D;--r-border:#F7C1C1;--r-accent:#E24B4A;--b-fill:#E6F1FB;--b-text:#185FA5;--b-border:#B5D4F4;--b-accent:#378ADD;--n-fill:#F1EFE8;--n-text:#444441;--n-border:#D3D1C7}\nbody{font-family:system-ui,sans-serif;font-size:13px;line-height:1.6;color:#111;background:#fff;padding:16px}\n.wrap{max-width:860px;padding:0 0 32px}\n.conf{padding:10px 16px;border-radius:8px;margin-bottom:14px;font-size:12px}\n.conf.high,.conf.moderate{background:var(--g-fill);color:var(--g-text)}\n.conf.low{background:var(--a-fill);color:var(--a-text)}\n.conf.vlow{background:var(--r-fill);color:var(--r-text)}\n.tab-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}\n.tab-btn{padding:7px 18px;border-radius:100px;border:1px solid rgba(0,0,0,0.15);background:transparent;color:#555;font-size:13px;font-weight:400;cursor:pointer;font-family:inherit;transition:border-color 0.15s,color 0.15s}\n.tab-btn:hover{border-color:rgba(0,0,0,0.3);color:#111}\n.tab-btn.active{border:1.5px solid #111;color:#111;font-weight:500}\n.panel{display:none}.panel.on{display:block}\n.card{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:12px;padding:16px 20px;margin-bottom:12px}\n.card.green{background:var(--g-fill);border-color:var(--g-border)}\n.card.amber{background:var(--a-fill);border-color:var(--a-border)}\n.card.red{background:var(--r-fill);border-color:var(--r-border)}\n.card.blue{background:var(--b-fill);border-color:var(--b-border)}\n.card.grey{background:var(--n-fill);border-color:var(--n-border)}\n.view-label{font-size:18px;font-weight:500;margin-bottom:6px}\n.view-label.green{color:var(--g-text)}.view-label.amber{color:var(--a-text)}.view-label.red{color:var(--r-text)}\n.view-reason{font-size:13px;margin-bottom:16px;color:#111}\n.sec-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:1px;color:#888;margin:14px 0 8px}\n.bullet-row{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,0.08);font-size:13px}\n.bullet-row:last-child{border-bottom:none}\n.bicon{font-size:14px;min-width:18px;margin-top:1px}\ntable{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}\nth{text-align:left;padding:7px 10px;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:#888;border-bottom:0.5px solid rgba(0,0,0,0.1)}\ntd{padding:9px 10px;color:#111;border-bottom:0.5px solid rgba(0,0,0,0.08)}\ntr:last-child td{border-bottom:none}\n.pos{color:var(--g-accent);font-weight:500}.neg{color:var(--r-accent);font-weight:500}.neu{color:#888}\n.badge{display:inline-block;padding:2px 9px;border-radius:100px;font-size:11px;font-weight:500}\n.badge.ok{background:var(--g-fill);color:var(--g-text)}\n.badge.warn{background:var(--a-fill);color:var(--a-text)}\n.badge.bad{background:var(--r-fill);color:var(--r-text)}\n.badge.info{background:var(--b-fill);color:var(--b-text)}\n.badge.neu{background:var(--n-fill);color:var(--n-text)}\n.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin:12px 0}\n.mc{background:#f5f5f3;border-radius:8px;padding:12px 14px}\n.mc .ml{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#888;margin-bottom:4px}\n.mc .mv{font-size:18px;font-weight:500;color:#111}\n.mc .ms{font-size:11px;color:#888;margin-top:2px}\n.info-row{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.08);gap:16px}\n.info-row:last-child{border-bottom:none}\n.il{font-size:12px;color:#888}.iv{font-size:12px;color:#111;font-weight:500;text-align:right}\n.flag-card{border-left:3px solid var(--a-accent);background:var(--a-fill);border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px}\n.flag-title{font-size:13px;font-weight:500;color:var(--a-text);margin-bottom:3px}\n.flag-note{font-size:12px;color:var(--a-text)}\n.score-box{background:#f5f5f3;border-radius:8px;padding:14px 16px;margin-top:14px;font-size:12px;color:#888}\n.eps-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}\n.eps-chip{background:#f5f5f3;border-radius:8px;padding:10px 14px;text-align:center;min-width:85px}\n.eps-q{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px}\n.eps-v{font-size:16px;font-weight:500;color:#111;margin:3px 0}\n.eps-y{font-size:11px}\n.peer-you{background:#f5f5f3}\n.disc{font-size:11px;color:#888;border-top:0.5px solid rgba(0,0,0,0.1);padding-top:14px;margin-top:24px;line-height:1.6}\ndetails summary{font-size:12px;color:#888;cursor:pointer;padding:8px 0}\ndetails p{font-size:12px;color:#888;padding:4px 0;border-bottom:0.5px solid rgba(0,0,0,0.08)}\ndetails p:last-child{border-bottom:none}\ndetails strong{color:#111;font-weight:500}\n</style>\n\n<div class=\"wrap\">\n\n<div class=\"conf [high|moderate|low|vlow]\">\n  <strong>Data confidence: [HIGH / MODERATE / LOW / VERY LOW]</strong><br>\n  Live metrics retrieved: [N] of 12 key sections &nbsp;|&nbsp; Sources: [list sources used]\n</div>\n\n<div class=\"tab-row\">\n  <button class=\"tab-btn\" onclick=\"show(0)\">Snapshot</button>\n  <button class=\"tab-btn\" onclick=\"show(1)\">Valuation</button>\n  <button class=\"tab-btn\" onclick=\"show(2)\">Growth</button>\n  <button class=\"tab-btn\" onclick=\"show(3)\">Health</button>\n  <button class=\"tab-btn\" onclick=\"show(4)\">Returns</button>\n  <button class=\"tab-btn\" onclick=\"show(5)\">Peers</button>\n  <button class=\"tab-btn\" onclick=\"show(6)\">Ownership</button>\n  <button class=\"tab-btn active\" onclick=\"show(7)\">View</button>\n</div>\n\n<!-- TAB 0: SNAPSHOT -->\n<div class=\"panel\" id=\"p0\">\n  <div class=\"card\">\n    <div class=\"info-row\"><span class=\"il\">Company</span><span class=\"iv\">[COMPANY FULL NAME]</span></div>\n    <div class=\"info-row\"><span class=\"il\">Ticker</span><span class=\"iv\">[NSE TICKER]</span></div>\n    <div class=\"info-row\"><span class=\"il\">Sector</span><span class=\"iv\">[SECTOR]</span></div>\n    <div class=\"info-row\"><span class=\"il\">Industry</span><span class=\"iv\">[INDUSTRY]</span></div>\n    <div class=\"info-row\"><span class=\"il\">What it does</span><span class=\"iv\" style=\"max-width:440px;text-align:right\">[2-line plain English: business model and how it earns]</span></div>\n    <div class=\"info-row\"><span class=\"il\">What makes it different</span><span class=\"iv\" style=\"max-width:440px;text-align:right\">[1-line moat or edge]</span></div>\n  </div>\n  <div class=\"mgrid\">\n    <div class=\"mc\"><div class=\"ml\">CMP</div><div class=\"mv\">\u20b9[___]</div><div class=\"ms\">[TIME] IST \u00b7 NSE</div></div>\n    <div class=\"mc\"><div class=\"ml\">52W High</div><div class=\"mv\">\u20b9[___]</div><div class=\"ms\">NSE</div></div>\n    <div class=\"mc\"><div class=\"ml\">52W Low</div><div class=\"mv\">\u20b9[___]</div><div class=\"ms\">NSE</div></div>\n    <div class=\"mc\"><div class=\"ml\">Market Cap</div><div class=\"mv\">\u20b9[___] Cr</div><div class=\"ms\">BSE</div></div>\n    <div class=\"mc\"><div class=\"ml\">Face Value</div><div class=\"mv\">\u20b9[___]</div><div class=\"ms\">NSE</div></div>\n  </div>\n  <!-- Include .flag-card only if flags exist, remove entire block if none -->\n</div>\n\n<!-- TAB 1: VALUATION -->\n<div class=\"panel\" id=\"p1\">\n  <div class=\"card\">\n    <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px\">Is this stock cheap, fair, or expensive right now?</div>\n    <table>\n      <thead><tr><th>Metric</th><th>Current</th><th>Sector avg</th><th>Stock 5Y avg</th><th>Signal</th><th>Plain English</th></tr></thead>\n      <tbody>\n        <tr><td>P/E</td><td>[___]x</td><td>[___]x</td><td>[___]x</td><td><span class=\"badge [ok|warn|bad]\">[CHEAP/FAIR/EXPENSIVE]</span></td><td style=\"color:#888;font-size:12px\">You pay \u20b9[__] per \u20b91 of profit</td></tr>\n        <tr><td>P/B</td><td>[___]x</td><td>[___]x</td><td>[___]x</td><td><span class=\"badge [ok|warn|bad]\">[CHEAP/FAIR/EXPENSIVE]</span></td><td style=\"color:#888;font-size:12px\">Price vs net assets owned</td></tr>\n        <tr><td>EV/EBITDA</td><td>[___]x</td><td>[___]x</td><td>[___]x</td><td><span class=\"badge [ok|warn|bad]\">[CHEAP/FAIR/EXPENSIVE]</span></td><td style=\"color:#888;font-size:12px\">Full business value check</td></tr>\n      </tbody>\n    </table>\n  </div>\n  <div class=\"score-box\">Overall valuation: <strong>[UNDERVALUED / FAIRLY VALUED / OVERVALUED / MIXED]</strong><br><span style=\"margin-top:4px;display:block\">[One plain-English sentence]</span></div>\n</div>\n\n<!-- TAB 2: GROWTH -->\n<div class=\"panel\" id=\"p2\">\n  <div class=\"card\">\n    <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px\">Is this company growing its revenue and profits?</div>\n    <table>\n      <thead><tr><th>Metric</th><th>3Y CAGR</th><th>5Y CAGR</th><th>Trend</th><th>Source</th></tr></thead>\n      <tbody>\n        <tr><td>Revenue</td><td>[__]%</td><td>[__]%</td><td>[\ud83d\udcc8/\u27a1\ufe0f/\ud83d\udcc9]</td><td style=\"color:#888;font-size:11px\">[source]</td></tr>\n        <tr><td>Net profit</td><td>[__]%</td><td>[__]%</td><td>[\ud83d\udcc8/\u27a1\ufe0f/\ud83d\udcc9]</td><td style=\"color:#888;font-size:11px\">[source]</td></tr>\n        <tr><td>EPS</td><td>[__]%</td><td>[__]%</td><td>[\ud83d\udcc8/\u27a1\ufe0f/\ud83d\udcc9]</td><td style=\"color:#888;font-size:11px\">[source]</td></tr>\n        <tr><td>EBITDA margin</td><td>[__]%</td><td>[__]%</td><td>[\ud83d\udcc8/\u27a1\ufe0f/\ud83d\udcc9]</td><td style=\"color:#888;font-size:11px\">[source]</td></tr>\n        <tr><td>Net profit margin</td><td>[__]%</td><td>[__]%</td><td>[\ud83d\udcc8/\u27a1\ufe0f/\ud83d\udcc9]</td><td style=\"color:#888;font-size:11px\">[source]</td></tr>\n      </tbody>\n    </table>\n  </div>\n  <div class=\"card\">\n    <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px\">EPS \u2014 last 8 quarters</div>\n    <div class=\"eps-row\">\n      <!-- 8 eps-chip blocks, one per quarter: Q1FY24 through Q4FY26 -->\n      <div class=\"eps-chip\"><div class=\"eps-q\">[Q_FY__]</div><div class=\"eps-v\">\u20b9[__]</div><div class=\"eps-y [pos|neg]\">[+/-__]% YoY</div></div>\n      <!-- repeat 7 more times -->\n    </div>\n  </div>\n  <div class=\"score-box\">Growth classification: <strong>[ACCELERATING / STEADY / SLOWING / DECLINING]</strong><br><span style=\"margin-top:4px;display:block\">[One sentence]</span></div>\n</div>\n\n<!-- TAB 3: HEALTH -->\n<div class=\"panel\" id=\"p3\">\n  <div class=\"card\">\n    <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px\">Is this company financially safe and stable?</div>\n    <table>\n      <thead><tr><th>Metric</th><th>Value</th><th>5Y trend</th><th>Signal</th><th>Plain English</th></tr></thead>\n      <tbody>\n        <tr><td>Debt / Equity</td><td>[___]</td><td>[\u2193 Falling / \u2192 Stable / \u2191 Rising]</td><td><span class=\"badge [ok|warn|bad]\">[SAFE/MODERATE/LEVERAGED]</span></td><td style=\"color:#888;font-size:12px\">Below 1 = safe</td></tr>\n        <tr><td>Interest Coverage</td><td>[___]x</td><td>[\u2193/\u2192/\u2191]</td><td><span class=\"badge [ok|warn|bad]\">[HEALTHY/WATCH/RISK]</span></td><td style=\"color:#888;font-size:12px\">Above 3x = healthy</td></tr>\n        <tr><td>Current Ratio</td><td>[___]</td><td>[\u2193/\u2192/\u2191]</td><td><span class=\"badge [ok|warn|bad]\">[COMFORTABLE/WATCH/RISK]</span></td><td style=\"color:#888;font-size:12px\">Above 1.5 = comfortable</td></tr>\n        <tr><td>Free Cash Flow</td><td>\u20b9[___] Cr</td><td>[\u2193/\u2192/\u2191]</td><td><span class=\"badge [ok|warn|bad]\">[STRONG/STABLE/CONCERN]</span></td><td style=\"color:#888;font-size:12px\">Positive = real cash business</td></tr>\n      </tbody>\n    </table>\n  </div>\n  <div class=\"card\">\n    <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px\">Forward projections \u2014 [X] year horizon</div>\n    <table>\n      <thead><tr><th>Scenario</th><th>Assumption</th><th>Est. revenue</th><th>Est. net profit</th><th>Est. EPS</th></tr></thead>\n      <tbody>\n        <tr><td>\ud83d\udc22 Bear</td><td style=\"color:#888;font-size:12px\">[Growth slows, margins compress]</td><td>\u20b9[__] Cr</td><td>\u20b9[__] Cr</td><td>\u20b9[__]</td></tr>\n        <tr><td>\ud83d\udeb6 Base</td><td style=\"color:#888;font-size:12px\">[Maintains current trajectory]</td><td>\u20b9[__] Cr</td><td>\u20b9[__] Cr</td><td>\u20b9[__]</td></tr>\n        <tr><td>\ud83d\ude80 Bull</td><td style=\"color:#888;font-size:12px\">[Growth picks up, margins expand]</td><td>\u20b9[__] Cr</td><td>\u20b9[__] Cr</td><td>\u20b9[__]</td></tr>\n      </tbody>\n    </table>\n    <div style=\"font-size:11px;color:#888;margin-top:8px\">Projections based on historical CAGR trends only \u2014 not guarantees or predictions.</div>\n  </div>\n  <div class=\"score-box\">Financial health: <strong>[SAFE / MODERATE RISK / LEVERAGED]</strong><br><span style=\"margin-top:4px;display:block\">[One sentence]</span></div>\n</div>\n\n<!-- TAB 4: RETURNS -->\n<div class=\"panel\" id=\"p4\">\n  <div class=\"card\">\n    <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px\">Is this company creating real value for shareholders?</div>\n    <table>\n      <thead><tr><th>Metric</th><th>Current</th><th>3Y avg</th><th>5Y avg</th><th>Signal</th></tr></thead>\n      <tbody>\n        <tr><td>ROE</td><td>[__]%</td><td>[__]%</td><td>[__]%</td><td><span class=\"badge [ok|warn|bad]\">[GOOD/AVERAGE/WEAK]</span></td></tr>\n        <tr><td>ROCE</td><td>[__]%</td><td>[__]%</td><td>[__]%</td><td><span class=\"badge [ok|warn|bad]\">[GOOD/AVERAGE/WEAK]</span></td></tr>\n        <tr><td>Dividend yield</td><td>[__]%</td><td>[__]%</td><td>[__]%</td><td><span class=\"badge neu\">\u2014</span></td></tr>\n        <tr><td>Dividend payout</td><td>[__]%</td><td>[__]%</td><td>[__]%</td><td><span class=\"badge neu\">\u2014</span></td></tr>\n      </tbody>\n    </table>\n    <div style=\"font-size:11px;color:#888;margin-top:8px\">ROE above 15% = good \u00b7 ROCE above 15% = efficient capital use</div>\n  </div>\n  <div class=\"score-box\">Return quality: <strong>[HIGH-QUALITY COMPOUNDER / AVERAGE RETURNS / CAPITAL-LIGHT / DIVIDEND PLAY]</strong><br><span style=\"margin-top:4px;display:block\">[One sentence]</span></div>\n</div>\n\n<!-- TAB 5: PEERS -->\n<div class=\"panel\" id=\"p5\">\n  <div class=\"card\">\n    <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px\">How does it compare to its 3 closest competitors?</div>\n    <table>\n      <thead><tr><th>Company</th><th>P/E</th><th>P/B</th><th>ROE</th><th>Rev growth</th><th>D/E</th><th>Edge</th></tr></thead>\n      <tbody>\n        <tr class=\"peer-you\"><td><strong>[STOCK] \u25c0 you</strong></td><td>[__]</td><td>[__]</td><td>[__]%</td><td>[__]%</td><td>[__]</td><td style=\"font-size:12px\">[one-word edge]</td></tr>\n        <tr><td>[Peer 1]</td><td>[__]</td><td>[__]</td><td>[__]%</td><td>[__]%</td><td>[__]</td><td style=\"font-size:12px\">[one-word edge]</td></tr>\n        <tr><td>[Peer 2]</td><td>[__]</td><td>[__]</td><td>[__]%</td><td>[__]%</td><td>[__]</td><td style=\"font-size:12px\">[one-word edge]</td></tr>\n        <tr><td>[Peer 3]</td><td>[__]</td><td>[__]</td><td>[__]%</td><td>[__]%</td><td>[__]</td><td style=\"font-size:12px\">[one-word edge]</td></tr>\n      </tbody>\n    </table>\n    <div style=\"font-size:11px;color:#888;margin-top:8px\">Source: Screener.in, NSE filings</div>\n  </div>\n  <div class=\"card\">\n    <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px\">Latest news \u2014 top 5 long-term relevant items</div>\n    <!-- 5 news items in format below -->\n    <div style=\"padding:10px 0;border-bottom:0.5px solid rgba(0,0,0,0.08)\">\n      <div style=\"display:flex;justify-content:space-between;gap:10px;align-items:flex-start\">\n        <div><div style=\"font-size:13px;font-weight:500;color:#111;margin-bottom:3px\">[Headline]</div><div style=\"font-size:12px;color:#888\">[Why it matters for long-term investors \u2014 one line]</div></div>\n        <div style=\"font-size:11px;color:#888;white-space:nowrap\">[Date] \u00b7 [Source]</div>\n      </div>\n    </div>\n  </div>\n  <div class=\"score-box\">Peer standing: <strong>[LEADING / MID-PACK / LAGGING]</strong><br><span style=\"margin-top:4px;display:block\">[One sentence]</span></div>\n</div>\n\n<!-- TAB 6: OWNERSHIP -->\n<div class=\"panel\" id=\"p6\">\n  <div class=\"card\">\n    <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px\">Who is backing this company \u2014 and are they buying or stepping away?</div>\n    <table>\n      <thead><tr><th>Holder</th><th>Latest %</th><th>8-quarter trend</th><th>Signal</th><th>What it means</th></tr></thead>\n      <tbody>\n        <tr><td>Promoter</td><td>[__]%</td><td>[\u2191 Buying / \u2192 Stable / \u2193 Selling]</td><td><span class=\"badge [ok|warn|bad]\">[BUYING/STABLE/SELLING]</span></td><td style=\"color:#888;font-size:12px\">Founder confidence</td></tr>\n        <tr><td>FII</td><td>[__]%</td><td>[\u2191/\u2192/\u2193]</td><td><span class=\"badge [ok|warn|bad]\">[INCREASING/STABLE/DECREASING]</span></td><td style=\"color:#888;font-size:12px\">Global fund interest</td></tr>\n        <tr><td>DII</td><td>[__]%</td><td>[\u2191/\u2192/\u2193]</td><td><span class=\"badge [ok|warn|bad]\">[INCREASING/STABLE/DECREASING]</span></td><td style=\"color:#888;font-size:12px\">Indian MF &amp; insurance</td></tr>\n        <tr><td>Promoter pledging</td><td>[__]%</td><td>[___]</td><td><span class=\"badge [ok|bad]\">[OK / FLAG]</span></td><td style=\"color:#888;font-size:12px\">Above 10% = red flag</td></tr>\n      </tbody>\n    </table>\n  </div>\n  <div class=\"card\">\n    <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px\">Latest earnings call \u2014 [Q_ FY__]</div>\n    <table>\n      <thead><tr><th>What management said</th><th>What it means for you</th></tr></thead>\n      <tbody>\n        <tr><td>[Key management comment 1]</td><td style=\"color:#888;font-size:12px\">[Plain-English implication]</td></tr>\n        <tr><td>[Key management comment 2]</td><td style=\"color:#888;font-size:12px\">[Plain-English implication]</td></tr>\n        <tr><td>[Key management comment 3]</td><td style=\"color:#888;font-size:12px\">[Plain-English implication]</td></tr>\n        <tr><td>[Key management comment 4]</td><td style=\"color:#888;font-size:12px\">[Plain-English implication]</td></tr>\n      </tbody>\n    </table>\n    <div style=\"font-size:12px;color:#888;margin-top:8px\">Management tone: <strong style=\"color:#111\">[CONFIDENT / CAUTIOUS / MIXED]</strong></div>\n  </div>\n  <div class=\"score-box\">Ownership signal: <strong>[INSIDERS BUILDING / HOLDING STEADY / TRIMMING]</strong><br><span style=\"margin-top:4px;display:block\">[One sentence]</span></div>\n</div>\n\n<!-- TAB 7: VIEW \u2014 DEFAULT ACTIVE -->\n<div class=\"panel on\" id=\"p7\">\n  <div class=\"card [green|amber|red]\">\n    <div class=\"view-label [green|amber|red]\">[STRONG FUNDAMENTALS / MODERATE FUNDAMENTALS / WEAK FUNDAMENTALS]</div>\n    <div class=\"view-reason\">[One sentence: what the overall fundamentals show about this business right now]</div>\n    <div class=\"sec-label\">What works for this stock</div>\n    <div class=\"bullet-row\"><span class=\"bicon\" style=\"color:var(--g-accent)\">\u2713</span><span>[Strength 1 \u2014 plain English, one line]</span></div>\n    <div class=\"bullet-row\"><span class=\"bicon\" style=\"color:var(--g-accent)\">\u2713</span><span>[Strength 2 \u2014 plain English, one line]</span></div>\n    <div class=\"bullet-row\"><span class=\"bicon\" style=\"color:var(--g-accent)\">\u2713</span><span>[Strength 3 \u2014 plain English, one line]</span></div>\n    <div class=\"sec-label\">What to watch</div>\n    <div class=\"bullet-row\"><span class=\"bicon\" style=\"color:var(--a-accent)\">\u26a0</span><span>[Risk or watch point 1 \u2014 plain English, one line]</span></div>\n    <div class=\"bullet-row\"><span class=\"bicon\" style=\"color:var(--a-accent)\">\u26a0</span><span>[Risk or watch point 2 \u2014 plain English, one line]</span></div>\n    <div class=\"sec-label\">Track this going forward</div>\n    <div class=\"bullet-row\"><span class=\"bicon\" style=\"color:#888\">\u2192</span><span>[What to monitor]</span></div>\n    <div style=\"margin-top:16px;font-size:11px;color:#888;font-style:italic\">This is a VIEW based on fundamentals only. Not a buy/sell recommendation. The decision is always yours.</div>\n  </div>\n  <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px\">\n    <div class=\"card green\">\n      <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--g-text);margin-bottom:8px\">Opportunities</div>\n      <div class=\"bullet-row\" style=\"border-color:var(--g-border)\"><span class=\"bicon\" style=\"color:var(--g-accent)\">+</span><span style=\"color:var(--g-text);font-size:12px\">[Opportunity 1]</span></div>\n      <div class=\"bullet-row\" style=\"border-color:var(--g-border)\"><span class=\"bicon\" style=\"color:var(--g-accent)\">+</span><span style=\"color:var(--g-text);font-size:12px\">[Opportunity 2]</span></div>\n      <div class=\"bullet-row\" style=\"border-color:var(--g-border);border-bottom:none\"><span class=\"bicon\" style=\"color:var(--g-accent)\">+</span><span style=\"color:var(--g-text);font-size:12px\">[Opportunity 3]</span></div>\n    </div>\n    <div class=\"card red\">\n      <div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--r-text);margin-bottom:8px\">Risks</div>\n      <div class=\"bullet-row\" style=\"border-color:var(--r-border)\"><span class=\"bicon\" style=\"color:var(--r-accent)\">\u2212</span><span style=\"color:var(--r-text);font-size:12px\">[Risk 1]</span></div>\n      <div class=\"bullet-row\" style=\"border-color:var(--r-border)\"><span class=\"bicon\" style=\"color:var(--r-accent)\">\u2212</span><span style=\"color:var(--r-text);font-size:12px\">[Risk 2]</span></div>\n      <div class=\"bullet-row\" style=\"border-color:var(--r-border);border-bottom:none\"><span class=\"bicon\" style=\"color:var(--r-accent)\">\u2212</span><span style=\"color:var(--r-text);font-size:12px\">[Risk 3]</span></div>\n    </div>\n  </div>\n</div>\n\n<details style=\"margin-top:20px;padding:0 4px\">\n  <summary>Definitions \u2014 tap to expand</summary>\n  <p><strong>P/E ratio</strong> \u2014 What you pay per \u20b91 of profit. Lower vs history and sector = cheaper.</p>\n  <p><strong>P/B ratio</strong> \u2014 Price vs what the company actually owns. Below 1 = buying at a discount to assets.</p>\n  <p><strong>EV/EBITDA</strong> \u2014 Full business value check including debt. Lower = better value.</p>\n  <p><strong>ROE</strong> \u2014 For every \u20b9100 shareholders invested, how much profit did the company make. Above 15% = good.</p>\n  <p><strong>ROCE</strong> \u2014 How efficiently the whole business uses capital including borrowed money. Above 15% = healthy.</p>\n  <p><strong>Free Cash Flow</strong> \u2014 Cash left after all expenses and investments. Positive and growing = genuinely healthy business.</p>\n  <p><strong>Promoter pledging</strong> \u2014 Founders using their own shares as loan collateral. Above 10% is a red flag.</p>\n  <p><strong>CAGR</strong> \u2014 Compound Annual Growth Rate. The average yearly growth rate over a period.</p>\n</details>\n\n<div class=\"disc\">This is a fundamental screening and education tool only. Data sourced from NSE, BSE, Annual Reports, Screener.in, Moneycontrol, and public financial databases. This is NOT investment advice, a buy/sell recommendation, or SEBI-registered financial research. AI can make errors \u2014 verify all numbers on NSE, BSE, or Screener.in before making any decision. Past performance does not guarantee future results. Investing carries risk. Consult a SEBI-registered financial advisor before investing.</div>\n\n</div>\n\n<script>\nfunction show(n){var panels=document.querySelectorAll('.panel');var tabs=document.querySelectorAll('.tab-btn');for(var i=0;i<panels.length;i++){panels[i].className='panel'+(i===n?' on':'');tabs[i].className='tab-btn'+(i===n?' active':'');}}\n</script>\n";
+  const messages = [{ role: 'user', content: `${ticker}\n${horizon}` }];
+
+  // Agentic loop: keep calling until Claude returns end_turn (no more tool use)
+  const MAX_TURNS = 15;  // web search can need many turns
+  let finalHtml = null;
+
+  for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 10000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: SYSTEM_PROMPT,
+        messages,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`API error ${response.status}: ${err.slice(0, 300)}`);
+    }
+
+    const data = await response.json();
+
+    // Add assistant message to history
+    messages.push({ role: 'assistant', content: data.content });
+
+    // Check stop reason
+    if (data.stop_reason === 'end_turn') {
+      // Extract final HTML from text blocks
+      const textBlocks = data.content.filter(b => b.type === 'text');
+      const rawText = textBlocks.map(b => b.text).join('');
+      // Strip any accidental markdown code fences
+      finalHtml = rawText
+        .replace(/^```html\s*/im, '')
+        .replace(/\s*```\s*$/im, '')
+        .trim();
+      break;
+    }
+
+    // If Claude used tool_use, feed results back
+    if (data.stop_reason === 'tool_use') {
+      const toolResults = [];
+      for (const block of data.content) {
+        if (block.type === 'tool_use' && block.name === 'web_search') {
+          // The web_search tool result is already in data.content as tool_result blocks
+          // from the API — we just need to pass the tool_use id back with content
+          // In the Anthropic API, tool results are sent as user messages
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: block.id,
+            content: block.input?.query ? `Search performed for: ${block.input.query}` : 'Search completed',
+          });
+        }
+      }
+      // Check if tool results are already embedded (new API format)
+      const hasToolResults = data.content.some(b => b.type === 'tool_result');
+      if (!hasToolResults && toolResults.length > 0) {
+        messages.push({ role: 'user', content: toolResults });
+      }
+      // Continue the loop
+      continue;
+    }
+
+    // Any other stop reason (max_tokens etc) — try to extract what we have
+    const textBlocks = data.content.filter(b => b.type === 'text');
+    if (textBlocks.length) {
+      finalHtml = textBlocks.map(b => b.text).join('').replace(/^```html\s*/im, '').replace(/\s*```\s*$/im, '').trim();
+      break;
+    }
+  }
+
+  if (!finalHtml) throw new Error('Claude did not produce an HTML report. Please try again.');
+  if (!finalHtml.includes('<style') && !finalHtml.includes('<div')) {
+    throw new Error('Response did not contain expected HTML output. Please try again.');
+  }
+  return finalHtml;
+}
+
+// ── Display the result ────────────────────────────────────────
+function displayResult(ticker, horizon, html) {
+  const area = document.getElementById('result-area');
+  area.innerHTML = `
+    <div class="result-container">
+      <div class="result-toolbar">
+        <div class="result-stock-badge">
+          <span class="result-ticker-chip">${ticker}</span>
+          <div>
+            <div class="result-stock-name">${ticker} — Fundamental Analysis</div>
+            <div class="result-stock-meta">Horizon: ${horizon} &nbsp;·&nbsp; ${new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button class="btn btn-ghost btn-sm" onclick="printResult()">🖨 Print</button>
+          <button class="btn btn-ghost btn-sm" onclick="newSearch()">+ New</button>
+        </div>
+      </div>
+      <div id="research-result-body" style="padding:0;overflow:hidden;border-radius:0 0 var(--radius-xl) var(--radius-xl)"></div>
+    </div>`;
+
+  // Render in sandboxed iframe for full CSS isolation
+  const iframe = document.createElement('iframe');
+  iframe.className = 'research-iframe';
+  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+  iframe.style.width  = '100%';
+  iframe.style.border = 'none';
+  iframe.style.minHeight = '700px';
+
+  document.getElementById('research-result-body').appendChild(iframe);
+
+  // Write HTML directly — avoids srcdoc encoding issues with special chars
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+
+  // Auto-resize to content height after render
+  const resize = () => {
+    try {
+      const h = iframe.contentDocument.documentElement.scrollHeight;
+      if (h > 100) iframe.style.height = (h + 32) + 'px';
+    } catch(_) {}
+  };
+  iframe.onload = resize;
+  setTimeout(resize, 800);
+  setTimeout(resize, 2000);
+}
+
+// ── Error state ───────────────────────────────────────────────
+function showError(ticker, message) {
+  const area = document.getElementById('result-area');
+  const safe  = Validate.html(message);
+  const msg   = message.includes('529') || message.toLowerCase().includes('overload')
+    ? 'Claude is overloaded right now. Please wait 30 seconds and try again.'
+    : message.includes('API error')
+    ? 'Could not reach Claude API. Check that your API key is set in js/config.js.'
+    : safe;
+  area.innerHTML = `
+    <div class="research-empty">
+      <div class="research-empty-icon">⚠</div>
+      <div class="research-empty-title">Analysis failed</div>
+      <div class="research-empty-desc">${msg}</div>
+      <button class="btn btn-primary" style="margin-top:1.25rem"
+        onclick="document.getElementById('stock-input').focus()">Try Again</button>
+    </div>`;
+  showToast('Analysis failed', 'error');
+}
+
+// ── Print / New ───────────────────────────────────────────────
+function printResult() {
+  const iframe = document.querySelector('.research-iframe');
+  if (iframe?.contentWindow) iframe.contentWindow.print();
+}
+
+function newSearch() {
+  document.getElementById('result-area').innerHTML = `
+    <div class="research-empty" id="empty-state">
+      <div class="research-empty-icon">🔬</div>
+      <div class="research-empty-title">Ready to analyse</div>
+      <div class="research-empty-desc">Enter any NSE or BSE ticker — or a company name — and select your investment horizon. Claude will research fundamentals live and build a full 8-tab report.</div>
+    </div>`;
+  document.getElementById('stock-input').value = '';
+  document.getElementById('stock-input').focus();
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar()   { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+init();
+</script>
+</body>
+</html>
