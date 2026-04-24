@@ -146,6 +146,7 @@ CREATE TABLE assets (
   currency currency_type NOT NULL DEFAULT 'USD',
   country TEXT DEFAULT 'United Arab Emirates',
   portfolio_id UUID REFERENCES portfolios(id) ON DELETE SET NULL,  -- optional: link to named portfolio
+  notes TEXT,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
