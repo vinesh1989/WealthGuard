@@ -365,6 +365,49 @@ function getRate(from, to) {
   return ExchangeRates.getRate(from, to, rates);
 }
 
+// ── Tab switching ─────────────────────────────────────────────
+function switchReportTab(tab) {
+  const isPortfolio = tab === 'portfolio';
+
+  // Show/hide config panels
+  document.getElementById('portfolio-config').style.display = isPortfolio ? 'block' : 'none';
+  document.getElementById('will-config').style.display      = isPortfolio ? 'none'  : 'block';
+
+  // Show/hide preview
+  const preview = document.getElementById('report-preview');
+  if (preview) preview.style.display = isPortfolio ? 'block' : 'none';
+
+  // Tab button styling
+  const pBtn = document.getElementById('tab-portfolio-btn');
+  const wBtn = document.getElementById('tab-will-btn');
+
+  if (isPortfolio) {
+    pBtn.style.background = 'var(--gold-muted)';
+    pBtn.style.color      = 'var(--gold)';
+    pBtn.classList.remove('btn-ghost');
+    wBtn.style.background = '';
+    wBtn.style.color      = '';
+    wBtn.classList.add('btn-ghost');
+  } else {
+    wBtn.style.background = 'var(--gold-muted)';
+    wBtn.style.color      = 'var(--gold)';
+    wBtn.classList.remove('btn-ghost');
+    pBtn.style.background = '';
+    pBtn.style.color      = '';
+    pBtn.classList.add('btn-ghost');
+
+    // Pre-fill declarant details from profile if empty
+    const decEl  = document.getElementById('will-declarant');
+    const dateEl = document.getElementById('will-date');
+    if (decEl && !decEl.value && currentProfile) {
+      decEl.value = currentProfile.full_name || currentProfile.email || '';
+    }
+    if (dateEl && !dateEl.value) {
+      dateEl.value = new Date().toISOString().slice(0, 10);
+    }
+  }
+}
+
 // ── Generate report ───────────────────────────────────────────
 function generateReport() {
   const fType   = document.getElementById('r-type').value;
