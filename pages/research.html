@@ -641,7 +641,7 @@ function buildSystemPrompt() {
   lines.push('Output raw HTML ONLY. Absolutely NO markdown, NO code blocks, NO triple backticks.');
   lines.push('NO DOCTYPE tag. NO html tag. NO head tag. NO body tag.');
   lines.push('Start your response directly with: <style>');
-  lines.push('The output must be a self-contained HTML fragment starting with <style> and ending with </script>.');
+  lines.push('The output must be a self-contained HTML fragment starting with <style> and ending with <\/script>.');
   lines.push('');
   lines.push('TAB STRUCTURE — 8 tabs in this exact order:');
   lines.push('Tab 0: Snapshot | Tab 1: Valuation | Tab 2: Growth | Tab 3: Health');
@@ -947,7 +947,7 @@ function getHTMLShell() {
     '</details>',
     '<div class="disc">Fundamental screening and education tool only. Data from NSE, BSE, Screener.in, Moneycontrol, Annual Reports. This is NOT investment advice, a buy/sell recommendation, or SEBI-registered research. AI can make errors &#8212; verify all numbers on NSE/BSE before any decision. Past performance does not guarantee future results. Consult a SEBI-registered financial advisor before investing.</div>',
     '</div>',
-    '<script>function show(n){var p=document.querySelectorAll(".panel"),t=document.querySelectorAll(".tab-btn");for(var i=0;i<p.length;i++){p[i].className="panel"+(i===n?" on":"");t[i].className="tab-btn"+(i===n?" active":"");}}<\/script>',
+    '<scr'+'ipt>function show(n){var p=document.querySelectorAll(".panel"),t=document.querySelectorAll(".tab-btn");for(var i=0;i<p.length;i++){p[i].className="panel"+(i===n?" on":"");t[i].className="tab-btn"+(i===n?" active":"");}}<\/script>',
   ].join('\n');
 }
 
