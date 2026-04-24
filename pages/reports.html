@@ -717,6 +717,7 @@ async function exportWillPDF() {
   setLoading(btn, true, 'Generating…');
 
   try {
+    // ── Inputs ────────────────────────────────────────────────
     const declarant = Validate.stripTags(document.getElementById('will-declarant').value.trim())
       || currentProfile?.full_name || currentProfile?.email || 'Unspecified';
     const pan       = Validate.stripTags(document.getElementById('will-pan').value.trim()) || '—';
@@ -726,46 +727,67 @@ async function exportWillPDF() {
       ? new Date(dateInput).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
       : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
 
+    // ── PDF setup — LANDSCAPE A4 for more column room ────────
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const W = doc.internal.pageSize.getWidth();
-    const H = doc.internal.pageSize.getHeight();
-    const M = 18;  // page margin
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();   // 297
+    const H = doc.internal.pageSize.getHeight();  // 210
+    const M = 14;  // margin
 
-    // ── Helpers ────────────────────────────────────────────────
     let y = M;
-    const addPage = () => { doc.addPage(); y = M; };
-    const checkSpace = (needed) => { if (y + needed > H - M) addPage(); };
+    const addPage = () => { doc.addPage(); y = M; renderFooterLater = true; };
+    const checkSpace = (needed) => { if (y + needed > H - 18) addPage(); };
 
+    // ── Currency formatting — ASCII-safe (no ₹ glyph issues) ──
+    // jsPDF helvetica does not render ₹, €, £ reliably → use code prefix
+    const CUR_PREFIX = {
+      INR: 'Rs. ',
+      AED: 'AED ',
+      USD: 'USD ',
+      EUR: 'EUR ',
+      GBP: 'GBP ',
+      SGD: 'SGD ',
+      JPY: 'JPY ',
+      AUD: 'AUD ',
+    };
+    const fmtAmount = (amount, cur) => {
+      const n = parseFloat(amount) || 0;
+      const prefix = CUR_PREFIX[cur] || (cur + ' ');
+      const locale = cur === 'INR' ? 'en-IN' : 'en-US';
+      const formatted = new Intl.NumberFormat(locale, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(n);
+      return prefix + formatted;
+    };
+
+    const fmtDate = (d) => {
+      if (!d) return '—';
+      try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
+      catch(_) { return String(d); }
+    };
+
+    // ── Text helpers ──────────────────────────────────────────
     const sectionTitle = (text) => {
-      checkSpace(18);
+      checkSpace(14);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(13);
       doc.setTextColor(20, 20, 25);
       doc.text(text, M, y);
       doc.setDrawColor(180, 150, 60);
-      doc.setLineWidth(0.6);
-      doc.line(M, y + 1.5, M + 60, y + 1.5);
-      y += 10;
-    };
-
-    const subTitle = (text) => {
-      checkSpace(10);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10.5);
-      doc.setTextColor(60, 60, 70);
-      doc.text(text, M, y);
-      y += 6;
+      doc.setLineWidth(0.7);
+      doc.line(M, y + 1.5, M + 80, y + 1.5);
+      y += 9;
     };
 
     const bodyText = (text, size = 9) => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(size);
-      doc.setTextColor(40, 40, 50);
+      doc.setTextColor(50, 50, 60);
       const lines = doc.splitTextToSize(text, W - 2 * M);
-      checkSpace(lines.length * (size * 0.4) + 2);
+      checkSpace(lines.length * (size * 0.42) + 2);
       doc.text(lines, M, y);
-      y += lines.length * (size * 0.4) + 2;
+      y += lines.length * (size * 0.42) + 2;
     };
 
     const keyValue = (key, val) => {
@@ -778,26 +800,26 @@ async function exportWillPDF() {
       doc.setTextColor(20, 20, 25);
       const lines = doc.splitTextToSize(String(val || '—'), W - 2 * M - 45);
       doc.text(lines, M + 45, y);
-      y += Math.max(lines.length * 4, 5) + 1;
+      y += Math.max(lines.length * 4.2, 5) + 1;
     };
 
-    // ── COVER PAGE ─────────────────────────────────────────────
+    // ── COVER PAGE ────────────────────────────────────────────
     doc.setFillColor(10, 13, 18);
-    doc.rect(0, 0, W, 70, 'F');
+    doc.rect(0, 0, W, 60, 'F');
     doc.setTextColor(212, 175, 55);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(26);
-    doc.text('WealthGuard', W / 2, 32, { align: 'center' });
+    doc.text('WealthGuard', W / 2, 26, { align: 'center' });
     doc.setTextColor(240, 240, 245);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text('STATEMENT OF ASSETS & LIABILITIES', W / 2, 44, { align: 'center' });
+    doc.text('STATEMENT OF ASSETS & LIABILITIES', W / 2, 38, { align: 'center' });
     doc.setFontSize(9);
     doc.setTextColor(180, 190, 210);
-    doc.text('For Legal Reference — Will Execution', W / 2, 52, { align: 'center' });
-    doc.text(`Generated: ${reportDate}`, W / 2, 60, { align: 'center' });
+    doc.text('For Legal Reference — Will Execution', W / 2, 46, { align: 'center' });
+    doc.text(`Generated: ${reportDate}`, W / 2, 52, { align: 'center' });
 
-    y = 90;
+    y = 78;
     doc.setTextColor(20, 20, 25);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
@@ -805,167 +827,285 @@ async function exportWillPDF() {
     y += 10;
 
     doc.setFillColor(248, 248, 250);
-    doc.roundedRect(M, y, W - 2 * M, 52, 3, 3, 'F');
-    y += 8;
-    keyValue('Full Name', declarant);
-    keyValue('PAN / Tax ID', pan);
-    keyValue('Address', address);
-    keyValue('Email', currentProfile?.email || '—');
-    keyValue('Report Date', reportDate);
-    y += 8;
+    doc.roundedRect(M + 30, y, W - 2 * M - 60, 40, 3, 3, 'F');
+    y += 7;
+    const keyValueCover = (key, val) => {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(70, 70, 80);
+      doc.text(key + ':', M + 36, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(20, 20, 25);
+      const lines = doc.splitTextToSize(String(val || '—'), W - 2 * M - 100);
+      doc.text(lines, M + 85, y);
+      y += Math.max(lines.length * 4.2, 5) + 1;
+    };
+    keyValueCover('Full Name', declarant);
+    keyValueCover('PAN / Tax ID', pan);
+    keyValueCover('Address', address);
+    keyValueCover('Email', currentProfile?.email || '—');
+    keyValueCover('Report Date', reportDate);
+    y += 10;
 
-    bodyText('This document has been generated as a comprehensive statement of the declarant\'s assets and liabilities for the purpose of will execution, estate planning, and legal reference. All figures have been recorded by the declarant and are subject to independent verification.', 8.5);
-    y += 4;
-    bodyText('The declarant affirms that the information contained herein is true and correct to the best of their knowledge and belief as of the report date above.', 8.5);
+    doc.setTextColor(80, 80, 90);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'italic');
+    const coverNote = doc.splitTextToSize(
+      'This document is a comprehensive statement of the declarants assets and liabilities for the purpose of will execution, estate planning, and legal reference. All figures have been recorded by the declarant and are subject to independent verification. The declarant affirms the information is true and correct to the best of their knowledge as of the report date above.',
+      W - 2 * M - 40
+    );
+    doc.text(coverNote, W / 2, y, { align: 'center' });
 
-    // ── SECTION 1: INVESTMENTS BY CURRENCY ─────────────────────
+    // ── SECTION 1: INVESTMENTS BY ASSET CLASS ────────────────
     addPage();
-    sectionTitle('SECTION 1 — INVESTMENT HOLDINGS');
-    bodyText('All investment holdings grouped by denomination currency. Amounts reflect values recorded at the time of report generation.', 8.5);
-    y += 2;
+    sectionTitle('SECTION 1 — INVESTMENT HOLDINGS (by Asset Class)');
+    bodyText('Investments are organised first by asset class, then further sub-grouped by denomination currency. Each holding shows full details including account reference, ticker/ISIN codes, quantity, unit price, purchase date, and any notes recorded by the declarant.', 8.5);
+    y += 3;
 
-    // Group by currency
-    const invByCur = {};
+    // Group by asset_class → currency → investments
+    const byClass = {};
     allInvestments.forEach(inv => {
+      const ac  = inv.assets?.asset_type || 'Other';
       const cur = inv.currency || 'INR';
-      if (!invByCur[cur]) invByCur[cur] = [];
-      invByCur[cur].push(inv);
+      if (!byClass[ac]) byClass[ac] = {};
+      if (!byClass[ac][cur]) byClass[ac][cur] = [];
+      byClass[ac][cur].push(inv);
     });
 
-    // Currency order: INR, AED, USD, EUR, GBP, then others
+    const CLASS_ORDER = ['Equity', 'Fixed Income', 'Cash', 'Precious Metals', 'Real Estate', 'Crypto'];
+    const CLASS_COLORS = {
+      'Equity':          [96, 165, 250],
+      'Fixed Income':    [52, 211, 153],
+      'Cash':            [251, 191, 36],
+      'Precious Metals': [245, 158, 11],
+      'Real Estate':     [249, 115, 22],
+      'Crypto':          [167, 139, 250],
+      'Other':           [160, 160, 170],
+    };
     const CUR_ORDER = ['INR', 'AED', 'USD', 'EUR', 'GBP'];
-    const sortedCurs = Object.keys(invByCur).sort((a, b) => {
-      const ia = CUR_ORDER.indexOf(a); const ib = CUR_ORDER.indexOf(b);
+
+    const sortedClasses = Object.keys(byClass).sort((a, b) => {
+      const ia = CLASS_ORDER.indexOf(a), ib = CLASS_ORDER.indexOf(b);
       if (ia === -1 && ib === -1) return a.localeCompare(b);
       if (ia === -1) return 1;
       if (ib === -1) return -1;
       return ia - ib;
     });
 
-    if (!sortedCurs.length) {
+    if (!sortedClasses.length) {
       bodyText('No investments on record.', 9);
     } else {
-      sortedCurs.forEach(cur => {
-        const invs = invByCur[cur];
-        let totInvested = 0, totCurrent = 0;
-        invs.forEach(i => { totInvested += parseFloat(i.amount_invested) || 0; totCurrent += parseFloat(i.current_value) || 0; });
-
-        checkSpace(30);
-        // Currency block header
-        doc.setFillColor(240, 235, 215);
-        doc.roundedRect(M, y, W - 2 * M, 8, 1.5, 1.5, 'F');
-        doc.setTextColor(100, 80, 20);
+      sortedClasses.forEach(ac => {
+        // Class header — big coloured bar
+        checkSpace(16);
+        const cls = CLASS_COLORS[ac] || CLASS_COLORS.Other;
+        doc.setFillColor(...cls);
+        doc.rect(M, y, W - 2 * M, 9, 'F');
+        doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.text(`${getCurrencyLabel(cur)} · ${invs.length} holding${invs.length !== 1 ? 's' : ''}`, M + 3, y + 5.5);
-        doc.setFontSize(8.5);
-        doc.text(`Total: ${formatCurrency(totCurrent, cur)}`, W - M - 3, y + 5.5, { align: 'right' });
+        doc.setFontSize(11);
+        doc.text('CLASS: ' + ac.toUpperCase(), M + 3, y + 6);
+
+        // Total count across all currencies for this class
+        let totalCount = 0;
+        Object.values(byClass[ac]).forEach(arr => totalCount += arr.length);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(totalCount + ' holding' + (totalCount !== 1 ? 's' : ''),
+                 W - M - 3, y + 6, { align: 'right' });
         y += 12;
 
-        // Table headers
-        const colsInv = [
-          { h: '#',            x: M,        w: 7  },
-          { h: 'Investment',   x: M + 8,    w: 48 },
-          { h: 'Account/Ref',  x: M + 57,   w: 36 },
-          { h: 'Type',         x: M + 94,   w: 24 },
-          { h: 'Invested',     x: M + 119,  w: 25 },
-          { h: 'Current Value', x: M + 145, w: 27 },
-        ];
-        doc.setFillColor(245, 245, 248);
-        doc.rect(M, y - 3, W - 2 * M, 6, 'F');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7.5);
-        doc.setTextColor(90, 90, 100);
-        colsInv.forEach(col => doc.text(col.h, col.x, y));
-        y += 5;
-
-        // Rows
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        invs.forEach((inv, idx) => {
-          checkSpace(9);
-          doc.setTextColor(20, 20, 25);
-          doc.text(String(idx + 1), colsInv[0].x, y);
-
-          const nameLines = doc.splitTextToSize(inv.name || '—', colsInv[1].w - 1);
-          doc.text(nameLines[0] || '—', colsInv[1].x, y);
-
-          const accRef = inv.assets?.account_number
-            ? `${inv.assets.platform || ''} · ${inv.assets.account_number}`
-            : (inv.assets?.platform || '—');
-          const accLines = doc.splitTextToSize(accRef, colsInv[2].w - 1);
-          doc.setTextColor(90, 90, 100);
-          doc.text(accLines[0] || '—', colsInv[2].x, y);
-
-          const type = inv.assets?.asset_type || '—';
-          doc.text(doc.splitTextToSize(type, colsInv[3].w - 1)[0], colsInv[3].x, y);
-
-          doc.setTextColor(20, 20, 25);
-          doc.text(formatCurrency(parseFloat(inv.amount_invested) || 0, cur), colsInv[4].x, y);
-          doc.text(formatCurrency(parseFloat(inv.current_value) || 0, cur), colsInv[5].x, y);
-
-          // Second line if name or account is long
-          if (nameLines.length > 1 || accLines.length > 1) {
-            y += 3.5;
-            if (nameLines[1]) { doc.setTextColor(20,20,25); doc.text(nameLines[1], colsInv[1].x, y); }
-            if (accLines[1])  { doc.setTextColor(90,90,100); doc.text(accLines[1], colsInv[2].x, y); }
-          }
-          y += 5;
-          // Row separator
-          doc.setDrawColor(230, 230, 235);
-          doc.setLineWidth(0.2);
-          doc.line(M, y - 1.5, W - M, y - 1.5);
+        // Sub-group by currency
+        const currencies = Object.keys(byClass[ac]).sort((a, b) => {
+          const ia = CUR_ORDER.indexOf(a), ib = CUR_ORDER.indexOf(b);
+          if (ia === -1 && ib === -1) return a.localeCompare(b);
+          if (ia === -1) return 1;
+          if (ib === -1) return -1;
+          return ia - ib;
         });
 
-        // Currency subtotal
-        y += 1.5;
-        doc.setFillColor(250, 248, 240);
-        doc.rect(M, y - 3, W - 2 * M, 6.5, 'F');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.5);
-        doc.setTextColor(70, 55, 15);
-        doc.text(`Subtotal (${cur}):`, M + 2, y + 1);
-        doc.text(`Invested ${formatCurrency(totInvested, cur)}`, colsInv[4].x, y + 1);
-        doc.text(`Current ${formatCurrency(totCurrent, cur)}`, colsInv[5].x, y + 1);
-        y += 10;
+        currencies.forEach(cur => {
+          const invs = byClass[ac][cur];
+          let totInv = 0, totCur = 0;
+          invs.forEach(i => {
+            totInv += parseFloat(i.amount_invested) || 0;
+            totCur += parseFloat(i.current_value) || 0;
+          });
+
+          checkSpace(14);
+
+          // Currency sub-block header
+          doc.setFillColor(245, 240, 220);
+          doc.roundedRect(M + 2, y, W - 2 * M - 4, 7, 1.2, 1.2, 'F');
+          doc.setTextColor(100, 80, 20);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.text(getCurrencyLabel(cur), M + 4, y + 4.8);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.text(
+            'Invested: ' + fmtAmount(totInv, cur) + '   |   Current: ' + fmtAmount(totCur, cur),
+            W - M - 4, y + 4.8, { align: 'right' }
+          );
+          y += 10;
+
+          // Per-holding detail block — NOT a cramped table, but a multi-row card per investment
+          invs.forEach((inv, idx) => {
+            // Estimate height needed: base 16mm + 4mm for notes if present
+            const hasNotes  = inv.notes && inv.notes.trim().length > 0;
+            const hasTicker = inv.ticker_symbol || inv.isin || inv.exchange;
+            const needed = 18 + (hasNotes ? 8 : 0) + (hasTicker ? 5 : 0);
+            checkSpace(needed);
+
+            // Holding card
+            doc.setFillColor(252, 252, 254);
+            doc.setDrawColor(225, 225, 232);
+            doc.setLineWidth(0.25);
+            const cardTop = y;
+
+            // Title row — number + name + key amounts on right
+            doc.setTextColor(20, 20, 25);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9.5);
+            const title = (idx + 1) + '.  ' + (inv.name || 'Unnamed');
+            const titleLines = doc.splitTextToSize(title, (W - 2 * M) * 0.55);
+            doc.text(titleLines[0], M + 3, y + 4);
+            y += 5;
+            if (titleLines.length > 1) {
+              doc.text(titleLines[1], M + 3 + 4, y + 3);
+              y += 5;
+            }
+
+            // Amounts — right aligned on title row
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.setTextColor(70, 70, 80);
+            doc.text('Invested:', W - M - 82, cardTop + 4);
+            doc.setTextColor(20, 20, 25);
+            doc.setFont('helvetica', 'bold');
+            doc.text(fmtAmount(inv.amount_invested || 0, cur), W - M - 55, cardTop + 4, { align: 'left' });
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(70, 70, 80);
+            doc.text('Current:', W - M - 82, cardTop + 9);
+            const glVal  = (parseFloat(inv.current_value) || 0) - (parseFloat(inv.amount_invested) || 0);
+            const glGood = glVal >= 0;
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(glGood ? 20 : 180, glGood ? 110 : 40, glGood ? 60 : 40);
+            doc.text(fmtAmount(inv.current_value || 0, cur), W - M - 55, cardTop + 9, { align: 'left' });
+
+            // Account reference line
+            const accName = [
+              inv.assets?.platform,
+              inv.assets?.name,
+              inv.assets?.account_number ? '#' + inv.assets.account_number : null,
+              inv.assets?.country,
+            ].filter(Boolean).join(' · ');
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(90, 90, 105);
+            doc.text('Account: ', M + 3, y + 3);
+            doc.setTextColor(30, 30, 40);
+            doc.text(accName || '—', M + 3 + 16, y + 3);
+            y += 4;
+
+            // Ticker / ISIN / Exchange row (if any)
+            if (hasTicker) {
+              const tickerParts = [];
+              if (inv.ticker_symbol) tickerParts.push('Ticker: ' + inv.ticker_symbol);
+              if (inv.exchange)      tickerParts.push('Exchange: ' + inv.exchange);
+              if (inv.isin)          tickerParts.push('ISIN: ' + inv.isin);
+              if (inv.investment_type && inv.investment_type !== 'Total') {
+                tickerParts.push('Type: ' + inv.investment_type);
+              }
+              doc.setTextColor(90, 90, 105);
+              doc.text(tickerParts.join('  ·  '), M + 3, y + 3);
+              y += 4;
+            }
+
+            // Quantity / unit price / date row
+            const qtyParts = [];
+            if (inv.quantity && parseFloat(inv.quantity) > 0) {
+              qtyParts.push('Qty: ' + parseFloat(inv.quantity).toLocaleString());
+            }
+            if (inv.unit_price && parseFloat(inv.unit_price) > 0) {
+              qtyParts.push('Unit price: ' + fmtAmount(inv.unit_price, cur));
+            }
+            if (inv.date) qtyParts.push('Date: ' + fmtDate(inv.date));
+            if (inv.import_source && inv.import_source !== 'Manual') {
+              qtyParts.push('Source: ' + inv.import_source);
+            }
+            if (qtyParts.length) {
+              doc.setTextColor(110, 110, 125);
+              doc.text(qtyParts.join('  ·  '), M + 3, y + 3);
+              y += 4;
+            }
+
+            // Notes block
+            if (hasNotes) {
+              doc.setFillColor(253, 248, 230);
+              const noteTextLines = doc.splitTextToSize('Note: ' + inv.notes, W - 2 * M - 10);
+              const noteH = noteTextLines.length * 3.8 + 3;
+              doc.roundedRect(M + 3, y + 1, W - 2 * M - 6, noteH, 1, 1, 'F');
+              doc.setTextColor(110, 80, 20);
+              doc.setFontSize(8);
+              doc.setFont('helvetica', 'italic');
+              doc.text(noteTextLines, M + 5, y + 4.2);
+              y += noteH + 2;
+            }
+
+            // Close card with bottom border
+            doc.setDrawColor(230, 230, 235);
+            doc.setLineWidth(0.3);
+            doc.line(M + 2, y + 1, W - M - 2, y + 1);
+            y += 3;
+          });
+
+          y += 3;  // Space after currency subtotal group
+        });
+        y += 3;  // Space after class
       });
     }
 
-    // ── SECTION 2: INSURANCE POLICIES ──────────────────────────
+    // ── SECTION 2: INSURANCE POLICIES ────────────────────────
     addPage();
     sectionTitle('SECTION 2 — INSURANCE POLICIES');
-    bodyText('All active insurance policies held by the declarant, including life, term, health, vehicle, property, ULIP and other categories.', 8.5);
+    bodyText('All active insurance policies held by the declarant — life, term, health, vehicle, property, ULIP and other categories — with complete policy, premium, and nominee details.', 8.5);
     y += 2;
 
     if (!allInsurance.length) {
       bodyText('No insurance policies on record.', 9);
     } else {
       allInsurance.forEach((p, idx) => {
-        checkSpace(55);
+        const pCur = p.currency || 'INR';
+        const hasNotes = p.notes && p.notes.trim().length > 0;
+        const baseH = 42;
+        const needed = baseH + (hasNotes ? 10 : 0);
+        checkSpace(needed);
 
-        // Policy card background
-        doc.setFillColor(245, 248, 252);
-        doc.roundedRect(M, y, W - 2 * M, 48, 2, 2, 'F');
+        // Policy card
+        doc.setFillColor(245, 248, 253);
         doc.setDrawColor(180, 200, 230);
         doc.setLineWidth(0.3);
-        doc.roundedRect(M, y, W - 2 * M, 48, 2, 2, 'S');
+        doc.roundedRect(M, y, W - 2 * M, baseH + (hasNotes ? 9 : 0), 2, 2, 'FD');
 
-        // Header strip
+        // Header bar
         doc.setFillColor(60, 100, 160);
-        doc.rect(M, y, W - 2 * M, 6, 'F');
+        doc.rect(M, y, W - 2 * M, 7, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.text(`${idx + 1}. ${p.policy_name || 'Unnamed Policy'}`, M + 2, y + 4);
+        doc.setFontSize(10);
+        doc.text((idx + 1) + '.  ' + (p.policy_name || 'Unnamed Policy'), M + 3, y + 4.8);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.text(p.policy_type || '', W - M - 2, y + 4, { align: 'right' });
+        doc.setFontSize(9);
+        doc.text(p.policy_type || '', W - M - 3, y + 4.8, { align: 'right' });
+        y += 11;
 
-        y += 10;
+        // 3-column grid layout
+        const col1 = M + 3;
+        const col2 = M + (W - 2 * M) / 3 + 2;
+        const col3 = M + 2 * (W - 2 * M) / 3 + 2;
+        const colW = (W - 2 * M) / 3 - 4;
 
-        // Two-column layout inside card
-        const col1x = M + 3;
-        const col2x = M + (W - 2 * M) / 2 + 2;
         const kv = (x, k, v) => {
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(7);
@@ -974,58 +1114,79 @@ async function exportWillPDF() {
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(8.5);
           doc.setTextColor(20, 20, 30);
-          const lines = doc.splitTextToSize(String(v || '—'), (W - 2*M)/2 - 6);
-          doc.text(lines[0] || '—', x, y + 4);
+          const lines = doc.splitTextToSize(String(v || '—'), colW);
+          doc.text(lines[0] || '—', x, y + 3.8);
         };
 
-        const pCur = p.currency || 'INR';
-        const premFreq = p.premium_frequency ? `/${p.premium_frequency.toLowerCase()}` : '';
+        const premFreq = p.premium_frequency ? ' / ' + p.premium_frequency : '';
 
-        kv(col1x, 'Policy Number',   p.policy_number);
-        kv(col2x, 'Issuer / Insurer', p.insurer);
-        y += 10;
-        kv(col1x, 'Sum Assured',     formatCurrency(parseFloat(p.sum_assured) || 0, pCur));
-        kv(col2x, 'Premium',         formatCurrency(parseFloat(p.premium_amount) || 0, pCur) + premFreq);
-        y += 10;
-        kv(col1x, 'Start Date',      p.start_date ? new Date(p.start_date).toLocaleDateString('en-GB') : '—');
-        kv(col2x, 'Maturity Date',   p.maturity_date ? new Date(p.maturity_date).toLocaleDateString('en-GB') : '—');
-        y += 10;
-        kv(col1x, 'Nominee',         p.nominee_name || '—');
-        kv(col2x, 'Relationship',    p.nominee_relation || '—');
-        y += 11;
+        kv(col1, 'Policy Number',   p.policy_number || '—');
+        kv(col2, 'Issuer',          p.insurer || '—');
+        kv(col3, 'Sum Assured',     fmtAmount(p.sum_assured || 0, pCur));
+        y += 9;
+
+        kv(col1, 'Premium',         fmtAmount(p.premium_amount || 0, pCur) + premFreq);
+        kv(col2, 'Start Date',      fmtDate(p.start_date));
+        kv(col3, 'Maturity Date',   fmtDate(p.maturity_date));
+        y += 9;
+
+        kv(col1, 'Nominee Name',    p.nominee_name || '—');
+        kv(col2, 'Relationship',    p.nominee_relation || '—');
+        kv(col3, 'Currency',        pCur);
+        y += 9;
+
+        if (hasNotes) {
+          doc.setFillColor(253, 248, 230);
+          const noteLines = doc.splitTextToSize('Note: ' + p.notes, W - 2 * M - 10);
+          const noteH = noteLines.length * 3.8 + 3;
+          doc.roundedRect(M + 3, y, W - 2 * M - 6, noteH, 1, 1, 'F');
+          doc.setTextColor(110, 80, 20);
+          doc.setFontSize(7.8);
+          doc.setFont('helvetica', 'italic');
+          doc.text(noteLines, M + 5, y + 3.5);
+          y += noteH + 1;
+        }
+
+        y += 4;
       });
     }
 
-    // ── SECTION 3: REAL ESTATE ─────────────────────────────────
+    // ── SECTION 3: REAL ESTATE ───────────────────────────────
     if (allRealEstate.length) {
       addPage();
       sectionTitle('SECTION 3 — REAL ESTATE HOLDINGS');
-      bodyText('Immovable property holdings including residential, commercial, land and industrial assets.', 8.5);
+      bodyText('Immovable property holdings including residential, commercial, land and industrial assets with ownership, purchase, and mortgage details.', 8.5);
       y += 2;
 
       allRealEstate.forEach((r, idx) => {
-        checkSpace(50);
         const rCur = r.currency || 'INR';
+        const hasMortgage = r.has_mortgage;
+        const hasNotes = r.notes && r.notes.trim().length > 0;
+        const baseH = hasMortgage ? 52 : 40;
+        const needed = baseH + (hasNotes ? 10 : 0);
+        checkSpace(needed);
 
         doc.setFillColor(252, 248, 240);
-        doc.roundedRect(M, y, W - 2 * M, 44, 2, 2, 'F');
         doc.setDrawColor(230, 200, 140);
         doc.setLineWidth(0.3);
-        doc.roundedRect(M, y, W - 2 * M, 44, 2, 2, 'S');
+        doc.roundedRect(M, y, W - 2 * M, baseH + (hasNotes ? 9 : 0), 2, 2, 'FD');
 
         doc.setFillColor(180, 120, 50);
-        doc.rect(M, y, W - 2 * M, 6, 'F');
+        doc.rect(M, y, W - 2 * M, 7, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.text(`${idx + 1}. ${r.property_name || 'Unnamed Property'}`, M + 2, y + 4);
+        doc.setFontSize(10);
+        doc.text((idx + 1) + '.  ' + (r.property_name || 'Unnamed Property'), M + 3, y + 4.8);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.text(r.property_type || '', W - M - 2, y + 4, { align: 'right' });
-        y += 10;
+        doc.setFontSize(9);
+        doc.text(r.property_type || '', W - M - 3, y + 4.8, { align: 'right' });
+        y += 11;
 
-        const col1x = M + 3;
-        const col2x = M + (W - 2 * M) / 2 + 2;
+        const col1 = M + 3;
+        const col2 = M + (W - 2 * M) / 3 + 2;
+        const col3 = M + 2 * (W - 2 * M) / 3 + 2;
+        const colW = (W - 2 * M) / 3 - 4;
+
         const kv = (x, k, v) => {
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(7);
@@ -1034,89 +1195,108 @@ async function exportWillPDF() {
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(8.5);
           doc.setTextColor(20, 20, 30);
-          const lines = doc.splitTextToSize(String(v || '—'), (W - 2*M)/2 - 6);
-          doc.text(lines[0] || '—', x, y + 4);
+          const lines = doc.splitTextToSize(String(v || '—'), colW);
+          doc.text(lines[0] || '—', x, y + 3.8);
         };
 
         const addr = [r.address, r.city, r.country].filter(Boolean).join(', ');
-        kv(col1x, 'Address',       addr || '—');
-        kv(col2x, 'Area (sqft)',   r.area_sqft ? String(r.area_sqft) : '—');
-        y += 10;
-        kv(col1x, 'Purchase Price', formatCurrency(parseFloat(r.purchase_price) || 0, rCur));
-        kv(col2x, 'Current Value',  formatCurrency(parseFloat(r.current_value) || parseFloat(r.purchase_price) || 0, rCur));
-        y += 10;
-        kv(col1x, 'Ownership %',   (r.ownership_percent ?? 100) + '%');
-        kv(col2x, 'Registration #', r.registration_number || '—');
-        y += 10;
-        if (r.has_mortgage) {
-          kv(col1x, 'Mortgage Bank', r.mortgage_bank || '—');
-          kv(col2x, 'Outstanding',   formatCurrency(parseFloat(r.mortgage_outstanding) || 0, rCur));
-          y += 10;
+
+        kv(col1, 'Address',         addr || '—');
+        kv(col2, 'Area (sqft)',     r.area_sqft || '—');
+        kv(col3, 'Ownership %',     (r.ownership_percent ?? 100) + '%');
+        y += 9;
+
+        kv(col1, 'Purchase Price',  fmtAmount(r.purchase_price || 0, rCur));
+        kv(col2, 'Current Value',   fmtAmount(r.current_value || r.purchase_price || 0, rCur));
+        kv(col3, 'Purchase Date',   fmtDate(r.purchase_date));
+        y += 9;
+
+        kv(col1, 'Registration',    r.registration_number || '—');
+        kv(col2, 'Country',         r.country || '—');
+        kv(col3, 'Currency',        rCur);
+        y += 9;
+
+        if (hasMortgage) {
+          kv(col1, 'Mortgage Bank',  r.mortgage_bank || '—');
+          kv(col2, 'Outstanding',    fmtAmount(r.mortgage_outstanding || 0, rCur));
+          kv(col3, 'EMI',            r.mortgage_emi ? fmtAmount(r.mortgage_emi, rCur) : '—');
+          y += 9;
         }
-        y += 3;
+
+        if (hasNotes) {
+          doc.setFillColor(253, 248, 230);
+          const noteLines = doc.splitTextToSize('Note: ' + r.notes, W - 2 * M - 10);
+          const noteH = noteLines.length * 3.8 + 3;
+          doc.roundedRect(M + 3, y, W - 2 * M - 6, noteH, 1, 1, 'F');
+          doc.setTextColor(110, 80, 20);
+          doc.setFontSize(7.8);
+          doc.setFont('helvetica', 'italic');
+          doc.text(noteLines, M + 5, y + 3.5);
+          y += noteH + 1;
+        }
+
+        y += 4;
       });
     }
 
-    // ── SECTION 4: ATTESTATION ─────────────────────────────────
+    // ── SECTION 4: ATTESTATION ───────────────────────────────
     addPage();
-    sectionTitle('SECTION 4 — ATTESTATION');
+    sectionTitle('SECTION 4 — DECLARATION & ATTESTATION');
     y += 2;
     bodyText('I, the undersigned declarant, hereby solemnly affirm that the information recorded in this Statement of Assets & Liabilities is true, complete and accurate to the best of my knowledge and belief as of the date signed below. I understand that this document may be used for legal reference in matters relating to will execution, estate planning, probate, and succession.', 9);
-    y += 4;
+    y += 3;
     bodyText('This statement is subject to independent verification by executors, legal representatives, or courts of competent jurisdiction. Supporting documents including bank statements, policy documents, title deeds, and account records should be produced alongside this statement where required.', 9);
-    y += 8;
+    y += 10;
 
-    // Signature blocks
+    // Signatures
     checkSpace(50);
     const sigY = y;
-    const sigW = (W - 2 * M - 10) / 2;
+    const sigW = (W - 2 * M - 20) / 2;
 
-    // Declarant signature
     doc.setDrawColor(120, 120, 130);
     doc.setLineWidth(0.4);
-    doc.line(M, sigY + 22, M + sigW, sigY + 22);
+    doc.line(M, sigY + 20, M + sigW, sigY + 20);
     doc.setFontSize(8);
     doc.setTextColor(80, 80, 90);
-    doc.text('Signature of Declarant', M, sigY + 26);
+    doc.text('Signature of Declarant', M, sigY + 24);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(20, 20, 25);
-    doc.text(declarant, M, sigY + 31);
+    doc.text(declarant, M, sigY + 29);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(100, 100, 110);
-    doc.text(`Date: ${reportDate}`, M, sigY + 36);
-    doc.text(`Place: ${address.split(',').slice(-1)[0].trim()}`, M, sigY + 40);
+    doc.text('PAN / Tax ID: ' + pan, M, sigY + 34);
+    doc.text('Date: ' + reportDate, M, sigY + 38);
 
-    // Witness signature
-    const wx = M + sigW + 10;
-    doc.line(wx, sigY + 22, wx + sigW, sigY + 22);
+    const wx = M + sigW + 20;
+    doc.line(wx, sigY + 20, wx + sigW, sigY + 20);
     doc.setFontSize(8);
     doc.setTextColor(80, 80, 90);
-    doc.text('Signature of Witness', wx, sigY + 26);
+    doc.text('Signature of Witness', wx, sigY + 24);
     doc.setFontSize(7.5);
     doc.setTextColor(100, 100, 110);
-    doc.text('Name: _______________________________', wx, sigY + 32);
-    doc.text('Address: _____________________________', wx, sigY + 37);
-    doc.text('Date: _______________________________', wx, sigY + 42);
+    doc.text('Name:    __________________________________', wx, sigY + 30);
+    doc.text('Address: __________________________________', wx, sigY + 35);
+    doc.text('Date:    __________________________________', wx, sigY + 40);
 
-    // ── Page numbers on every page ─────────────────────────────
+    // ── Footer on every page ──────────────────────────────────
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(7);
       doc.setTextColor(140, 140, 150);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Page ${i} of ${pageCount}`, W / 2, H - 8, { align: 'center' });
+      doc.text('Page ' + i + ' of ' + pageCount, W / 2, H - 6, { align: 'center' });
       if (i > 1) {
-        doc.text('WealthGuard — Statement of Assets & Liabilities', M, H - 8);
-        doc.text(declarant, W - M, H - 8, { align: 'right' });
+        doc.text('WealthGuard — Statement of Assets & Liabilities', M, H - 6);
+        doc.text(declarant, W - M, H - 6, { align: 'right' });
       }
     }
 
     // Save
     const safeName = declarant.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30);
-    doc.save(`WealthGuard_Will_Report_${safeName}_${new Date().toISOString().slice(0,10)}.pdf`);
+    doc.save('WealthGuard_Will_Report_' + safeName + '_' + new Date().toISOString().slice(0, 10) + '.pdf');
     showToast('Will report generated', 'success');
 
   } catch(e) {
@@ -1125,6 +1305,7 @@ async function exportWillPDF() {
   }
   setLoading(btn, false);
 }
+
 
 function getCurrencyLabel(cur) {
   const labels = {
