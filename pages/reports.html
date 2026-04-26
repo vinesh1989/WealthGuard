@@ -949,80 +949,98 @@ async function exportWillPDF() {
           );
           y += 10;
 
-          // Per-holding detail block — NOT a cramped table, but a multi-row card per investment
+          // Per-holding detail card — full information per investment
           invs.forEach((inv, idx) => {
-            // Estimate height needed: base 16mm + 4mm for notes if present
-            const hasNotes  = inv.notes && inv.notes.trim().length > 0;
-            const hasTicker = inv.ticker_symbol || inv.isin || inv.exchange;
-            const needed = 18 + (hasNotes ? 8 : 0) + (hasTicker ? 5 : 0);
+            const hasInvNotes   = inv.notes && inv.notes.trim().length > 0;
+            const hasAssetNotes = inv.assets?.notes && inv.assets.notes.trim().length > 0;
+            const hasTicker     = inv.ticker_symbol || inv.isin || inv.exchange;
+            const hasCategory   = inv.category && inv.category.trim().length > 0;
+            // Estimate card height
+            const baseRows  = 4;  // title, account, account-num, ticker
+            const optRows   = (hasCategory ? 1 : 0) + (hasTicker ? 1 : 0);
+            const noteH     = (hasInvNotes ? 9 : 0) + (hasAssetNotes ? 9 : 0);
+            const needed    = 8 + (baseRows + optRows) * 4 + noteH + 4;
             checkSpace(needed);
 
-            // Holding card
-            doc.setFillColor(252, 252, 254);
-            doc.setDrawColor(225, 225, 232);
-            doc.setLineWidth(0.25);
             const cardTop = y;
 
-            // Title row — number + name + key amounts on right
+            // Holding number + name (title row)
             doc.setTextColor(20, 20, 25);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9.5);
+            doc.setFontSize(10);
             const title = (idx + 1) + '.  ' + (inv.name || 'Unnamed');
-            const titleLines = doc.splitTextToSize(title, (W - 2 * M) * 0.55);
-            doc.text(titleLines[0], M + 3, y + 4);
-            y += 5;
-            if (titleLines.length > 1) {
-              doc.text(titleLines[1], M + 3 + 4, y + 3);
-              y += 5;
-            }
+            doc.text(doc.splitTextToSize(title, (W - 2 * M) * 0.6)[0], M + 3, y + 4);
 
-            // Amounts — right aligned on title row
+            // Amounts — right side
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8.5);
-            doc.setTextColor(70, 70, 80);
-            doc.text('Invested:', W - M - 82, cardTop + 4);
+            doc.setFontSize(8);
+            doc.setTextColor(80, 80, 95);
+            doc.text('INVESTED:', W - M - 90, cardTop + 4);
             doc.setTextColor(20, 20, 25);
             doc.setFont('helvetica', 'bold');
-            doc.text(fmtAmount(inv.amount_invested || 0, cur), W - M - 55, cardTop + 4, { align: 'left' });
+            doc.setFontSize(9);
+            doc.text(fmtAmount(inv.amount_invested || 0, cur), W - M - 60, cardTop + 4);
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(70, 70, 80);
-            doc.text('Current:', W - M - 82, cardTop + 9);
+            doc.setFontSize(8);
+            doc.setTextColor(80, 80, 95);
+            doc.text('CURRENT:', W - M - 90, cardTop + 9);
             const glVal  = (parseFloat(inv.current_value) || 0) - (parseFloat(inv.amount_invested) || 0);
             const glGood = glVal >= 0;
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(glGood ? 20 : 180, glGood ? 110 : 40, glGood ? 60 : 40);
-            doc.text(fmtAmount(inv.current_value || 0, cur), W - M - 55, cardTop + 9, { align: 'left' });
+            doc.setFontSize(9);
+            doc.setTextColor(glGood ? 30 : 180, glGood ? 110 : 50, glGood ? 60 : 40);
+            doc.text(fmtAmount(inv.current_value || 0, cur), W - M - 60, cardTop + 9);
+            y += 9;
 
-            // Account reference line
-            const accName = [
-              inv.assets?.platform,
-              inv.assets?.name,
-              inv.assets?.account_number ? '#' + inv.assets.account_number : null,
-              inv.assets?.country,
-            ].filter(Boolean).join(' · ');
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.setTextColor(90, 90, 105);
-            doc.text('Account: ', M + 3, y + 3);
-            doc.setTextColor(30, 30, 40);
-            doc.text(accName || '—', M + 3 + 16, y + 3);
-            y += 4;
+            // ── Labelled detail rows ─────────────────────────
+            const labelledRow = (label, value, indent) => {
+              if (!value) return;
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(7.5);
+              doc.setTextColor(110, 110, 125);
+              doc.text(label.toUpperCase(), M + (indent || 3), y + 3);
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(8.2);
+              doc.setTextColor(30, 30, 40);
+              const valueLines = doc.splitTextToSize(String(value), W - 2 * M - 50);
+              doc.text(valueLines[0] || '—', M + (indent || 3) + 32, y + 3);
+              y += 4;
+            };
 
-            // Ticker / ISIN / Exchange row (if any)
-            if (hasTicker) {
+            // Account label (asset name) — what user calls this account
+            const accountLabel = inv.assets?.name || inv.assets?.platform || '—';
+            labelledRow('Account name:', accountLabel);
+
+            // Account number
+            if (inv.assets?.account_number) {
+              labelledRow('Account no.:', inv.assets.account_number);
+            }
+
+            // Platform + country (the broker/bank itself)
+            const platformInfo = [inv.assets?.platform, inv.assets?.country]
+              .filter(Boolean).join(' · ');
+            if (platformInfo) {
+              labelledRow('Platform:', platformInfo);
+            }
+
+            // Category (user-defined sub-class)
+            if (hasCategory) {
+              labelledRow('Category:', inv.category);
+            }
+
+            // Investment type + ticker info
+            if (hasTicker || (inv.investment_type && inv.investment_type !== 'Total')) {
               const tickerParts = [];
-              if (inv.ticker_symbol) tickerParts.push('Ticker: ' + inv.ticker_symbol);
-              if (inv.exchange)      tickerParts.push('Exchange: ' + inv.exchange);
-              if (inv.isin)          tickerParts.push('ISIN: ' + inv.isin);
               if (inv.investment_type && inv.investment_type !== 'Total') {
                 tickerParts.push('Type: ' + inv.investment_type);
               }
-              doc.setTextColor(90, 90, 105);
-              doc.text(tickerParts.join('  ·  '), M + 3, y + 3);
-              y += 4;
+              if (inv.ticker_symbol) tickerParts.push('Ticker: ' + inv.ticker_symbol);
+              if (inv.exchange)      tickerParts.push('Exchange: ' + inv.exchange);
+              if (inv.isin)          tickerParts.push('ISIN: ' + inv.isin);
+              labelledRow('Security info:', tickerParts.join('  ·  '));
             }
 
-            // Quantity / unit price / date row
+            // Quantity / price / date / source
             const qtyParts = [];
             if (inv.quantity && parseFloat(inv.quantity) > 0) {
               qtyParts.push('Qty: ' + parseFloat(inv.quantity).toLocaleString());
@@ -1030,34 +1048,51 @@ async function exportWillPDF() {
             if (inv.unit_price && parseFloat(inv.unit_price) > 0) {
               qtyParts.push('Unit price: ' + fmtAmount(inv.unit_price, cur));
             }
-            if (inv.date) qtyParts.push('Date: ' + fmtDate(inv.date));
+            if (inv.date) qtyParts.push('Purchased: ' + fmtDate(inv.date));
             if (inv.import_source && inv.import_source !== 'Manual') {
               qtyParts.push('Source: ' + inv.import_source);
             }
             if (qtyParts.length) {
-              doc.setTextColor(110, 110, 125);
-              doc.text(qtyParts.join('  ·  '), M + 3, y + 3);
-              y += 4;
+              labelledRow('Transaction:', qtyParts.join('  ·  '));
             }
 
-            // Notes block
-            if (hasNotes) {
-              doc.setFillColor(253, 248, 230);
-              const noteTextLines = doc.splitTextToSize('Note: ' + inv.notes, W - 2 * M - 10);
-              const noteH = noteTextLines.length * 3.8 + 3;
-              doc.roundedRect(M + 3, y + 1, W - 2 * M - 6, noteH, 1, 1, 'F');
-              doc.setTextColor(110, 80, 20);
-              doc.setFontSize(8);
+            // Account-level notes (about the account itself, e.g. "Joint account with spouse")
+            if (hasAssetNotes) {
+              doc.setFillColor(245, 250, 255);
+              const noteLines = doc.splitTextToSize(
+                'Account note: ' + inv.assets.notes,
+                W - 2 * M - 10
+              );
+              const nH = noteLines.length * 3.8 + 3;
+              doc.roundedRect(M + 3, y + 1, W - 2 * M - 6, nH, 1, 1, 'F');
+              doc.setTextColor(40, 80, 130);
+              doc.setFontSize(7.8);
               doc.setFont('helvetica', 'italic');
-              doc.text(noteTextLines, M + 5, y + 4.2);
-              y += noteH + 2;
+              doc.text(noteLines, M + 5, y + 4.2);
+              y += nH + 2;
             }
 
-            // Close card with bottom border
-            doc.setDrawColor(230, 230, 235);
+            // Investment-level notes (about this specific investment)
+            if (hasInvNotes) {
+              doc.setFillColor(253, 248, 230);
+              const noteLines = doc.splitTextToSize(
+                'Investment note: ' + inv.notes,
+                W - 2 * M - 10
+              );
+              const nH = noteLines.length * 3.8 + 3;
+              doc.roundedRect(M + 3, y + 1, W - 2 * M - 6, nH, 1, 1, 'F');
+              doc.setTextColor(110, 80, 20);
+              doc.setFontSize(7.8);
+              doc.setFont('helvetica', 'italic');
+              doc.text(noteLines, M + 5, y + 4.2);
+              y += nH + 2;
+            }
+
+            // Close card with thin bottom border
+            doc.setDrawColor(220, 220, 228);
             doc.setLineWidth(0.3);
-            doc.line(M + 2, y + 1, W - M - 2, y + 1);
-            y += 3;
+            doc.line(M + 2, y + 1.5, W - M - 2, y + 1.5);
+            y += 4;
           });
 
           y += 3;  // Space after currency subtotal group
