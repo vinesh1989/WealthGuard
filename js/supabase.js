@@ -186,7 +186,7 @@ const Assets = {
 const Investments = {
   async getAll(userId, filters = {}) {
     let query = sb.from('investments')
-      .select('*, assets(asset_type, platform, currency, country), portfolios(name,color,icon,member_name)')
+      .select('*, assets(name, asset_type, platform, account_number, currency, country, notes), portfolios(name,color,icon,member_name)')
       .eq('user_id', userId)
       .eq('is_active', true);
 
