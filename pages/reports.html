@@ -858,7 +858,7 @@ async function exportWillPDF() {
 
     // ── SECTION 1: INVESTMENTS BY ASSET CLASS ────────────────
     addPage();
-    sectionTitle('SECTION 1 — INVESTMENT HOLDINGS (by Asset Class)');
+    sectionTitle('SECTION 1 — INVESTMENT HOLDINGS — Detailed (by Asset Class)');
     bodyText('Investments are organised first by asset class, then further sub-grouped by denomination currency. Each holding shows full details including account reference, ticker/ISIN codes, quantity, unit price, purchase date, and any notes recorded by the declarant.', 8.5);
     y += 3;
 
@@ -1101,9 +1101,259 @@ async function exportWillPDF() {
       });
     }
 
-    // ── SECTION 2: INSURANCE POLICIES ────────────────────────
+    // ── SECTION 2: CURRENCY-WISE INVESTMENT SUMMARY ──────────
     addPage();
-    sectionTitle('SECTION 2 — INSURANCE POLICIES');
+    sectionTitle('SECTION 2 — INVESTMENTS BY CURRENCY');
+    bodyText('Investments organised by denomination currency. Each currency has its own table showing asset class, platform, account, and amounts. The grand total at the bottom shows the converted equivalent in INR, AED and USD using current exchange rates.', 8.5);
+    y += 3;
+
+    // Group by currency
+    const invByCurrency = {};
+    allInvestments.forEach(inv => {
+      const cur = inv.currency || 'INR';
+      if (!invByCurrency[cur]) invByCurrency[cur] = [];
+      invByCurrency[cur].push(inv);
+    });
+
+    const sortedCurrenciesForTable = Object.keys(invByCurrency).sort((a, b) => {
+      const order = ['INR', 'AED', 'USD', 'EUR', 'GBP'];
+      const ia = order.indexOf(a), ib = order.indexOf(b);
+      if (ia === -1 && ib === -1) return a.localeCompare(b);
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+
+    if (!sortedCurrenciesForTable.length) {
+      bodyText('No investments on record.', 9);
+    } else {
+      sortedCurrenciesForTable.forEach((cur, curIdx) => {
+        const invs = invByCurrency[cur];
+        let curTotInv = 0, curTotCur = 0;
+
+        // Currency header — large coloured bar
+        checkSpace(20);
+        const CUR_COLORS = {
+          'INR': [255, 153, 51],
+          'AED': [0, 122, 61],
+          'USD': [0, 100, 200],
+          'EUR': [0, 51, 153],
+          'GBP': [200, 16, 46],
+        };
+        const cc = CUR_COLORS[cur] || [100, 100, 110];
+
+        doc.setFillColor(cc[0], cc[1], cc[2]);
+        doc.rect(M, y, W - 2 * M, 9, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text((curIdx + 1) + '.  ' + getCurrencyLabel(cur), M + 3, y + 6);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(invs.length + ' holding' + (invs.length !== 1 ? 's' : ''),
+                 W - M - 3, y + 6, { align: 'right' });
+        y += 12;
+
+        // Table headers
+        const cols = [
+          { h: '#',           x: M + 2,    w: 8  },
+          { h: 'Asset Class', x: M + 11,   w: 38 },
+          { h: 'Investment',  x: M + 50,   w: 65 },
+          { h: 'Platform',    x: M + 116,  w: 50 },
+          { h: 'Account No.', x: M + 167,  w: 38 },
+          { h: 'Invested',    x: M + 206,  w: 32 },
+          { h: 'Current',     x: M + 239,  w: 32 },
+        ];
+
+        doc.setFillColor(245, 245, 250);
+        doc.rect(M, y - 3.5, W - 2 * M, 6.5, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(80, 80, 95);
+        cols.forEach(c => doc.text(c.h, c.x, y + 1));
+        y += 5;
+
+        // Data rows
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+
+        invs.forEach((inv, idx) => {
+          const inv_  = parseFloat(inv.amount_invested) || 0;
+          const cur_  = parseFloat(inv.current_value)   || 0;
+          curTotInv += inv_;
+          curTotCur += cur_;
+
+          checkSpace(7);
+
+          // Alternating row stripe
+          if (idx % 2 === 0) {
+            doc.setFillColor(252, 252, 254);
+            doc.rect(M, y - 3.5, W - 2 * M, 5.5, 'F');
+          }
+
+          doc.setTextColor(20, 20, 30);
+
+          // # column
+          doc.text(String(idx + 1), cols[0].x, y);
+
+          // Asset class
+          const ac = inv.assets?.asset_type || 'Other';
+          doc.text(doc.splitTextToSize(ac, cols[1].w - 2)[0], cols[1].x, y);
+
+          // Investment name
+          const nameLines = doc.splitTextToSize(inv.name || '—', cols[2].w - 2);
+          doc.text(nameLines[0], cols[2].x, y);
+
+          // Platform (with country shorthand if non-IN/AE)
+          let platform = inv.assets?.platform || '—';
+          if (inv.assets?.country) {
+            const cc2 = inv.assets.country;
+            const short = cc2 === 'India' ? 'IN' :
+                          cc2 === 'United Arab Emirates' ? 'UAE' :
+                          cc2 === 'United States' ? 'US' :
+                          cc2.length > 12 ? cc2.slice(0, 10) + '..' : cc2;
+            platform += ' (' + short + ')';
+          }
+          doc.text(doc.splitTextToSize(platform, cols[3].w - 2)[0], cols[3].x, y);
+
+          // Account number
+          const accNo = inv.assets?.account_number || '—';
+          doc.text(doc.splitTextToSize(accNo, cols[4].w - 2)[0], cols[4].x, y);
+
+          // Amounts (right-aligned)
+          doc.text(fmtAmount(inv_, cur), cols[5].x, y);
+          doc.text(fmtAmount(cur_, cur), cols[6].x, y);
+
+          y += 5.5;
+        });
+
+        // Currency subtotal row
+        doc.setFillColor(245, 240, 220);
+        doc.rect(M, y - 3.5, W - 2 * M, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 80, 20);
+        doc.text('Subtotal (' + cur + '):', M + 3, y + 1);
+        doc.text(fmtAmount(curTotInv, cur), cols[5].x, y + 1);
+        doc.text(fmtAmount(curTotCur, cur), cols[6].x, y + 1);
+        y += 11;
+      });
+
+      // ── GRAND TOTAL with conversion to INR / AED / USD ─────
+      checkSpace(50);
+      y += 4;
+
+      doc.setDrawColor(180, 150, 60);
+      doc.setLineWidth(0.6);
+      doc.line(M, y, W - M, y);
+      y += 6;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(20, 20, 25);
+      doc.text('GRAND TOTAL — All Currencies Combined', M, y);
+      y += 7;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(80, 80, 95);
+      doc.text('Investment values across all currencies, converted to common reference currencies using current exchange rates.', M, y);
+      y += 7;
+
+      // Compute totals in each reference currency
+      const REF_CURRENCIES = ['INR', 'AED', 'USD'];
+      const refTotals = {};
+      REF_CURRENCIES.forEach(refCur => {
+        let totInv = 0, totCur = 0;
+        sortedCurrenciesForTable.forEach(srcCur => {
+          let invSum = 0, curSum = 0;
+          invByCurrency[srcCur].forEach(inv => {
+            invSum += parseFloat(inv.amount_invested) || 0;
+            curSum += parseFloat(inv.current_value)   || 0;
+          });
+          totInv += ExchangeRates.convert(invSum, srcCur, refCur, rates);
+          totCur += ExchangeRates.convert(curSum, srcCur, refCur, rates);
+        });
+        refTotals[refCur] = { invested: totInv, current: totCur };
+      });
+
+      // Render grand total cards — 3 across
+      const cardW = (W - 2 * M - 8) / 3;
+      const cardY = y;
+      const CARD_BG = {
+        'INR': [255, 240, 220],
+        'AED': [220, 245, 230],
+        'USD': [220, 235, 250],
+      };
+      const CARD_TXT = {
+        'INR': [180, 100, 30],
+        'AED': [20, 110, 50],
+        'USD': [20, 70, 150],
+      };
+
+      REF_CURRENCIES.forEach((refCur, i) => {
+        const cx = M + i * (cardW + 4);
+        const totals = refTotals[refCur];
+        const gl = totals.current - totals.invested;
+        const glPct = totals.invested > 0 ? (gl / totals.invested * 100) : 0;
+
+        const bg = CARD_BG[refCur];
+        const tx = CARD_TXT[refCur];
+
+        doc.setFillColor(bg[0], bg[1], bg[2]);
+        doc.roundedRect(cx, cardY, cardW, 30, 2, 2, 'F');
+        doc.setDrawColor(tx[0], tx[1], tx[2]);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(cx, cardY, cardW, 30, 2, 2, 'S');
+
+        // Currency label
+        doc.setTextColor(tx[0], tx[1], tx[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text(getCurrencyLabel(refCur).split(' — ')[0], cx + 3, cardY + 6);
+
+        // Invested
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100, 100, 110);
+        doc.text('TOTAL INVESTED', cx + 3, cardY + 12);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(20, 20, 30);
+        doc.text(fmtAmount(totals.invested, refCur), cx + 3, cardY + 17);
+
+        // Current
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100, 100, 110);
+        doc.text('CURRENT VALUE', cx + 3, cardY + 22);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        const glColor = gl >= 0 ? [30, 110, 60] : [180, 50, 40];
+        doc.setTextColor(glColor[0], glColor[1], glColor[2]);
+        doc.text(fmtAmount(totals.current, refCur), cx + 3, cardY + 27);
+
+        // Gain/loss top-right
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(glColor[0], glColor[1], glColor[2]);
+        const glStr = (gl >= 0 ? '+' : '') + glPct.toFixed(1) + '%';
+        doc.text(glStr, cx + cardW - 3, cardY + 6, { align: 'right' });
+      });
+      y = cardY + 34;
+
+      // Currency conversion source note
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7.5);
+      doc.setTextColor(120, 120, 135);
+      doc.text('Exchange rates as of ' + reportDate + '. Conversion rates may vary by source — verify before legal use.',
+               M, y);
+      y += 4;
+    }
+
+    // ── SECTION 3: INSURANCE POLICIES ────────────────────────
+    addPage();
+    sectionTitle('SECTION 3 — INSURANCE POLICIES');
     bodyText('All active insurance policies held by the declarant — life, term, health, vehicle, property, ULIP and other categories — with complete policy, premium, and nominee details.', 8.5);
     y += 2;
 
@@ -1189,7 +1439,7 @@ async function exportWillPDF() {
     // ── SECTION 3: REAL ESTATE ───────────────────────────────
     if (allRealEstate.length) {
       addPage();
-      sectionTitle('SECTION 3 — REAL ESTATE HOLDINGS');
+      sectionTitle('SECTION 4 — REAL ESTATE HOLDINGS');
       bodyText('Immovable property holdings including residential, commercial, land and industrial assets with ownership, purchase, and mortgage details.', 8.5);
       y += 2;
 
@@ -1276,7 +1526,7 @@ async function exportWillPDF() {
 
     // ── SECTION 4: ATTESTATION ───────────────────────────────
     addPage();
-    sectionTitle('SECTION 4 — DECLARATION & ATTESTATION');
+    sectionTitle('SECTION 5 — DECLARATION & ATTESTATION');
     y += 2;
     bodyText('I, the undersigned declarant, hereby solemnly affirm that the information recorded in this Statement of Assets & Liabilities is true, complete and accurate to the best of my knowledge and belief as of the date signed below. I understand that this document may be used for legal reference in matters relating to will execution, estate planning, probate, and succession.', 9);
     y += 3;
