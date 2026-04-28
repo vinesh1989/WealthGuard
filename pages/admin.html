@@ -465,6 +465,7 @@ function renderInvitations() {
       </div>
       <div class="user-row-actions">
         <span class="badge" style="background:${sc}22;color:${sc};border:1px solid ${sc}44">${inv.status}</span>
+        ${inv.status==='pending'?`<button class="btn btn-ghost btn-sm" onclick="resendInvite('${inv.id}','${inv.email}')">Resend</button>`:''}
         ${inv.status==='pending'?`<button class="btn btn-ghost btn-sm" style="color:#f87171" onclick="revokeInvite('${inv.id}')">Revoke</button>`:''}
       </div>
     </div>`;
@@ -591,7 +592,7 @@ async function sendInvite() {
   try {
     const expiry = document.getElementById('inv-expiry').value;
     const plan_expires_at = expiry ? new Date(expiry).toISOString() : (() => { const d = new Date(); d.setFullYear(d.getFullYear()+1); return d.toISOString(); })();
-    const { error } = await Invitations.send({
+    const { error, emailWarning } = await Invitations.send({
       email,
       full_name: document.getElementById('inv-name').value.trim() || null,
       role: document.getElementById('inv-role').value,
@@ -600,7 +601,11 @@ async function sendInvite() {
       message: document.getElementById('inv-message').value.trim() || null,
     });
     if (error) throw error;
-    showToast(`Invitation sent to ${email}`, 'success');
+    if (emailWarning) {
+      showToast(`Invitation recorded but email failed: ${emailWarning}. Use the Resend button.`, 'warning');
+    } else {
+      showToast(`Invitation sent to ${email}`, 'success');
+    }
     closeInviteModal();
     await loadInvitations(); updateStats();
   } catch(e) { errEl.textContent = e.message||'Failed to send'; errEl.style.display = 'block'; }

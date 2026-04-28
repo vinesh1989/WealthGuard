@@ -488,13 +488,60 @@ const Invitations = {
 
   async send({ email, full_name, role, plan_id, plan_expires_at, message }) {
     const session = await Auth.getSession();
-    const { data, error } = await sb.from('invitations').insert({
+
+    // Step 1 — record the invitation in the database
+    const { data: invRow, error: dbError } = await sb.from('invitations').insert({
       invited_by: session.user.id,
       email, full_name, role, plan_id, plan_expires_at, message,
       status: 'pending',
       expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
     }).select().single();
-    return { data, error };
+    if (dbError) return { data: null, error: dbError };
+
+    // Step 2 — send the actual invitation email via Supabase Auth.
+    // signInWithOtp triggers Supabase's "Magic Link" email template.
+    // The user clicks the link, lands on /index.html which auto-creates their account.
+    // The invitation row in DB is matched on signup to apply role + plan.
+    try {
+      const redirectTo = window.location.origin + '/index.html?invite=' + invRow.id;
+      const { error: mailError } = await sb.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: redirectTo,
+          // shouldCreateUser:true lets Supabase create a new auth user if needed
+          shouldCreateUser: true,
+          data: { invitation_id: invRow.id, full_name, role, plan_id },
+        },
+      });
+      if (mailError) {
+        console.warn('Email dispatch warning:', mailError.message);
+        // Return data anyway — the invite is recorded; admin can resend manually
+        return { data: invRow, error: null, emailWarning: mailError.message };
+      }
+    } catch (e) {
+      console.warn('Email send failed:', e);
+      return { data: invRow, error: null, emailWarning: e.message };
+    }
+
+    return { data: invRow, error: null };
+  },
+
+  // Resend an invitation's magic link email
+  async resend(inviteId) {
+    const { data: inv, error } = await sb.from('invitations')
+      .select('*').eq('id', inviteId).single();
+    if (error || !inv) return { error: error || new Error('Invitation not found') };
+
+    const redirectTo = window.location.origin + '/index.html?invite=' + inv.id;
+    const { error: mailError } = await sb.auth.signInWithOtp({
+      email: inv.email,
+      options: {
+        emailRedirectTo: redirectTo,
+        shouldCreateUser: true,
+        data: { invitation_id: inv.id, full_name: inv.full_name, role: inv.role, plan_id: inv.plan_id },
+      },
+    });
+    return { error: mailError };
   },
 
   async revoke(id) {
