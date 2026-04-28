@@ -359,11 +359,72 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js"></script>
   <script>
-    // Check if already logged in
+    // ── Process invitation magic link, then route ──────────────
     (async () => {
       const session = await Auth.getSession();
       if (!session) return;
-      const profile = await Profile.get(session.user.id);
+
+      // Step 1: Check if this is an invitation acceptance via magic link
+      // Magic link redirect lands here with ?invite=<uuid> after OTP verification
+      const inviteId = new URLSearchParams(location.search).get('invite');
+      if (inviteId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(inviteId)) {
+        try {
+          // Fetch the invitation
+          const { data: invite } = await sb.from('invitations')
+            .select('*').eq('id', inviteId).maybeSingle();
+
+          if (invite && invite.status === 'pending' && invite.email === session.user.email) {
+            // Auto-approve: update profile with invited role/plan and mark approved
+            await sb.from('profiles').update({
+              full_name:    invite.full_name || session.user.email,
+              role:         invite.role || 'investor',
+              is_approved:  true,
+              access_status: 'approved',
+              subscription_status: 'active',
+            }).eq('id', session.user.id);
+
+            // Create or upsert subscription row
+            const subEnd = invite.plan_expires_at || (() => {
+              const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString();
+            })();
+            await sb.from('subscriptions').upsert({
+              user_id:  session.user.id,
+              plan_id:  invite.plan_id || 'standard',
+              status:   'active',
+              starts_at: new Date().toISOString(),
+              ends_at:  subEnd,
+            }, { onConflict: 'user_id' });
+
+            // Mark invitation as accepted
+            await sb.from('invitations').update({
+              status: 'accepted',
+              accepted_at: new Date().toISOString(),
+            }).eq('id', inviteId);
+
+            // Strip ?invite from URL
+            history.replaceState({}, '', location.pathname);
+          }
+        } catch(e) {
+          console.warn('Invitation processing error:', e);
+        }
+      }
+
+      // Step 2: Auto-admin promotion
+      const AUTO_ADMIN_EMAILS = ['vineshredkar89@gmail.com'];
+      const userEmail = (session.user.email || '').toLowerCase();
+      let profile = await Profile.get(session.user.id);
+
+      if (AUTO_ADMIN_EMAILS.includes(userEmail) && (!profile?.is_approved || profile?.role !== 'admin')) {
+        console.log('Auto-promoting:', userEmail);
+        await sb.from('profiles').update({
+          role: 'admin',
+          is_approved: true,
+          access_status: 'approved',
+        }).eq('id', session.user.id);
+        profile = await Profile.get(session.user.id);
+      }
+
+      // Step 3: Standard routing
       if (!profile?.is_approved && profile?.role !== 'admin') {
         window.location.href = 'pages/pending.html';
       } else if (profile?.role === 'admin') {
@@ -402,7 +463,19 @@
       }
 
       // Check approval / role before redirect
-      const profile = await Profile.get(data.user.id);
+      const AUTO_ADMIN_EMAILS_LOGIN = ['vineshredkar89@gmail.com'];
+      const loginEmail = (data.user.email || '').toLowerCase();
+      let profile = await Profile.get(data.user.id);
+
+      if (AUTO_ADMIN_EMAILS_LOGIN.includes(loginEmail) && (!profile?.is_approved || profile?.role !== 'admin')) {
+        console.log('Auto-promoting on login:', loginEmail);
+        await sb.from('profiles').update({
+          role: 'admin',
+          is_approved: true,
+          access_status: 'approved',
+        }).eq('id', data.user.id);
+        profile = await Profile.get(data.user.id);
+      }
 
       if (profile?.access_status === 'rejected') {
         await Auth.signOut();

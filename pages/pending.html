@@ -76,6 +76,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
 <script>
+// List of emails that should be auto-promoted to admin (never see pending)
+const AUTO_ADMIN_EMAILS = ['vineshredkar89@gmail.com'];
+
 async function init() {
   const session = await Auth.getSession();
   if (!session) { window.location.href = '../index.html'; return; }
@@ -85,9 +88,34 @@ async function init() {
   const profile = await Profile.get(session.user.id);
   if (!profile) return;
 
+  // ── Hard-coded auto-admin promotion ──
+  // If this user's email is in the auto-admin list, promote them now and skip pending
+  const userEmail = (session.user.email || '').toLowerCase();
+  if (AUTO_ADMIN_EMAILS.includes(userEmail)) {
+    console.log('Auto-promoting auto-admin:', userEmail);
+    const { error } = await sb.from('profiles').update({
+      role: 'admin',
+      is_approved: true,
+      access_status: 'approved',
+    }).eq('id', session.user.id);
+
+    if (error) {
+      console.error('Auto-promote failed:', error);
+      showToast('Auto-promote failed: ' + error.message, 'error');
+    } else {
+      showToast('✓ Auto-promoted to admin — redirecting…', 'success');
+      setTimeout(() => { window.location.href = 'admin.html'; }, 800);
+      return;
+    }
+  }
+
   if (profile.access_status === 'approved' || profile.is_approved) {
-    // Already approved — send them to dashboard
-    window.location.href = 'dashboard.html';
+    // Already approved — admin → admin panel, others → dashboard
+    if (profile.role === 'admin') {
+      window.location.href = 'admin.html';
+    } else {
+      window.location.href = 'dashboard.html';
+    }
     return;
   }
 
