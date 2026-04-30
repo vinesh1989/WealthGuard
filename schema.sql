@@ -456,15 +456,27 @@ CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = 
 CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 CREATE POLICY "profiles_delete" ON profiles FOR DELETE USING (auth.uid() = id);
 
--- Admins can read AND update ALL profiles (for Admin Panel — All Users tab)
-CREATE POLICY "profiles_admin_select" ON profiles FOR SELECT USING (
-  EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-);
-CREATE POLICY "profiles_admin_update" ON profiles FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-) WITH CHECK (
-  EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-);
+-- Helper function — bypasses RLS to safely check admin role from inside policies.
+-- Without SECURITY DEFINER, querying profiles from a profiles policy causes
+-- infinite recursion and locks users out of their own profile.
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+$$;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+
+-- Admins can read AND update ALL profiles (for Admin Panel)
+CREATE POLICY "profiles_admin_select" ON profiles FOR SELECT USING (public.is_admin());
+CREATE POLICY "profiles_admin_update" ON profiles FOR UPDATE USING (public.is_admin())
+  WITH CHECK (public.is_admin());
 CREATE POLICY "profiles_beneficiary_read" ON profiles FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM family_shares
@@ -514,9 +526,7 @@ CREATE POLICY "notification_prefs_own" ON notification_preferences FOR ALL USING
 
 -- Subscriptions: own only
 CREATE POLICY "subscriptions_own" ON subscriptions FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "subscriptions_admin" ON subscriptions FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "subscriptions_admin" ON subscriptions FOR ALL USING (public.is_admin());
 
 -- Import logs: own only
 CREATE POLICY "import_logs_own" ON import_logs FOR ALL USING (user_id = auth.uid());
