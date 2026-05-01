@@ -877,6 +877,16 @@ async function requireAuth() {
     return null;
   }
 
+  // Show Admin nav section if user is admin (universal — runs on every page)
+  if (profile && profile.role === 'admin') {
+    setTimeout(() => {
+      const sec  = document.getElementById('admin-nav-section');
+      const link = document.getElementById('admin-nav-link');
+      if (sec)  sec.style.display  = 'block';
+      if (link) link.style.display = 'flex';
+    }, 0);
+  }
+
   return session;
 }
 

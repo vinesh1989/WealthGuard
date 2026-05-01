@@ -544,9 +544,7 @@ CREATE POLICY "realestate_beneficiary" ON real_estate_assets FOR SELECT USING (
 );
 
 -- Invitations: admin full access
-CREATE POLICY "invitations_admin" ON invitations FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "invitations_admin" ON invitations FOR ALL USING (public.is_admin());
 CREATE POLICY "invitations_self_read" ON invitations FOR SELECT USING (
   email = (SELECT email FROM profiles WHERE id = auth.uid())
 );

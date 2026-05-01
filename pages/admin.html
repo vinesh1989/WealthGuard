@@ -602,10 +602,25 @@ async function sendInvite() {
     });
     if (error) throw error;
     if (emailWarning) {
-      showToast(`Invitation recorded but email failed: ${emailWarning}. Use the Resend button.`, 'warning');
-    } else {
-      showToast(`Invitation sent to ${email}`, 'success');
+      // Show the error inline rather than just a toast — this is critical info
+      errEl.innerHTML = `
+        <div style="padding:0.75rem;background:#3a2e1a;border:1px solid #d4af37;border-radius:8px;margin-top:0.5rem">
+          <div style="font-weight:600;color:#d4af37;margin-bottom:0.4rem">Invitation recorded — email NOT sent</div>
+          <div style="font-size:0.85rem;color:#e0e0e6;margin-bottom:0.4rem">Reason: ${emailWarning}</div>
+          <div style="font-size:0.78rem;color:#a0a0a8">
+            Most common causes:<br>
+            1. Email confirmations disabled in Supabase Auth settings<br>
+            2. No SMTP configured (free tier limit: 3 emails/hour from default sender)<br>
+            3. Site URL not in Supabase redirect URLs whitelist<br>
+            See <code>EMAIL_INVITATION_SETUP.md</code> for fix steps.
+          </div>
+        </div>`;
+      errEl.style.display = 'block';
+      // Don't close the modal — let the admin see the error
+      await loadInvitations(); updateStats();
+      return;
     }
+    showToast(`Invitation email sent to ${email}`, 'success');
     closeInviteModal();
     await loadInvitations(); updateStats();
   } catch(e) { errEl.textContent = e.message||'Failed to send'; errEl.style.display = 'block'; }

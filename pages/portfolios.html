@@ -135,6 +135,8 @@
       <a href="settings.html" class="nav-item"><span class="nav-icon">⚙</span> Settings</a>
       <a href="backup.html" class="nav-item"><span class="nav-icon">💾</span> Backup &amp; Restore</a>
       <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span> Subscription</a>
+          <span class="nav-section-label" id="admin-nav-section" style="display:none">Admin</span>
+      <a href="admin.html" class="nav-item" id="admin-nav-link" style="display:none"><span class="nav-icon">⚡</span> Admin Panel</a>
     </nav>
     <div class="sidebar-bottom">
       <div class="sidebar-user"><div class="user-avatar" id="user-initial">R</div><div><div class="user-name" id="user-name">Loading...</div><div class="user-role" id="user-role">investor</div></div></div>
@@ -259,8 +261,23 @@ async function init() {
   document.getElementById('user-initial').textContent = (profile?.full_name || session.user.email || 'U')[0].toUpperCase();
   document.getElementById('user-role').textContent    = profile?.role || 'investor';
 
-  // Ensure a default portfolio exists
-  await Portfolios.ensureDefault(currentUser, profile?.full_name);
+  // Ensure a default portfolio exists, capture its id
+  const defaultPf = await Portfolios.ensureDefault(currentUser, profile?.full_name);
+
+  // Auto-link any orphaned investments + assets to the default portfolio.
+  // Fixes "Invested ₹0.00 / Current ₹0.00" when items were created before
+  // portfolios existed (portfolio_id stays NULL → never matched in the filter).
+  const defaultPfId = defaultPf?.id || defaultPf?.data?.id;
+  if (defaultPfId) {
+    await sb.from('investments')
+      .update({ portfolio_id: defaultPfId })
+      .eq('user_id', currentUser)
+      .is('portfolio_id', null);
+    await sb.from('assets')
+      .update({ portfolio_id: defaultPfId })
+      .eq('user_id', currentUser)
+      .is('portfolio_id', null);
+  }
 
   renderPalette();
   renderIconGrid();
